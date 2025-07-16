@@ -10,7 +10,7 @@ const tradeSchema = new Schema(
     },
     orderId: {
       type: String,
-      required: true,
+      // required: true,
     },
     buyPrice: {
       type: Types.Decimal128,
