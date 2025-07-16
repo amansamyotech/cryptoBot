@@ -217,6 +217,8 @@ const startBotForBuy = async () => {
             purchaseAmount: buyingAmount,
             status: "0",
           };
+          console.log(`data`,data);
+          
           const saveIntoDb = await axios.post(
             "http://localhost:3000/api/trades/",
             { data }
