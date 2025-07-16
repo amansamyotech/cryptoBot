@@ -9,7 +9,6 @@ const apiSecret =
   "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR";
 const SYMBOLS = ["DOGEUSDT"];
 const MIN_BALANCE = 6;
-const TRADING_FEE_RATE = 0.0005;
 const TRADE_AMOUNT = 6;
 const API_ENDPOINT = "http://localhost:3000/api/trades";
 
@@ -143,16 +142,14 @@ const executeSingleTrade = async () => {
     log(
       `📋 Settings: Min Balance Required: $${MIN_BALANCE}, Trade Amount: $${TRADE_AMOUNT}`
     );
-
     const balance = await getBalance();
     log(`💰 Current Balance: $${balance.toFixed(2)}`);
 
-    const requiredBalance = MIN_BALANCE + MIN_BALANCE * TRADING_FEE_RATE;
-    if (balance < requiredBalance) {
+    if (balance < MIN_BALANCE) {
       log(
-        `❗ Balance too low for trading. Need minimum ${requiredBalance.toFixed(
-          4
-        )} (including fees), but have ${balance.toFixed(2)}. Stopping bot...`
+        `❗ Balance too low for trading. Need minimum $${MIN_BALANCE}, but have $${balance.toFixed(
+          2
+        )}. Stopping bot...`
       );
       process.exit(1);
     }
@@ -204,12 +201,7 @@ const executeSingleTrade = async () => {
     }
 
     const purchaseAmount = finalBuyPrice * finalQuantity;
-    const estimatedFee = purchaseAmount * TRADING_FEE_RATE;
-    const totalCost = purchaseAmount + estimatedFee;
-
-    log(`💵 Purchase amount: ${purchaseAmount}`);
-    log(`💰 Estimated fee (0.05%): ${estimatedFee}`);
-    log(`📊 Total estimated cost: ${totalCost}`);
+    log(`💵 Total purchase amount: $${purchaseAmount.toFixed(2)}`);
 
     const tradeRecord = {
       symbol: symbol,
@@ -224,14 +216,7 @@ const executeSingleTrade = async () => {
     await saveTradeRecord(tradeRecord);
 
     const finalBalance = await getBalance();
-    const actualTotalCost = balance - finalBalance;
-    const actualFee = actualTotalCost - purchaseAmount;
-
-    log(`💰 Initial Balance: ${balance}`);
-    log(`💰 Final Balance: ${finalBalance}`);
-    log(`💸 Actual total cost: ${actualTotalCost}`);
-    log(`💸 Actual fee paid: ${actualFee}`);
-    log(`📊 Fee percentage: ${(actualFee / purchaseAmount) * 100}%`);
+    log(`💰 Final Balance: $${finalBalance.toFixed(2)}`);
 
     log("🎯 Trade completed successfully! Stopping bot...");
     process.exit(0);

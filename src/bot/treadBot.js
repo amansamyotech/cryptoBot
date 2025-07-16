@@ -11,8 +11,8 @@ const MIN_BALANCE = 5;
 const TRADE_AMOUNT = 6;
 const PROFIT_TARGET = 0.01;
 
-let coinStates = {}; 
-let pendingOrders = {}; 
+let coinStates = {};
+let pendingOrders = {};
 
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
 
@@ -65,7 +65,6 @@ const checkOrderStatus = async (symbol, orderId) => {
     return null;
   }
 };
-
 
 const getCurrentPositions = async () => {
   try {
