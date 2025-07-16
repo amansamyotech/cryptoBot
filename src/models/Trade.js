@@ -6,7 +6,6 @@ const tradeSchema = new Schema(
     symbol: {
       type: String,
       required: true,
-      trim: true,
     },
     orderId: {
       type: String,
