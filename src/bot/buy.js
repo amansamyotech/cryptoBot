@@ -60,7 +60,7 @@ const getCurrentPrice = async (symbol) => {
     }
   );
 
-  console.log("Response data:", response.data);
+  console.log("Response data:", response);
   let status = response.data.status;
   let object = {};
   try {
