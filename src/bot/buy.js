@@ -60,12 +60,14 @@ const getCurrentPrice = async (symbol) => {
     }
   );
 
-  console.log("Response data:", response);
+  console.log("Response data:", response?.data);
   let status = response.data.status;
   let object = {};
   try {
     if (status == true) {
       let symbol = response.data.symbol;
+      console.log(`symbol`,symbol);
+      
       const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
         params: { symbol },
       });
