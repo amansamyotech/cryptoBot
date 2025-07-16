@@ -5,23 +5,18 @@ const tradeSchema = new Schema(
   {
     symbol: {
       type: String,
-      required: true,
     },
     orderId: {
       type: String,
-      required: true,
     },
     currentPrice: {
       type: Types.Decimal128,
-      required: true,
     },
     quantity: {
       type: Types.Decimal128,
-      required: true,
     },
     buyingAmount: {
       type: Types.Decimal128,
-      required: true,
     },
 
     sellingTimeCurrentPrice: {
