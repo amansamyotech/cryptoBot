@@ -2,6 +2,8 @@ const tradeService = require("../service/tradeService.js");
 
 const createTrade = async (req, res) => {
   
+  console.log('req.body for add' ,req.body);
+  
   try {
     const trade = await tradeService.createTrade(req.body);
     res.status(201).json(trade);
