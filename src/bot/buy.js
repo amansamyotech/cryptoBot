@@ -15,7 +15,7 @@ const SYMBOLS = [
   "1000FLOKIUSDT",
 ];
 
-const MIN_BALANCE = 5.5;
+const MIN_BALANCE = 6.5;
 const API_ENDPOINT = "http://localhost:3000/api/trades";
 
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
@@ -51,14 +51,41 @@ const getPrecisionMap = async () => {
   return precisionMap;
 };
 const getCurrentPrice = async (symbol) => {
+  console.log("Input symbols:", symbol);
+
+  const response = await axios.post(
+    "http://localhost:3000/api/trades/check-symbols",
+    {
+      symbol: symbol,
+    }
+  );
+
+  console.log("Response data:", response.data);
+  let status = response.data.status;
+  let object = {};
   try {
-    const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
-      params: { symbol },
-    });
-    return parseFloat(res.data.price);
+    if (status == true) {
+      let symbol = response.data.symbol;
+      const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
+        params: { symbol },
+      });
+      let price = res.data.price;
+      object = {
+        symbol,
+        price,
+        status,
+      };
+      return object;
+    } else {
+      object = {
+        symbol,
+        status,
+      };
+      return object;
+    }
   } catch (err) {
-    log(`❌ Price fetch failed for ${symbol}: ${err.message}`);
-    throw err;
+    log(`❌ Price fetch failed for ${symbolName}: ${err.message}`);
+    return object;
   }
 };
 // place order for buy
@@ -145,201 +172,61 @@ const saveTradeRecord = async (tradeData) => {
     throw error;
   }
 };
-// const executeSingleTrade = async () => {
-//   try {
-//     log("🚀 Starting Trading Bot...");
-//     log(
-//       `📋 Settings: Min Balance Required: $${MIN_BALANCE}, Trade Amount: $${TRADE_AMOUNT}`
-//     );
-//     const balance = await getBalance();
-//     log(`💰 Current Balance: $${balance.toFixed(2)}`);
-
-//     if (balance < MIN_BALANCE) {
-//       log(
-//         `❗ Balance too low for trading. Need minimum $${MIN_BALANCE}, but have $${balance.toFixed(
-//           2
-//         )}. Stopping bot...`
-//       );
-//       process.exit(1);
-//     }
-
-//     log(
-//       `✅ Balance check passed! Have $${balance.toFixed(2)} >= $${MIN_BALANCE}`
-//     );
-
-//     const precisionMap = await getPrecisionMap();
-
-//     const symbol = SYMBOLS[0];
-//     const precision = precisionMap[symbol];
-
-//     log(`📊 Getting current price for ${symbol}...`);
-//     const currentPrice = await getCurrentPrice(symbol);
-//     log(`💲 Current price for ${symbol}: $${currentPrice.toFixed(6)}`);
-
-//     const quantity = parseFloat(
-//       (TRADE_AMOUNT / currentPrice).toFixed(precision)
-//     );
-//     log(
-//       `🛒 Placing buy order for ${quantity} ${symbol} (worth $${TRADE_AMOUNT}) at current market price...`
-//     );
-
-//     const buyOrder = await placeOrderBuy(symbol, "BUY", quantity);
-
-//     let finalBuyPrice;
-//     let finalQuantity;
-
-//     if (buyOrder.status === "FILLED") {
-//       finalBuyPrice = parseFloat(buyOrder.fills[0].price);
-//       finalQuantity = parseFloat(buyOrder.executedQty);
-//       log(
-//         `✅ BOUGHT ${finalQuantity} ${symbol} @ $${finalBuyPrice.toFixed(6)}`
-//       );
-//     } else {
-//       log(
-//         `⏳ Order placed but not filled immediately. OrderID: ${buyOrder.orderId}`
-//       );
-
-//       const filledOrder = await waitForOrderFill(symbol, buyOrder.orderId);
-//       finalBuyPrice = parseFloat(filledOrder.avgPrice);
-//       finalQuantity = parseFloat(filledOrder.executedQty);
-//       log(
-//         `✅ CONFIRMED FILLED ${finalQuantity} ${symbol} @ $${finalBuyPrice.toFixed(
-//           6
-//         )}`
-//       );
-//     }
-
-//     const purchaseAmount = finalBuyPrice * finalQuantity;
-//     log(`💵 Total purchase amount: $${purchaseAmount.toFixed(2)}`);
-
-//     const tradeRecord = {
-//       symbol: symbol,
-//       buyPrice: finalBuyPrice,
-//       quantity: finalQuantity,
-//       purchaseAmount: purchaseAmount,
-//       isBuy: true,
-//     };
-
-//     log(`📝 Preparing trade record: ${JSON.stringify(tradeRecord)}`);
-
-//     await saveTradeRecord(tradeRecord);
-
-//     const finalBalance = await getBalance();
-//     log(`💰 Final Balance: $${finalBalance.toFixed(2)}`);
-
-//     log("🎯 Trade completed successfully! Stopping bot...");
-//     process.exit(0);
-//   } catch (error) {
-//     log(`💥 Bot error: ${error.message}`);
-//     process.exit(1);
-//   }
-// };
-
-// executeSingleTrade();
 
 //start bot for buy
 const startBotForBuy = async () => {
   log("🚀 Starting Bot...");
-  //   const precision = await getPrecision();
+  let index = 0;
 
-  //   while (true) {
-  const totalBalance = await getBalance();
-  const buyingAmount = (totalBalance - MIN_BALANCE) / SYMBOLS.length;
-  console.log(`buyingAmount`, buyingAmount);
+  while (true) {
+    const totalBalance = await getBalance();
+    let minimumBlanceCheck = totalBalance - MIN_BALANCE;
+    console.log(`minimumBlanceCheck`, minimumBlanceCheck);
 
-  const currentPriceOfSymbols = getCurrentPrice(SYMBOLS);
-  console.log("currentPriceOfSymbols", currentPriceOfSymbols);
+    if (minimumBlanceCheck > MIN_BALANCE) {
+      const buyingAmount = minimumBlanceCheck / SYMBOLS.length;
+      console.log(`buyingAmount`, buyingAmount);
 
-  // try {
-  //   //find the balance
+      if (index == 5) {
+        index = 0;
+      }
 
-  //   const currentPrice = await getPrice();
-  //   //   position = "LONG";
-  //   //   quantity = 100
-  //   // BUY - if no position
+      try {
+        const symbolObject = await getCurrentPrice(SYMBOLS[index]);
+        console.log(`currentPrice`, symbolObject?.price);
+        if (symbolObject?.status == true) {
+          quantity = parseFloat(buyingAmount / symbolObject?.price);
 
-  //   console.log(`currentPrice >=`, currentPrice);
-  //   console.log(`targetPrice`, targetPrice);
-  //   console.log(`position  -- `, position);
-  //   if (!position) {
-  //     const balance = await getBalance();
-  //     const buyAmount = balance;
-  //     quantity = parseFloat((buyAmount / currentPrice).toFixed(precision));
+          // const order = await placeOrderBuy(
+          //   symbolObject?.symbol,
+          //   "BUY",
+          //   quantity
+          // );
 
-  //     log(
-  //       `💰 Balance: ${balance.toFixed(2)} | Buying with ${buyAmount.toFixed(
-  //         2
-  //       )}`
-  //     );
+          console.log(
+            `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
+          );
 
-  //     // Check minimum order value (usually $5-10)
-  //     if (buyAmount < 5) {
-  //       log(`⚠️ Buy amount too small: ${buyAmount.toFixed(2)} (minimum $5)`);
-  //       await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 5 seconds
-  //       // send telly message
-  //       position = "LONG";
-  //       continue;
-  //     }
+          // if (order && order.status === "FILLED") {
+          //   log(
+          //     `✅ BOUGHT ${quantity} ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
+          //   );
+          // } else if (order === null) {
+          //   log(`❌ Buy order failed`);
+          // }
+        } else {
+          console.log("dont buy  ", symbolObject?.symbol);
+        }
 
-  //     const order = await placeOrder("BUY", quantity);
-  //     if (order && order.status === "FILLED") {
-  //       position = "LONG";
-  //       buyPrice = currentPrice;
-  //       targetPrice = currentPrice * (1 + PROFIT_PERCENTAGE / 100);
+        index++;
+      } catch (e) {
+        log(`❌ Error: ${e.message}`);
+      }
+    } else {
+      console.log("dont have sufficient balance ");
+    }
 
-  //       log(
-  //         `✅ BOUGHT ${quantity} ${SYMBOL} @ ${currentPrice} | Target: ${targetPrice.toFixed(
-  //           6
-  //         )}`
-  //       );
-  //     } else if (order === null) {
-  //       log(`❌ Buy order failed`);
-  //     }
-  //   }
-
-  //   // SELL - if have position and target reached
-  //   else if (position === "LONG" && currentPrice >= targetPrice) {
-  //     console.log("enter into sell");
-
-  //     // else if (position === "LONG") {
-  //     //const order = await placeOrder("SELL", quantity);
-  //     const order = await placeOrder("SELL", 100);
-
-  //     console.log("sell order placed", order);
-
-  //     if (order && order.status === "FILLED") {
-  //       const profit = (currentPrice - buyPrice) * quantity;
-
-  //       log(
-  //         `🎯 SOLD ${quantity} ${SYMBOL} @ ${currentPrice} | Profit: ${profit.toFixed(
-  //           4
-  //         )}`
-  //       );
-
-  //       // Reset for next cycle
-  //       position = null;
-  //       buyPrice = 0;
-  //       quantity = 0;
-  //       targetPrice = 0;
-  //     } else if (order === null) {
-  //       log(`❌ Sell order failed`);
-  //     }
-  //   }
-
-  //   // Status update
-  //   else if (position === "LONG") {
-  //     const currentProfit = (currentPrice - buyPrice) * quantity;
-  //     log(
-  //       `📊 Holding ${quantity} ${SYMBOL} | Current: $${currentPrice} | Target: $${targetPrice.toFixed(
-  //         6
-  //       )} | Profit: $${currentProfit.toFixed(4)}`
-  //     );
-  //   }
-  // } catch (e) {
-  //   log(`❌ Error: ${e.message}`);
-  // }
-
-  // await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
+    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
+  }
 };
-// };
 startBotForBuy();

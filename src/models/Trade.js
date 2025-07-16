@@ -24,14 +24,7 @@ const tradeSchema = new Schema(
       type: Types.Decimal128,
       required: true,
     },
-    isBuy: {
-      type: Boolean,
-      default: false,
-    },
-    isSell: {
-      type: Boolean,
-      default: false,
-    },
+
     sellingPrice: {
       type: Types.Decimal128,
     },
@@ -40,6 +33,10 @@ const tradeSchema = new Schema(
     },
     profit: {
       type: Types.Decimal128,
+    },
+    status: {
+      type: String,
+      default: "0",
     },
   },
   {

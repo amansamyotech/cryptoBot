@@ -34,9 +34,22 @@ const updateTrade = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+const checkSymbols = async (req, res) => {
+  try {
+    const { symbols } = req.body;
+
+    const foundSymbols = await tradeService.checkSymbols(symbols);
+
+    return res.status(200).json({ data: foundSymbols });
+  } catch (error) {
+    console.error("Error checking symbols:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 
 module.exports = {
   createTrade,
   getAllTrades,
   updateTrade,
+  checkSymbols,
 };
