@@ -60,12 +60,13 @@ const getCurrentPrice = async (symbol) => {
     }
   );
 
-  console.log("Response data:", response?.data);
-  let status = response.data.status;
+  console.log("Response data:",  response?.data?.data);
+   
+  let status =  response?.data?.data.status;
   let object = {};
   try {
     if (status == true) {
-      let symbol = response.data.symbol;
+      let symbol =  response?.data?.data.symbol;
       console.log(`symbol`,symbol);
       
       const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
@@ -181,21 +182,25 @@ const startBotForBuy = async () => {
   let index = 0;
 
   while (true) {
+
+console.log(`=========== start ============> `, index);
+
     const totalBalance = await getBalance();
     let minimumBlanceCheck = totalBalance - MIN_BALANCE;
-    console.log(`minimumBlanceCheck`, minimumBlanceCheck);
+    console.log(`total amount for buying amount `, minimumBlanceCheck);
 
     if (minimumBlanceCheck > MIN_BALANCE) {
       const buyingAmount = minimumBlanceCheck / SYMBOLS.length;
-      console.log(`buyingAmount`, buyingAmount);
+      console.log(`single coint buyingAmount `, buyingAmount);
 
       if (index == 5) {
         index = 0;
+        break;
       }
 
       try {
         const symbolObject = await getCurrentPrice(SYMBOLS[index]);
-        console.log(`currentPrice`, symbolObject?.price);
+        console.log(`coin current currentPrice -------> ${symbolObject?.symbol} ||||`, symbolObject?.price);
         if (symbolObject?.status == true) {
           quantity = parseFloat(buyingAmount / symbolObject?.price);
 
@@ -227,6 +232,8 @@ const startBotForBuy = async () => {
     } else {
       console.log("dont have sufficient balance ");
     }
+
+    console.log(`============= end  ==========`);
 
     await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
   }
