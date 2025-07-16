@@ -56,7 +56,7 @@ const getCurrentPrice = async (symbol) => {
   const response = await axios.post(
     "http://localhost:3000/api/trades/check-symbols",
     {
-      symbol: symbol,
+      symbols: symbol,
     }
   );
 
