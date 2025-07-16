@@ -1,11 +1,10 @@
 const tradeService = require("../service/tradeService.js");
 
 const createTrade = async (req, res) => {
-  
-  console.log('req.body for add' ,req.body);
-  
+      const { data } = req.body;
+
   try {
-    const trade = await tradeService.createTrade(req.body);
+    const trade = await tradeService.createTrade(data);
     res.status(201).json(trade);
   } catch (error) {
     console.error("Error creating trade:", error);

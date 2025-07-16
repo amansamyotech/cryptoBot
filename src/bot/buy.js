@@ -216,7 +216,6 @@ const startBotForBuy = async () => {
             currentPrice: symbolObject?.price,
             quantity,
             buyingAmount: buyingAmount,
-            
 
             sellingTimeCurrentPrice: "1234",
             profitAmount: "1223",
@@ -226,7 +225,9 @@ const startBotForBuy = async () => {
 
           const saveIntoDb = await axios.post(
             "http://localhost:3000/api/trades/",
-            { data }
+            {
+              data: data,
+            }
           );
 
           console.log(`saveIntoDb`, saveIntoDb);
