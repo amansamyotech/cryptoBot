@@ -14,7 +14,6 @@ const SYMBOLS = [
   "1000BONKUSDT",
   "1000FLOKIUSDT",
 ];
-console.log(`SYMBOLS.length`, SYMBOLS.length);
 
 const MIN_BALANCE = 5.5;
 const API_ENDPOINT = "http://localhost:3000/api/trades";
@@ -37,7 +36,6 @@ const getBalance = async () => {
     res.data.assets.find((a) => a.asset === "USDT").availableBalance
   );
 };
-
 
 const getPrecisionMap = async () => {
   const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/exchangeInfo`);
@@ -246,10 +244,11 @@ const startBotForBuy = async () => {
 
   //   while (true) {
   const totalBalance = await getBalance();
-  console.log(`totalBalance`,totalBalance);
-  
   const buyingAmount = (totalBalance - MIN_BALANCE) / SYMBOLS.length;
   console.log(`buyingAmount`, buyingAmount);
+
+  const currentPriceOfSymbols = getCurrentPrice(SYMBOLS);
+  console.log("currentPriceOfSymbols", currentPriceOfSymbols);
 
   // try {
   //   //find the balance
