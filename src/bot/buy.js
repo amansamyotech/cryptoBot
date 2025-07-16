@@ -60,15 +60,15 @@ const getCurrentPrice = async (symbol) => {
     }
   );
 
-  console.log("Response data:",  response?.data?.data);
-   
-  let status =  response?.data?.data.status;
+  console.log("Response data:", response?.data?.data);
+
+  let status = response?.data?.data.status;
   let object = {};
   try {
     if (status == true) {
-      let symbol =  response?.data?.data.symbol;
-      console.log(`symbol`,symbol);
-      
+      let symbol = response?.data?.data.symbol;
+      console.log(`symbol`, symbol);
+
       const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
         params: { symbol },
       });
@@ -182,8 +182,11 @@ const startBotForBuy = async () => {
   let index = 0;
 
   while (true) {
-
-console.log(`=========== start ============> `, index);
+    if (index == 5) {
+      index = 0;
+      break;
+    }
+    console.log(`=========== start ============> `, index);
 
     const totalBalance = await getBalance();
     let minimumBlanceCheck = totalBalance - MIN_BALANCE;
@@ -193,14 +196,12 @@ console.log(`=========== start ============> `, index);
       const buyingAmount = minimumBlanceCheck / SYMBOLS.length;
       console.log(`single coint buyingAmount `, buyingAmount);
 
-      if (index == 5) {
-        index = 0;
-        break;
-      }
-
       try {
         const symbolObject = await getCurrentPrice(SYMBOLS[index]);
-        console.log(`coin current currentPrice -------> ${symbolObject?.symbol} ||||`, symbolObject?.price);
+        console.log(
+          `coin current currentPrice -------> ${symbolObject?.symbol} ||||`,
+          symbolObject?.price
+        );
         if (symbolObject?.status == true) {
           quantity = parseFloat(buyingAmount / symbolObject?.price);
 
@@ -209,6 +210,19 @@ console.log(`=========== start ============> `, index);
           //   "BUY",
           //   quantity
           // );
+          const data = {
+            symbol: symbolObject?.symbol,
+            buyPrice: symbolObject?.price,
+            quantity,
+            purchaseAmount: buyingAmount,
+            status: "0",
+          };
+          const saveIntoDb = await axios.post(
+            "http://localhost:3000/api/trades/",
+            { data }
+          );
+
+          console.log(`saveIntoDb`, saveIntoDb);
 
           console.log(
             `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
