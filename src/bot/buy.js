@@ -212,13 +212,18 @@ const startBotForBuy = async () => {
           // );
           const data = {
             symbol: symbolObject?.symbol,
-            buyPrice: symbolObject?.price,
+            orderId: "1234",
+            currentPrice: symbolObject?.price,
             quantity,
-            purchaseAmount: buyingAmount,
+            buyingAmount: buyingAmount,
+            
+
+            sellingTimeCurrentPrice: "1234",
+            profitAmount: "1223",
             status: "0",
           };
-          console.log(`data`,data);
-          
+          console.log(`data`, data);
+
           const saveIntoDb = await axios.post(
             "http://localhost:3000/api/trades/",
             { data }

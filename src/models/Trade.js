@@ -9,9 +9,9 @@ const tradeSchema = new Schema(
     },
     orderId: {
       type: String,
-      // required: true,
+      required: true,
     },
-    buyPrice: {
+    currentPrice: {
       type: Types.Decimal128,
       required: true,
     },
@@ -19,18 +19,16 @@ const tradeSchema = new Schema(
       type: Types.Decimal128,
       required: true,
     },
-    purchaseAmount: {
+    buyingAmount: {
       type: Types.Decimal128,
       required: true,
     },
 
-    sellingPrice: {
+    sellingTimeCurrentPrice: {
       type: Types.Decimal128,
     },
-    sellQuantity: {
-      type: Types.Decimal128,
-    },
-    profit: {
+
+    profitAmount: {
       type: Types.Decimal128,
     },
     status: {
