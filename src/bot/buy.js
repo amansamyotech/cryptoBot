@@ -2,9 +2,11 @@ require("dotenv").config();
 const axios = require("axios");
 const crypto = require("crypto");
 
-const FUTURES_API_BASE = process.env.FUTURES_API_BASE;
-const apiKey = process.env.BINANCE_API_KEY;
-const apiSecret = process.env.BINANCE_API_SECRET;
+const FUTURES_API_BASE = "https://fapi.binance.com";
+const apiKey =
+  "6bd1UA2kXR2lgLPv1pt9bNEOJE70h1MbXMvmoH1SceWUNw0kvXAQEdigQUgfNprI";
+const apiSecret =
+  "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR";
 const SYMBOLS = ["DOGEUSDT"];
 const MIN_BALANCE = 6;
 const TRADE_AMOUNT = 6;
