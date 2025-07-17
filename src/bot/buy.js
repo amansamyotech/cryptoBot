@@ -140,6 +140,7 @@ const placeOrder = async (symbol, side, quantity) => {
       quantity,
       timestamp: Date.now(),
     };
+    console.log(`params`, params);
 
     const sig = sign(params);
 
@@ -264,8 +265,8 @@ const startBotForBuy = async () => {
             MY BUYING AMOUNT - ${buyingAmount},
             QUANTITY - ${quantity}`
           );
-          let side = "BUY";
-          const order = await placeOrder(symbolObject?.symbol, side, quantity);
+
+          const order = await placeOrder(symbolObject?.symbol, "BUY", quantity);
 
           if (order && order.status === "FILLED") {
             const data = {
