@@ -71,7 +71,7 @@ const getSymbollDetails = async (symbol) => {
       let quantity = parseFloat(
         response?.data?.data.trades?.[0]?.quantity?.$numberDecimal
       );
-      console.log(`quantity`,quantity);
+      
       
       let totalBuyingAmount =
         parseFloat(
@@ -269,7 +269,7 @@ const startBotForBuy = async () => {
             totalSellingAmount - symbolObject?.totalBuyingAmount;
           console.log(
             `order sell   
-            quantity : ${symbolObject?.apiKeyquantity}
+            quantity : ${symbolObject?.quantity}
             symbol:  : ${symbolObject?.symbol}
             sellingTimeCurrentPrice :${symbolObject?.price} 
             totalSellingAmount :${totalSellingAmount}
