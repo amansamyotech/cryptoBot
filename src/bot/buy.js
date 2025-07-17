@@ -258,7 +258,7 @@ const startBotForBuy = async () => {
           const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
             data: data,
           });
-          console.log(`saveIntoDb`, saveIntoDb);
+          
           console.log(
             `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
           );
