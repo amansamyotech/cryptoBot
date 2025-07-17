@@ -262,11 +262,12 @@ const startBotForBuy = async () => {
               )
           );
 
-          let totalSellingAmount = quantity * symbolObject?.price;
-          let profitAmount = totalSellingAmount - totalBuyingAmount;
+          let totalSellingAmount = symbolObject?.quantity * symbolObject?.price;
+          let profitAmount =
+            totalSellingAmount - symbolObject?.totalBuyingAmount;
           console.log(
             `order sell   
-            quantity : ${quantity}
+            quantity : ${symbolObject?.apiKeyquantity}
             symbol:  : ${symbolObject?.symbol}
             sellingTimeCurrentPrice :${symbolObject?.price} 
             totalSellingAmount :${totalSellingAmount}
