@@ -94,8 +94,6 @@ const getSymboldetailsForBuyingcoin = async (symbol) => {
     symbols: symbol,
   });
 
-  
-
   let status = response?.data?.data.status;
   let object = {};
   try {
@@ -219,7 +217,6 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      
     }
     console.log(`=========== start for buy ============> `, index);
     const totalBalance = await getBalance();
@@ -293,7 +290,6 @@ const startBotForSell = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      
     }
     console.log(`=========== start sell ============> `, index);
 
@@ -375,5 +371,5 @@ const startBotForSell = async () => {
   }
 };
 
-await startBotForBuy();
-await startBotForSell();
+startBotForBuy();
+startBotForSell();
