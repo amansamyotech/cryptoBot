@@ -217,7 +217,6 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      
     }
     console.log(`=========== start for buy ============> `, index);
     const totalBalance = await getBalance();
@@ -258,7 +257,7 @@ const startBotForBuy = async () => {
           const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
             data: data,
           });
-          
+
           console.log(
             `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
           );
@@ -291,7 +290,6 @@ const startBotForSell = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-    
     }
     console.log(`=========== start sell ============> `, index);
 
@@ -318,23 +316,6 @@ const startBotForSell = async () => {
             symbolObject?.currentMarketprice >
             parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
-            console.log("current price bada hai ---------");
-          }
-          if (
-            symbolObject?.currentMarketprice ==
-            parseFloat(symbolObject?.buyingTimeCoinPrice)
-          ) {
-            console.log("current price baraber  hai ---------");
-          }
-          if (
-            symbolObject?.currentMarketprice <
-            parseFloat(symbolObject?.buyingTimeCoinPrice)
-          ) {
-            console.log("current price chota  hai ---------");
-          }
-
-          let sellIndi = true;
-          if (sellIndi) {
             let mainAmount =
               symbolObject?.currentMarketprice * symbolObject?.quantity;
             let profitAmount = mainAmount - symbolObject?.buyingAmount;
