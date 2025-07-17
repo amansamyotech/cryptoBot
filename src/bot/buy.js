@@ -314,15 +314,15 @@ const startBotForSell = async () => {
           );
           let sellIndi = true;
           if (
-            symbolObject?.currentMarketprice > parseFloat(buyingTimeCoinPrice)
+            symbolObject?.currentMarketprice > parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price bada hai ---------");
           } else if (
-            symbolObject?.currentMarketprice == parseFloat(buyingTimeCoinPrice)
+            symbolObject?.currentMarketprice == parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price baraber  hai ---------");
           } else if (
-            symbolObject?.currentMarketprice < parseFloat(buyingTimeCoinPrice)
+            symbolObject?.currentMarketprice < parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price chota  hai ---------");
           }
