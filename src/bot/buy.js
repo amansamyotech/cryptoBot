@@ -37,19 +37,26 @@ const getBalance = async () => {
   );
 };
 
-const getPrecision = async () => {
+const getPrecision = async (symbol) => {
   const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/exchangeInfo`);
-  console.log(`res`, res?.data?.symbols);
 
-  const symbolInfo = res.data.symbols.find((s) => s.symbol == SYMBOLS);
-  console.log(`symbolInfo`, symbolInfo);
+  const symbolInfo = res.data.symbols.find((s) => s.symbol === symbol);
+  if (!symbolInfo) {
+    console.error(`❌ Symbol not found: ${symbol}`);
+    return 0; // or throw error
+  }
 
-  const stepSize = symbolInfo?.filters.find(
+  const stepFilter = symbolInfo.filters.find(
     (f) => f.filterType === "LOT_SIZE"
-  ).stepSize;
-  console.log(`stepSize`, stepSize);
-
-  return Math.max(0, stepSize.indexOf("1") - 1);
+  );
+  if (!stepFilter) {
+    console.error(`❌ LOT_SIZE filter not found for symbol: ${symbol}`);
+    return 0;
+  }
+  const stepSize = stepFilter.stepSize;
+  const precision = Math.max(0, stepSize.indexOf("1") - 1);
+  console.log(`${symbol} → stepSize: ${stepSize}, precision: ${precision}`);
+  return precision;
 };
 
 // GET symbol details for sell coin
