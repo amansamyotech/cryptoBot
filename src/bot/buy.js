@@ -71,6 +71,8 @@ const getSymbollDetails = async (symbol) => {
       let quantity = parseFloat(
         response?.data?.data.trades?.[0]?.quantity?.$numberDecimal
       );
+      console.log(`quantity`,quantity);
+      
       let totalBuyingAmount =
         parseFloat(
           response?.data?.data.trades?.[0]?.currentPrice?.$numberDecimal
