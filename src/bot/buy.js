@@ -74,7 +74,7 @@ const getSymbolDetailsForSellCoin = async (symbol) => {
       let orderId = response?.data?.data.trades?.[0]?.orderId;
       let Objectid = response?.data?.data.trades?.[0]?._id;
       let buyingTimeCoinPrice =
-        response?.data?.data.trades?.[0]?.currentPrice?.$numberDecimal;
+        response?.data?.data.trades?.[0]?.buyingTimeCoinPrice?.$numberDecimal;
       let buyingAmount =
         response?.data?.data?.trades?.[0]?.buyingAmount?.$numberDecimal;
       let quantity = parseFloat(
