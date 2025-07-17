@@ -1,6 +1,7 @@
 require("dotenv").config();
 const axios = require("axios");
 const crypto = require("crypto");
+const { sendTelegram } = require("../helper/teleMassage.js");
 
 const FUTURES_API_BASE = "https://fapi.binance.com";
 const apiKey =
@@ -49,6 +50,7 @@ const getSymbolDetailsForSellCoin = async (symbol) => {
     // false means status 0 --- means  sold krna hai
     if (status == false) {
       let symbol = response?.data?.data.symbol;
+      let orderId = response?.data?.data.trades?.[0]?.orderId;
       let Objectid = response?.data?.data.trades?.[0]?._id;
       let buyingTimeCoinPrice =
         response?.data?.data.trades?.[0]?.currentPrice?.$numberDecimal;
@@ -70,6 +72,7 @@ const getSymbolDetailsForSellCoin = async (symbol) => {
         buyingTimeCoinPrice,
         currentMarketprice,
         status,
+        orderId,
         buyingAmount,
       };
       return object;
@@ -127,9 +130,9 @@ const getSymboldetailsForBuyingcoin = async (symbol) => {
 };
 
 // place order for buy or sell done ke liye
-const placeOrder = async (symbol, side, quantity, orderId) => {
-  const params = {};
+const placeOrder = async (symbol, side, orderId, quantity) => {
   try {
+    let params = {};
     if (side == "SELL") {
       params = {
         symbol,
@@ -139,6 +142,13 @@ const placeOrder = async (symbol, side, quantity, orderId) => {
         quantity,
         timestamp: Date.now(),
       };
+
+      const sig = sign(params);
+
+      const res = await axios.put(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
+        params: { ...params, signature: sig },
+        headers: { "X-MBX-APIKEY": apiKey },
+      });
     } else {
       params = {
         symbol,
@@ -147,14 +157,15 @@ const placeOrder = async (symbol, side, quantity, orderId) => {
         quantity,
         timestamp: Date.now(),
       };
+
+      const sig = sign(params);
+
+      const res = await axios.post(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
+        params: { ...params, signature: sig },
+        headers: { "X-MBX-APIKEY": apiKey },
+      });
     }
 
-    const sig = sign(params);
-
-    const res = await axios.post(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
-      params: { ...params, signature: sig },
-      headers: { "X-MBX-APIKEY": apiKey },
-    });
     return res.data;
   } catch (e) {
     log(`❌ Order error for ${symbol}: ${e.response?.data?.msg || e.message}`);
@@ -218,6 +229,7 @@ const startBotForBuy = async () => {
     if (index == 5) {
       index = 0;
     }
+    sendTelegram("---------Buy Bot Started---------");
     console.log(`=========== start for buy ============> `, index);
     const totalBalance = await getBalance();
     let minimumBlanceCheck = totalBalance - MIN_BALANCE;
@@ -234,40 +246,42 @@ const startBotForBuy = async () => {
           `coin current currentPrice -------> ${symbolObject?.symbol} ||||`,
           symbolObject?.price
         );
+
         if (symbolObject?.status == true) {
           quantity = parseFloat(buyingAmount / symbolObject?.price);
-          // const order = await placeOrderBuy(
-          //   symbolObject?.symbol,
-          //   "BUY",
-          //   quantity
-          // );
-          const data = {
-            symbol: symbolObject?.symbol,
-            orderId: "1234", // idher bad me order id denge
-            buyingTimeCoinPrice: symbolObject?.price,
-            quantity,
-            buyingAmount: buyingAmount,
-            sellingTimeCurrentPrice: "1234",
-            profitAmount: "1223",
-            status: "0",
-          };
-          console.log(`data`, data);
-
-          // data base me save karane ke liye
-          const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
-            data: data,
-          });
-
-          console.log(
-            `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
+          sendTelegram(
+            `COIN NAME - ${symbolObject?.symbol} ,
+             COIN CURRENT MARKET PRICE - ${symbolObject?.price},
+            MY BUYING AMOUNT - ${buyingAmount},
+            QUANTITY - ${quantity}`
           );
-          // if (order && order.status === "FILLED") {
-          //   log(
-          //     `✅ BOUGHT ${quantity} ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
-          //   );
-          // } else if (order === null) {
-          //   log(`❌ Buy order failed`);
-          // }
+          let side = "BUY";
+          const order = await placeOrder(symbolObject?.symbol, side, quantity);
+
+          if (order && order.status === "FILLED") {
+            const data = {
+              symbol: symbolObject?.symbol,
+              orderId: order.orderId,
+              buyingTimeCoinPrice: symbolObject?.price,
+              quantity,
+              buyingAmount: buyingAmount,
+              sellingTimeCurrentPrice: "1234",
+              profitAmount: "1223",
+              status: "0",
+            };
+            console.log(`data`, data);
+
+            // data base me save karane ke liye
+            const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
+              data: data,
+            });
+
+            console.log(
+              `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
+            );
+          } else if (order === null) {
+            log(`❌ Buy order failed`);
+          }
         } else {
           console.log("dont buy  ", symbolObject?.symbol);
         }
@@ -285,6 +299,7 @@ const startBotForBuy = async () => {
 
 //start bot for sell
 const startBotForSell = async () => {
+  sendTelegram("---------SELL Bot Started---------");
   log("🚀 Starting Bot...");
   let index = 0;
   while (true) {
@@ -314,12 +329,27 @@ const startBotForSell = async () => {
         if (symbolObject?.status == false) {
           if (
             symbolObject?.currentMarketprice >
-            parseFloat(symbolObject?.buyingTimeCoinPrice)
+            parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
           ) {
             let mainAmount =
               symbolObject?.currentMarketprice * symbolObject?.quantity;
             let profitAmount = mainAmount - symbolObject?.buyingAmount;
 
+            sendTelegram(
+              `COIN NAME - ${symbolObject?.symbol} ,
+             COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
+            MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
+            QUANTITY - ${quantity}
+            PROFIT AMOUNT - ${profitAmount}`
+            );
+
+            let side = "SELL";
+            const order = await placeOrder(
+              symbolObject?.symbol,
+              symbolObject?.orderId,
+              side,
+              symbolObject?.quantity
+            );
             const data = {
               id: symbolObject?.Objectid,
               sellingTimeCurrentPrice: symbolObject?.currentMarketprice,
