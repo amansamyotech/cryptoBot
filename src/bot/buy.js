@@ -284,7 +284,12 @@ const startBotForBuy = async () => {
 
           const order = await placeOrder(symbolObject?.symbol, "BUY", quantity);
 
-          if (order && order.status === "FILLED") {
+          const orderStatus = await waitForOrderFill(
+            symbolObject?.symbol,
+            order.orderId
+          );
+
+          if (orderStatus && orderStatus.status === "FILLED") {
             const data = {
               symbol: symbolObject?.symbol,
               orderId: order.orderId,
