@@ -9,11 +9,11 @@ const apiKey =
 const apiSecret =
   "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR";
 const SYMBOLS = [
-  "DOGEUSDT",
   "1000PEPEUSDT",
   "1000SHIBUSDT",
   "1000BONKUSDT",
   "1000FLOKIUSDT",
+  "DOGEUSDT",
 ];
 const MIN_BALANCE = 6.5;
 const API_ENDPOINT = "http://localhost:3000/api/trades/";
@@ -39,16 +39,16 @@ const getBalance = async () => {
 
 const getPrecision = async () => {
   const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/exchangeInfo`);
-  console.log(`res`,res);
-  
-  const symbolInfo = res.data.symbols.find((s) => s.symbol === SYMBOLS);
-  console.log(`symbolInfo`,symbolInfo);
-  
+  console.log(`res`, res);
+
+  const symbolInfo = res.data.symbols.find((s) => s.symbol == SYMBOLS);
+  console.log(`symbolInfo`, symbolInfo);
+
   const stepSize = symbolInfo?.filters.find(
     (f) => f.filterType === "LOT_SIZE"
   ).stepSize;
-  console.log(`stepSize`,stepSize);
-  
+  console.log(`stepSize`, stepSize);
+
   return Math.max(0, stepSize.indexOf("1") - 1);
 };
 
