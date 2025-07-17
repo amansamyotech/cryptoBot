@@ -295,37 +295,40 @@ const startBotForSell = async () => {
 
     const totalBalance = await getBalance();
     let minimumBlanceCheck = totalBalance - MIN_BALANCE;
-    console.log(`total amount for sell `, minimumBlanceCheck);
+    console.log(`my balance without mini balance `, minimumBlanceCheck);
 
     if (minimumBlanceCheck > MIN_BALANCE) {
       try {
         // symbol lake dega sell ke liye
         const symbolObject = await getSymbolDetailsForSellCoin(SYMBOLS[index]);
         console.log(
-          `coin current currentMarketprice -------> ${symbolObject?.symbol} ||||`,
+          `coin current Market price from api -------> ${symbolObject?.symbol} ||||`,
           symbolObject?.currentMarketprice
+        );
+         console.log(
+          `buy time price -------> ${symbolObject?.symbol} ---`,
+          symbolObject?.buyingTimeCoinPrice
         );
 
         // false meens 0 hum isko bech skte hai ----
         if (symbolObject?.status == false) {
-          console.log(
-            "current market price of coin  -----",
-            symbolObject?.currentMarketprice
-          );
-          let sellIndi = true;
+          
+         
           if (
             symbolObject?.currentMarketprice > parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price bada hai ---------");
-          } else if (
+          }  if (
             symbolObject?.currentMarketprice == parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price baraber  hai ---------");
-          } else if (
+          }  if (
             symbolObject?.currentMarketprice < parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price chota  hai ---------");
           }
+
+           let sellIndi = true;
           if (sellIndi) {
             let mainAmount = symbolObject?.currentMarketprice * symbolObject?.quantity;
             let profitAmount = mainAmount - symbolObject?.buyingAmount;
