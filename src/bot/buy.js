@@ -327,7 +327,7 @@ const startBotForSell = async () => {
             console.log("current price chota  hai ---------");
           }
           if (sellIndi) {
-            let mainAmount = symbolObject?.currentMarketprice * quantity;
+            let mainAmount = symbolObject?.currentMarketprice * symbolObject?.quantity;
             let profitAmount = mainAmount - buyingAmount;
 
             const data = {
