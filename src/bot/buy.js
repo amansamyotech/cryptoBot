@@ -71,8 +71,7 @@ const getSymbollDetails = async (symbol) => {
       let quantity = parseFloat(
         response?.data?.data.trades?.[0]?.quantity?.$numberDecimal
       );
-      
-      
+
       let totalBuyingAmount =
         parseFloat(
           response?.data?.data.trades?.[0]?.currentPrice?.$numberDecimal
@@ -237,7 +236,7 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      break;
+      // break;
     }
     console.log(`=========== start buy ============> `, index);
 
@@ -264,11 +263,16 @@ const startBotForBuy = async () => {
               )
           );
 
-          let totalSellingAmount = symbolObject?.quantity * symbolObject?.price;
-          let profitAmount =
-            totalSellingAmount - symbolObject?.totalBuyingAmount;
-          console.log(
-            `order sell   
+          if (
+            symbolObject?.price >
+            parseFloat(symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal)
+          ) {
+            let totalSellingAmount =
+              symbolObject?.quantity * symbolObject?.price;
+            let profitAmount =
+              totalSellingAmount - symbolObject?.totalBuyingAmount;
+            console.log(
+              `order sell   
             quantity : ${symbolObject?.quantity}
             symbol:  : ${symbolObject?.symbol}
             sellingTimeCurrentPrice :${symbolObject?.price} 
@@ -276,7 +280,8 @@ const startBotForBuy = async () => {
             profitAmount : ${profitAmount}
             status: 1,
             `
-          );
+            );
+          }
 
           // const order = await placeOrderBuy(
           //   symbolObject?.symbol,
