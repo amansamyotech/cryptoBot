@@ -131,42 +131,47 @@ const getSymboldetailsForBuyingcoin = async (symbol) => {
 };
 
 // place order for buy or sell done ke liye
-const placeOrder = async (symbol, side, orderId, quantity) => {
+const placeOrder = async (symbol, side, quantity) => {
   try {
-    let params = {};
-    let res;
-    if (side == "SELL") {
-      params = {
-        symbol,
-        side,
-        orderId,
-        type: "MARKET",
-        quantity,
-        timestamp: Date.now(),
-      };
+    let params = {
+      symbol,
+      side,
+      type: "MARKET",
+      quantity,
+      timestamp: Date.now(),
+    };
 
-      const sig = sign(params);
+    const sig = sign(params);
 
-      res = await axios.put(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
-        params: { ...params, signature: sig },
-        headers: { "X-MBX-APIKEY": apiKey },
-      });
-    } else {
-      params = {
-        symbol,
-        side,
-        type: "MARKET",
-        quantity,
-        timestamp: Date.now(),
-      };
+    const res = await axios.post(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
+      params: { ...params, signature: sig },
+      headers: { "X-MBX-APIKEY": apiKey },
+    });
 
-      const sig = sign(params);
+    return res.data;
+  } catch (e) {
+    log(`❌ Order error for ${symbol}: ${e.response?.data?.msg || e.message}`);
+    throw e;
+  }
+};
 
-      res = await axios.post(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
-        params: { ...params, signature: sig },
-        headers: { "X-MBX-APIKEY": apiKey },
-      });
-    }
+const placeSellOrder = async (symbol, side, orderId, quantity) => {
+  try {
+    let params = {
+      symbol,
+      side,
+      orderId,
+      type: "MARKET",
+      quantity,
+      timestamp: Date.now(),
+    };
+
+    const sig = sign(params);
+
+    let res = await axios.put(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
+      params: { ...params, signature: sig },
+      headers: { "X-MBX-APIKEY": apiKey },
+    });
 
     return res.data;
   } catch (e) {
@@ -231,7 +236,7 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      break
+      break;
     }
 
     console.log(`=========== start for buy ============> `, index);
@@ -309,7 +314,7 @@ const startBotForSell = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      break
+      break;
     }
     console.log(`=========== start sell ============> `, index);
 
@@ -349,7 +354,7 @@ const startBotForSell = async () => {
             );
 
             let side = "SELL";
-            const order = await placeOrder(
+            const order = await placeSellOrder(
               symbolObject?.symbol,
               symbolObject?.orderId,
               side,
