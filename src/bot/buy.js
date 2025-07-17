@@ -176,12 +176,13 @@ const placeOrder = async (symbol, side, quantity) => {
   }
 };
 
-const placeSellOrder = async (symbol, side, orderId, quantity) => {
+const placeSellOrder = async (symbol, orderId, side, quantity) => {
   try {
     let params = {
       symbol,
-      side,
       orderId,
+      side,
+
       type: "MARKET",
       quantity,
       timestamp: Date.now(),
