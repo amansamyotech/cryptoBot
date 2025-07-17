@@ -240,7 +240,7 @@ const startBotForBuy = async () => {
           symbolObject?.price
         );
         if (symbolObject?.status == false) {
-          if (symbolObject?.price > symbolObject?.trades?.[0]?.buyingAmount) {
+          if (symbolObject?.price > symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal) {
             console.log(
               `order sell   quantity : ${symbolObject?.trades?.[0]?.quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} `
             );
