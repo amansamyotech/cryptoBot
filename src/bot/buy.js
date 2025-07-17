@@ -239,6 +239,10 @@ const startBotForBuy = async () => {
           `coin current currentPrice -------> ${symbolObject?.symbol} ||||`,
           symbolObject?.price
         );
+
+        console.log(`symbolObject?.price`,symbolObject?.price);
+        console.log(`tread price`,symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal);
+        
         if (symbolObject?.status == false) {
           if (symbolObject?.price > symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal) {
             console.log(
