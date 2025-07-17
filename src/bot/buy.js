@@ -241,7 +241,7 @@ const startBotForBuy = async () => {
         );
 
         console.log(`symbolObject?.price`,symbolObject?.price);
-        console.log(`tread price`,symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal);
+        console.log(`tread price`,symbolObject?.trades?.[0]);
         
         if (symbolObject?.status == false) {
           if (symbolObject?.price > symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal) {
