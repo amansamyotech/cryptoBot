@@ -9,7 +9,7 @@ const apiKey =
 const apiSecret =
   "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR";
 const SYMBOLS = [
-  // "DOGEUSDT",
+  "DOGEUSDT",
   "1000PEPEUSDT",
   "1000SHIBUSDT",
   "1000BONKUSDT",
@@ -35,6 +35,15 @@ const getBalance = async () => {
   return parseFloat(
     res.data.assets.find((a) => a.asset === "USDT").availableBalance
   );
+};
+
+const getPrecision = async () => {
+  const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/exchangeInfo`);
+  const symbolInfo = res.data.symbols.find((s) => s.symbol === SYMBOL);
+  const stepSize = symbolInfo.filters.find(
+    (f) => f.filterType === "LOT_SIZE"
+  ).stepSize;
+  return Math.max(0, stepSize.indexOf("1") - 1);
 };
 
 // GET symbol details for sell coin
@@ -233,6 +242,7 @@ const waitForOrderFill = async (symbol, orderId, maxWaitTime = 30000) => {
 //start bot for buy
 const startBotForBuy = async () => {
   let index = 0;
+  const precision = await getPrecision();
   sendTelegram("---------Buy Bot Started---------");
   while (true) {
     if (index == 5) {
@@ -258,7 +268,9 @@ const startBotForBuy = async () => {
         );
 
         if (symbolObject?.status == true) {
-          quantity = parseFloat(buyingAmount / symbolObject?.price).toFixed(0);
+          quantity = parseFloat(buyingAmount / symbolObject?.price).toFixed(
+            precision
+          );
           sendTelegram(
             `COIN NAME - ${symbolObject?.symbol} ,
              COIN CURRENT MARKET PRICE - ${symbolObject?.price},
