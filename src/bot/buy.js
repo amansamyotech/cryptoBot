@@ -94,7 +94,7 @@ const getSymboldetailsForBuyingcoin = async (symbol) => {
     symbols: symbol,
   });
 
-  console.log("Response data:", response?.data?.data);
+  
 
   let status = response?.data?.data.status;
   let object = {};
@@ -358,7 +358,7 @@ const startBotForSell = async () => {
             );
           }
         } else {
-          console.log("dont buy  ", symbolObject?.symbol);
+          console.log("dont sell  ", symbolObject?.symbol);
         }
 
         index++;
@@ -375,5 +375,5 @@ const startBotForSell = async () => {
   }
 };
 
-startBotForBuy();
-startBotForSell();
+await startBotForBuy();
+await startBotForSell();
