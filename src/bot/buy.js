@@ -364,6 +364,12 @@ const startBotForSell = async () => {
 
         // false meens 0 hum isko bech skte hai ----
         if (symbolObject?.status == false) {
+          console.log(
+            "my selling conditon -->>>",
+            symbolObject?.currentMarketprice >
+              parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
+          );
+
           if (
             symbolObject?.currentMarketprice >
             parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
