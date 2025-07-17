@@ -258,7 +258,7 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      break;
+      
     }
 
     console.log(`=========== start for buy ============> `, index);
@@ -266,7 +266,7 @@ const startBotForBuy = async () => {
     let minimumBlanceCheck = totalBalance - MIN_BALANCE;
     console.log(`total amount for buy `, minimumBlanceCheck);
     if (minimumBlanceCheck > MIN_BALANCE) {
-      const buyingAmount = minimumBlanceCheck / SYMBOLS.length;
+      const buyingAmount = minimumBlanceCheck / SYMBOLS.length - index;
       console.log(`single coin buyingAmount `, buyingAmount);
       try {
         // symbol ke sath sath current price lake deta hai
@@ -338,7 +338,7 @@ const startBotForSell = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      break;
+     
     }
     console.log(`=========== start sell ============> `, index);
 
