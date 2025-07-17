@@ -367,12 +367,12 @@ const startBotForSell = async () => {
           console.log(
             "my selling conditon -->>>",
             symbolObject?.currentMarketprice >
-              parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
+              parseFloat(symbolObject?.buyingTimeCoinPrice)
           );
 
           if (
             symbolObject?.currentMarketprice >
-            parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
+            parseFloat(symbolObject?.buyingTimeCoinPrice) 
           ) {
             let mainAmount =
               symbolObject?.currentMarketprice * symbolObject?.quantity;
