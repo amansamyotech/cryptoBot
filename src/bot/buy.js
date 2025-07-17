@@ -39,13 +39,11 @@ const getBalance = async () => {
 
 const getPrecision = async (symbol) => {
   const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/exchangeInfo`);
-
   const symbolInfo = res.data.symbols.find((s) => s.symbol === symbol);
   if (!symbolInfo) {
     console.error(`❌ Symbol not found: ${symbol}`);
-    return 0; // or throw error
+    return 0;
   }
-
   const stepFilter = symbolInfo.filters.find(
     (f) => f.filterType === "LOT_SIZE"
   );
@@ -379,11 +377,10 @@ const startBotForSell = async () => {
             PROFIT AMOUNT - ${profitAmount}`
             );
 
-            let side = "SELL";
             const order = await placeSellOrder(
               symbolObject?.symbol,
               symbolObject?.orderId,
-              side,
+              "SELL",
               symbolObject?.quantity
             );
             const data = {
