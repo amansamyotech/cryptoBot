@@ -236,7 +236,7 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      // break;
+      break;
     }
     console.log(`=========== start buy ============> `, index);
 
@@ -264,7 +264,7 @@ const startBotForBuy = async () => {
           );
 
           if (
-            symbolObject?.price >
+            symbolObject?.price <
             parseFloat(symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal)
           ) {
             let totalSellingAmount =
