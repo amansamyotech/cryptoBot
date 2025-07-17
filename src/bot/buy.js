@@ -67,6 +67,7 @@ const getSymbollDetails = async (symbol) => {
   try {
     if (status == false) {
       let symbol = response?.data?.data.symbol;
+      let trades = response?.data?.data.trades;
       console.log(`symbol`, symbol);
 
       const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
@@ -77,6 +78,7 @@ const getSymbollDetails = async (symbol) => {
         symbol,
         price,
         status,
+        trades,
       };
       return object;
     } else {
@@ -240,11 +242,14 @@ const startBotForBuy = async () => {
           symbolObject?.price
         );
 
-        console.log(`symbolObject?.price`,symbolObject?.price);
-        console.log(`tread price`,symbolObject?.trades?.[0]);
-        
+        console.log(`symbolObject?.price`, symbolObject?.price);
+        console.log(`tread price`, symbolObject?.trades?.[0]);
+
         if (symbolObject?.status == false) {
-          if (symbolObject?.price > symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal) {
+          if (
+            symbolObject?.price >
+            symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal
+          ) {
             console.log(
               `order sell   quantity : ${symbolObject?.trades?.[0]?.quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} `
             );
