@@ -219,7 +219,7 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      break;
+      
     }
     console.log(`=========== start for buy ============> `, index);
     const totalBalance = await getBalance();
@@ -293,7 +293,7 @@ const startBotForSell = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      break;
+      
     }
     console.log(`=========== start sell ============> `, index);
 

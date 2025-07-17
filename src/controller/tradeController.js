@@ -24,7 +24,8 @@ const getAllTrades = async (req, res) => {
 const updateTrade = async (req, res) => {
   try {
     const { id } = req.params;
-    const updatedTrade = await tradeService.updateTrade(id, req.body);
+    const {data} = req.body
+    const updatedTrade = await tradeService.updateTrade(id, data);
 
     if (!updatedTrade) {
       return res.status(404).json({ error: "Trade not found" });
