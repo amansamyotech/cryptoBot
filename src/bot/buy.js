@@ -258,7 +258,7 @@ const startBotForBuy = async () => {
         );
 
         if (symbolObject?.status == true) {
-          quantity = parseFloat(buyingAmount / symbolObject?.price).toFixed(3);
+          quantity = parseFloat(buyingAmount / symbolObject?.price).toFixed(1);
           sendTelegram(
             `COIN NAME - ${symbolObject?.symbol} ,
              COIN CURRENT MARKET PRICE - ${symbolObject?.price},
