@@ -372,7 +372,7 @@ const startBotForSell = async () => {
 
           if (
             symbolObject?.currentMarketprice >
-            parseFloat(symbolObject?.buyingTimeCoinPrice) 
+            parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             let mainAmount =
               symbolObject?.currentMarketprice * symbolObject?.quantity;
@@ -396,19 +396,18 @@ const startBotForSell = async () => {
                 status: 1,
               };
 
-              const response = await axios.put(
-                `${API_ENDPOINT}${symbolObject?.Objectid}`,
-                {
-                  data,
-                }
-              );
-
               sendTelegram(
                 `🔴COIN NAME - ${symbolObject?.symbol} ,
              COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
             MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
             QUANTITY - ${quantity}
             PROFIT AMOUNT - ${profitAmount}`
+              );
+              const response = await axios.put(
+                `${API_ENDPOINT}${symbolObject?.Objectid}`,
+                {
+                  data,
+                }
               );
             }
           }
@@ -430,5 +429,5 @@ const startBotForSell = async () => {
   }
 };
 
-// startBotForBuy();
+startBotForBuy();
 startBotForSell();
