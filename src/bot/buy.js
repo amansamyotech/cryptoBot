@@ -302,7 +302,7 @@ const startBotForBuy = async () => {
             };
 
             sendTelegram(
-              `COIN NAME - ${symbolObject?.symbol} ,
+              `🟢COIN NAME - ${symbolObject?.symbol} ,
              COIN CURRENT MARKET PRICE - ${symbolObject?.price},
             MY BUYING AMOUNT - ${buyingAmount},
             QUANTITY - ${quantity}`
@@ -398,7 +398,7 @@ const startBotForSell = async () => {
               );
 
               sendTelegram(
-                `COIN NAME - ${symbolObject?.symbol} ,
+                `🔴COIN NAME - ${symbolObject?.symbol} ,
              COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
             MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
             QUANTITY - ${quantity}
