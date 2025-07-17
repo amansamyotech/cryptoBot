@@ -374,5 +374,5 @@ const startBotForSell = async () => {
   }
 };
 
-// startBotForBuy();
+startBotForBuy();
 startBotForSell();
