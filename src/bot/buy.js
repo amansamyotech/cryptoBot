@@ -50,6 +50,47 @@ const getPrecisionMap = async () => {
   });
   return precisionMap;
 };
+const getSymbollDetails = async (symbol) => {
+  console.log("Input symbols:", symbol);
+
+  const response = await axios.post(
+    "http://localhost:3000/api/trades/check-symbols",
+    {
+      symbols: symbol,
+    }
+  );
+
+  console.log("Response data:", response?.data?.data);
+
+  let status = response?.data?.data.status;
+  let object = {};
+  try {
+    if (status == false) {
+      let symbol = response?.data?.data.symbol;
+      console.log(`symbol`, symbol);
+
+      const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
+        params: { symbol },
+      });
+      let price = res.data.price;
+      object = {
+        symbol,
+        price,
+        status,
+      };
+      return object;
+    } else {
+      object = {
+        symbol,
+        status,
+      };
+      return object;
+    }
+  } catch (err) {
+    log(`❌ Price fetch failed for ${symbolName}: ${err.message}`);
+    return object;
+  }
+};
 const getCurrentPrice = async (symbol) => {
   console.log("Input symbols:", symbol);
 
@@ -180,61 +221,61 @@ const saveTradeRecord = async (tradeData) => {
 const startBotForBuy = async () => {
   log("🚀 Starting Bot...");
   let index = 0;
-
   while (true) {
     if (index == 5) {
       index = 0;
       break;
     }
-    console.log(`=========== start ============> `, index);
+    console.log(`=========== start buy ============> `, index);
 
     const totalBalance = await getBalance();
     let minimumBlanceCheck = totalBalance - MIN_BALANCE;
     console.log(`total amount for buying amount `, minimumBlanceCheck);
 
     if (minimumBlanceCheck > MIN_BALANCE) {
-      const buyingAmount = minimumBlanceCheck / SYMBOLS.length;
-      console.log(`single coint buyingAmount `, buyingAmount);
-
       try {
-        const symbolObject = await getCurrentPrice(SYMBOLS[index]);
+        const symbolObject = await getSymbollDetails(SYMBOLS[index]);
         console.log(
           `coin current currentPrice -------> ${symbolObject?.symbol} ||||`,
           symbolObject?.price
         );
-        if (symbolObject?.status == true) {
-          quantity = parseFloat(buyingAmount / symbolObject?.price);
+        if (symbolObject?.status == false) {
+          if (symbolObject?.price > symbolObject?.trades?.[0]?.buyingAmount) {
+            console.log(
+              `order sell   quantity : ${symbolObject?.trades?.[0]?.quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} `
+            );
+          }
 
           // const order = await placeOrderBuy(
           //   symbolObject?.symbol,
           //   "BUY",
           //   quantity
           // );
-          const data = {
-            symbol: symbolObject?.symbol,
-            orderId: "1234",
-            currentPrice: symbolObject?.price,
-            quantity,
-            buyingAmount: buyingAmount,
+          // const data = {
+          //   symbol: symbolObject?.symbol,
+          //   orderId: "1234",
+          //   currentPrice: symbolObject?.price,
+          //   quantity,
+          //   buyingAmount: buyingAmount,
 
-            sellingTimeCurrentPrice: "1234",
-            profitAmount: "1223",
-            status: "0",
-          };
-          console.log(`data`, data);
+          //   sellingTimeCurrentPrice: "1234",
+          //   profitAmount: "1223",
+          //   status: "0",
+          // };
+          // console.log(`data`, data);
 
-          const saveIntoDb = await axios.post(
-            "http://localhost:3000/api/trades/",
-            {
-              data: data,
-            }
-          );
+          // const saveIntoDb = await axios.post(
+          //   "http://localhost:3000/api/trades/",
+          //   {
+          //     data: data,
+          //   }
+          // );
 
-          console.log(`saveIntoDb`, saveIntoDb);
+          // console.log(`saveIntoDb`, saveIntoDb);
 
-          console.log(
-            `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
-          );
+          // console.log(
+          //   `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
+          // );
 
           // if (order && order.status === "FILLED") {
           //   log(
@@ -259,5 +300,84 @@ const startBotForBuy = async () => {
 
     await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
   }
+
+  // while (true) {
+  //   if (index == 5) {
+  //     index = 0;
+  //     break;
+  //   }
+  //   console.log(`=========== start ============> `, index);
+
+  //   const totalBalance = await getBalance();
+  //   let minimumBlanceCheck = totalBalance - MIN_BALANCE;
+  //   console.log(`total amount for buying amount `, minimumBlanceCheck);
+
+  //   if (minimumBlanceCheck > MIN_BALANCE) {
+  //     const buyingAmount = minimumBlanceCheck / SYMBOLS.length;
+  //     console.log(`single coint buyingAmount `, buyingAmount);
+
+  //     try {
+  //       const symbolObject = await getCurrentPrice(SYMBOLS[index]);
+  //       console.log(
+  //         `coin current currentPrice -------> ${symbolObject?.symbol} ||||`,
+  //         symbolObject?.price
+  //       );
+  //       if (symbolObject?.status == true) {
+  //         quantity = parseFloat(buyingAmount / symbolObject?.price);
+
+  //         // const order = await placeOrderBuy(
+  //         //   symbolObject?.symbol,
+  //         //   "BUY",
+  //         //   quantity
+  //         // );
+  //         const data = {
+  //           symbol: symbolObject?.symbol,
+  //           orderId: "1234",
+  //           currentPrice: symbolObject?.price,
+  //           quantity,
+  //           buyingAmount: buyingAmount,
+
+  //           sellingTimeCurrentPrice: "1234",
+  //           profitAmount: "1223",
+  //           status: "0",
+  //         };
+  //         console.log(`data`, data);
+
+  //         const saveIntoDb = await axios.post(
+  //           "http://localhost:3000/api/trades/",
+  //           {
+  //             data: data,
+  //           }
+  //         );
+
+  //         console.log(`saveIntoDb`, saveIntoDb);
+
+  //         console.log(
+  //           `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
+  //         );
+
+  //         // if (order && order.status === "FILLED") {
+  //         //   log(
+  //         //     `✅ BOUGHT ${quantity} ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
+  //         //   );
+  //         // } else if (order === null) {
+  //         //   log(`❌ Buy order failed`);
+  //         // }
+  //       } else {
+  //         console.log("dont buy  ", symbolObject?.symbol);
+  //       }
+
+  //       index++;
+  //     } catch (e) {
+  //       log(`❌ Error: ${e.message}`);
+  //     }
+  //   } else {
+  //     console.log("dont have sufficient balance ");
+  //   }
+
+  //   console.log(`============= end  ==========`);
+
+  //   await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
+  // }
 };
 startBotForBuy();

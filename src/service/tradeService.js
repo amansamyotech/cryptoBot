@@ -17,8 +17,6 @@ const updateTrade = async (id, updateData) => {
   });
 };
 const checkSymbols = async (symbol) => {
-  // const results = [];
-
   try {
     const trades = await Trade.find({ symbol, status: "0" });
 
@@ -26,12 +24,12 @@ const checkSymbols = async (symbol) => {
       //dont buy becouse status 0 meens tread already open
       console.log(`No trades found for symbol: ${symbol}`);
 
-      return { symbol, status: false };
+      return { symbol, trades, status: false };
       // results.push({ symbol, status: false });
     } else {
       //condition for buy this symbols
       console.log(`Found trades for symbol: ${symbol}`);
-      return { symbol, status: true };
+      return { symbol, trades, status: true };
     }
   } catch (error) {
     console.error(`Error finding symbol ${symbol}:`, error);
@@ -55,8 +53,6 @@ const checkSymbols = async (symbol) => {
   //     console.error(`Error finding symbol ${symbol}:`, error);
   //   }
   // }
-
-  return results;
 };
 module.exports = {
   createTrade,
