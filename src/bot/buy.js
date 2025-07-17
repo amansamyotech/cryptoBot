@@ -258,7 +258,6 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-      
     }
 
     console.log(`=========== start for buy ============> `, index);
@@ -266,7 +265,7 @@ const startBotForBuy = async () => {
     let minimumBlanceCheck = totalBalance - MIN_BALANCE;
     console.log(`total amount for buy `, minimumBlanceCheck);
     if (minimumBlanceCheck > MIN_BALANCE) {
-      const buyingAmount = minimumBlanceCheck / SYMBOLS.length - index;
+      const buyingAmount = minimumBlanceCheck / (SYMBOLS.length - index);
       console.log(`single coin buyingAmount `, buyingAmount);
       try {
         // symbol ke sath sath current price lake deta hai
@@ -282,12 +281,6 @@ const startBotForBuy = async () => {
           quantity = parseFloat(buyingAmount / symbolObject?.price).toFixed(
             precision
           );
-          sendTelegram(
-            `COIN NAME - ${symbolObject?.symbol} ,
-             COIN CURRENT MARKET PRICE - ${symbolObject?.price},
-            MY BUYING AMOUNT - ${buyingAmount},
-            QUANTITY - ${quantity}`
-          );
 
           const order = await placeOrder(symbolObject?.symbol, "BUY", quantity);
 
@@ -302,8 +295,13 @@ const startBotForBuy = async () => {
               profitAmount: "1223",
               status: "0",
             };
-            console.log(`data`, data);
 
+            sendTelegram(
+              `COIN NAME - ${symbolObject?.symbol} ,
+             COIN CURRENT MARKET PRICE - ${symbolObject?.price},
+            MY BUYING AMOUNT - ${buyingAmount},
+            QUANTITY - ${quantity}`
+            );
             // data base me save karane ke liye
             const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
               data: data,
@@ -338,7 +336,6 @@ const startBotForSell = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
-     
     }
     console.log(`=========== start sell ============> `, index);
 
