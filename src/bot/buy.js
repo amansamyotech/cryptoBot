@@ -328,7 +328,7 @@ const startBotForSell = async () => {
           }
           if (sellIndi) {
             let mainAmount = symbolObject?.currentMarketprice * symbolObject?.quantity;
-            let profitAmount = mainAmount - buyingAmount;
+            let profitAmount = mainAmount - symbolObject?.buyingAmount;
 
             const data = {
               id: symbolObject?.Objectid,
