@@ -60,7 +60,7 @@ const getSymbollDetails = async (symbol) => {
     }
   );
 
-  console.log("Response data:", response?.data?.data);
+  // console.log("Response data:", response?.data?.data);
 
   let status = response?.data?.data.status;
   let object = {};
