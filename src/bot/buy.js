@@ -40,7 +40,7 @@ const getBalance = async () => {
 const getPrecision = async () => {
   const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/exchangeInfo`);
   const symbolInfo = res.data.symbols.find((s) => s.symbol === SYMBOLS);
-  const stepSize = symbolInfo.filters.find(
+  const stepSize = symbolInfo?.filters.find(
     (f) => f.filterType === "LOT_SIZE"
   ).stepSize;
   return Math.max(0, stepSize.indexOf("1") - 1);
