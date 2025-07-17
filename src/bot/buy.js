@@ -176,32 +176,31 @@ const placeOrder = async (symbol, side, quantity) => {
   }
 };
 
-const placeSellOrder = async (symbol, orderId, side, quantity) => {
-  try {
-    let params = {
-      symbol,
-      orderId,
-      side,
+// const placeSellOrder = async (symbol, orderId, side, quantity) => {
+//   try {
+//     let params = {
+//       symbol,
+//       orderId,
+//       side,
+//       type: "MARKET",
+//       quantity,
+//       timestamp: Date.now(),
+//     };
+//     console.log(`params`, params);
 
-      type: "MARKET",
-      quantity,
-      timestamp: Date.now(),
-    };
-    console.log(`params`, params);
+//     const sig = sign(params);
 
-    const sig = sign(params);
+//     let res = await axios.put(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
+//       params: { ...params, signature: sig },
+//       headers: { "X-MBX-APIKEY": apiKey },
+//     });
 
-    let res = await axios.put(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
-      params: { ...params, signature: sig },
-      headers: { "X-MBX-APIKEY": apiKey },
-    });
-
-    return res.data;
-  } catch (e) {
-    log(`❌ Order error for ${symbol}: ${e.response?.data?.msg || e.message}`);
-    throw e;
-  }
-};
+//     return res.data;
+//   } catch (e) {
+//     log(`❌ Order error for ${symbol}: ${e.response?.data?.msg || e.message}`);
+//     throw e;
+//   }
+// };
 
 // check the order status
 const checkOrderStatus = async (symbol, orderId) => {
@@ -373,9 +372,8 @@ const startBotForSell = async () => {
               symbolObject?.currentMarketprice * symbolObject?.quantity;
             let profitAmount = mainAmount - symbolObject?.buyingAmount;
 
-            const order = await placeSellOrder(
+            const order = await placeOrder(
               symbolObject?.symbol,
-              symbolObject?.orderId,
               "SELL",
               symbolObject?.quantity
             );
