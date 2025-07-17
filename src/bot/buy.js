@@ -371,42 +371,40 @@ const startBotForSell = async () => {
               symbolObject?.currentMarketprice * symbolObject?.quantity;
             let profitAmount = mainAmount - symbolObject?.buyingAmount;
 
-            sendTelegram(
-              `COIN NAME - ${symbolObject?.symbol} ,
-             COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
-            MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
-            QUANTITY - ${quantity}
-            PROFIT AMOUNT - ${profitAmount}`
-            );
-
             const order = await placeSellOrder(
               symbolObject?.symbol,
               symbolObject?.orderId,
               "SELL",
               symbolObject?.quantity
             );
-            const data = {
-              id: symbolObject?.Objectid,
-              sellingTimeCurrentPrice: symbolObject?.currentMarketprice,
-              profitAmount,
-              status: 1,
-            };
-            const response = await axios.put(
-              `${API_ENDPOINT}${symbolObject?.Objectid}`,
-              {
-                data,
-              }
+
+            const orderStatus = await waitForOrderFill(
+              symbolObject?.symbol,
+              symbolObject?.orderId
             );
-            console.log(
-              `order sell   
-            quantity : ${symbolObject?.quantity}
-            symbol:  : ${symbolObject?.symbol}
-            sellingTimeCurrentPrice :${symbolObject?.currentMarketprice} 
-            mainAmount :${mainAmount}
-            profitAmount : ${profitAmount}
-            status: 1,
-            `
-            );
+            if (orderStatus && orderStatus.status === "FILLED") {
+              const data = {
+                id: symbolObject?.Objectid,
+                sellingTimeCurrentPrice: symbolObject?.currentMarketprice,
+                profitAmount,
+                status: 1,
+              };
+
+              const response = await axios.put(
+                `${API_ENDPOINT}${symbolObject?.Objectid}`,
+                {
+                  data,
+                }
+              );
+
+              sendTelegram(
+                `COIN NAME - ${symbolObject?.symbol} ,
+             COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
+            MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
+            QUANTITY - ${quantity}
+            PROFIT AMOUNT - ${profitAmount}`
+              );
+            }
           }
         } else {
           console.log("dont sell  ", symbolObject?.symbol);
@@ -426,5 +424,5 @@ const startBotForSell = async () => {
   }
 };
 
-startBotForBuy();
-// startBotForSell();
+// startBotForBuy();
+startBotForSell();
