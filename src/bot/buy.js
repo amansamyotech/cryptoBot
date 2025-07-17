@@ -217,6 +217,7 @@ const startBotForBuy = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
+      break;
     }
     console.log(`=========== start for buy ============> `, index);
     const totalBalance = await getBalance();
@@ -290,6 +291,7 @@ const startBotForSell = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
+      break;
     }
     console.log(`=========== start sell ============> `, index);
 
@@ -305,32 +307,36 @@ const startBotForSell = async () => {
           `coin current Market price from api -------> ${symbolObject?.symbol} ||||`,
           symbolObject?.currentMarketprice
         );
-         console.log(
+        console.log(
           `buy time price -------> ${symbolObject?.symbol} ---`,
           symbolObject?.buyingTimeCoinPrice
         );
 
         // false meens 0 hum isko bech skte hai ----
         if (symbolObject?.status == false) {
-          
-         
           if (
-            symbolObject?.currentMarketprice > parseFloat(symbolObject?.buyingTimeCoinPrice)
+            symbolObject?.currentMarketprice >
+            parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price bada hai ---------");
-          }  if (
-            symbolObject?.currentMarketprice == parseFloat(symbolObject?.buyingTimeCoinPrice)
+          }
+          if (
+            symbolObject?.currentMarketprice ==
+            parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price baraber  hai ---------");
-          }  if (
-            symbolObject?.currentMarketprice < parseFloat(symbolObject?.buyingTimeCoinPrice)
+          }
+          if (
+            symbolObject?.currentMarketprice <
+            parseFloat(symbolObject?.buyingTimeCoinPrice)
           ) {
             console.log("current price chota  hai ---------");
           }
 
-           let sellIndi = true;
+          let sellIndi = true;
           if (sellIndi) {
-            let mainAmount = symbolObject?.currentMarketprice * symbolObject?.quantity;
+            let mainAmount =
+              symbolObject?.currentMarketprice * symbolObject?.quantity;
             let profitAmount = mainAmount - symbolObject?.buyingAmount;
 
             const data = {
