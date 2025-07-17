@@ -18,6 +18,7 @@ const SYMBOLS = [
 const MIN_BALANCE = 6.5;
 const API_ENDPOINT = "http://localhost:3000/api/trades/";
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
+
 const sign = (params) => {
   const query = new URLSearchParams(params).toString();
   return crypto.createHmac("sha256", apiSecret).update(query).digest("hex");
@@ -133,6 +134,7 @@ const getSymboldetailsForBuyingcoin = async (symbol) => {
 const placeOrder = async (symbol, side, orderId, quantity) => {
   try {
     let params = {};
+    let res;
     if (side == "SELL") {
       params = {
         symbol,
@@ -145,7 +147,7 @@ const placeOrder = async (symbol, side, orderId, quantity) => {
 
       const sig = sign(params);
 
-      const res = await axios.put(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
+      res = await axios.put(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
         params: { ...params, signature: sig },
         headers: { "X-MBX-APIKEY": apiKey },
       });
@@ -160,7 +162,7 @@ const placeOrder = async (symbol, side, orderId, quantity) => {
 
       const sig = sign(params);
 
-      const res = await axios.post(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
+      res = await axios.post(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
         params: { ...params, signature: sig },
         headers: { "X-MBX-APIKEY": apiKey },
       });
@@ -225,11 +227,13 @@ const waitForOrderFill = async (symbol, orderId, maxWaitTime = 30000) => {
 //start bot for buy
 const startBotForBuy = async () => {
   let index = 0;
+  sendTelegram("---------Buy Bot Started---------");
   while (true) {
     if (index == 5) {
       index = 0;
+      break
     }
-    sendTelegram("---------Buy Bot Started---------");
+
     console.log(`=========== start for buy ============> `, index);
     const totalBalance = await getBalance();
     let minimumBlanceCheck = totalBalance - MIN_BALANCE;
@@ -305,6 +309,7 @@ const startBotForSell = async () => {
   while (true) {
     if (index == 5) {
       index = 0;
+      break
     }
     console.log(`=========== start sell ============> `, index);
 
