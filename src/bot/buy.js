@@ -68,6 +68,13 @@ const getSymbollDetails = async (symbol) => {
     if (status == false) {
       let symbol = response?.data?.data.symbol;
       let trades = response?.data?.data.trades;
+      let quantity = parseFloat(
+        response?.data?.data.trades?.[0]?.quantity?.$numberDecimal
+      );
+      let totalBuyingAmount =
+        parseFloat(
+          response?.data?.data.trades?.[0]?.currentPrice?.$numberDecimal
+        ) * quantity;
       console.log(`symbol`, symbol);
 
       const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
@@ -76,6 +83,8 @@ const getSymbollDetails = async (symbol) => {
       let price = res.data.price;
       object = {
         symbol,
+        quantity,
+        totalBuyingAmount,
         price,
         status,
         trades,
@@ -248,17 +257,23 @@ const startBotForBuy = async () => {
           console.log(
             "contion to sell coin -----",
             symbolObject?.price >
-              symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal
+              parseFloat(
+                symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal
+              )
           );
 
-          // if (
-          //   symbolObject?.price >
-          //   symbolObject?.trades?.[0]?.buyingAmount?.$numberDecimal
-          // ) {
-            console.log(
-              `order sell   quantity : ${symbolObject?.trades?.[0]?.quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} `
-            );
-          // }
+          let totalSellingAmount = quantity * symbolObject?.price;
+          let profitAmount = totalSellingAmount - totalBuyingAmount;
+          console.log(
+            `order sell   
+            quantity : ${quantity}
+            symbol:  : ${symbolObject?.symbol}
+            sellingTimeCurrentPrice :${symbolObject?.price} 
+            totalSellingAmount :${totalSellingAmount}
+            profitAmount : ${profitAmount}
+            status: 1,
+            `
+          );
 
           // const order = await placeOrderBuy(
           //   symbolObject?.symbol,
