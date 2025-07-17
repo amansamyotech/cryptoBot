@@ -186,6 +186,7 @@ const placeSellOrder = async (symbol, side, orderId, quantity) => {
       quantity,
       timestamp: Date.now(),
     };
+    console.log(`params`, params);
 
     const sig = sign(params);
 
