@@ -9,7 +9,7 @@ const tradeSchema = new Schema(
     orderId: {
       type: String,
     },
-    currentPrice: {
+    buyingTimeCoinPrice: {
       type: Types.Decimal128,
     },
     quantity: {
