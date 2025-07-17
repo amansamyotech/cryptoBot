@@ -39,7 +39,7 @@ const getBalance = async () => {
 
 const getPrecision = async () => {
   const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/exchangeInfo`);
-  console.log(`res`, res);
+  console.log(`res`, res?.data?.symbols);
 
   const symbolInfo = res.data.symbols.find((s) => s.symbol == SYMBOLS);
   console.log(`symbolInfo`, symbolInfo);
