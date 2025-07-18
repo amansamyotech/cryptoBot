@@ -306,9 +306,9 @@ const startBotForBuy = async () => {
           );
 
           if (symbolObject?.status == true) {
-            quantity = parseFloat(buyingAmount / symbolObject?.price).toFixed(
-              precision
-            );
+            const quantity = parseFloat(
+              buyingAmount / symbolObject?.price
+            ).toFixed(precision);
 
             const order = await placeOrder(
               symbolObject?.symbol,
@@ -353,9 +353,10 @@ const startBotForBuy = async () => {
           } else {
             console.log("dont buy  ", symbolObject?.symbol);
           }
-          index++;
         } catch (e) {
           log(`❌ Error: ${e.message}`);
+        } finally {
+          index++;
         }
       } else {
         console.log("dont have sufficient balance ");
