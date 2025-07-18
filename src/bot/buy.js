@@ -1,6 +1,9 @@
 require("dotenv").config();
 const axios = require("axios");
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
+
 const { sendTelegram } = require("../helper/teleMassage.js");
 
 const FUTURES_API_BASE = "https://fapi.binance.com";
@@ -176,6 +179,29 @@ const placeOrder = async (symbol, side, quantity) => {
   }
 };
 
+const errorLogs = (error, type) => {
+  const errorLog = `
+========== ERROR ==========
+Time: ${new Date().toISOString()}
+Message: ${error.message}
+Stack: ${error.stack}
+Type : ${type}
+===========================
+`;
+
+  // Define file path
+  const logFilePath = path.join(__dirname, "error-log.txt");
+
+  // Append the error log to the file
+  fs.appendFile(logFilePath, errorLog, (err) => {
+    if (err) {
+      console.error("Failed to write error to file:", err);
+    } else {
+      console.log("Error logged to error-log.txt");
+    }
+  });
+};
+
 // const placeSellOrder = async (symbol, orderId, side, quantity) => {
 //   try {
 //     let params = {
@@ -257,78 +283,88 @@ const startBotForBuy = async () => {
   const precision = await getPrecision();
   sendTelegram("---------Buy Bot Started---------");
   while (true) {
-    if (index == 5) {
-      index = 0;
-    }
+    try {
+      if (index == 5) {
+        index = 0;
+      }
 
-    console.log(`=========== start for buy ============> `, index);
-    const totalBalance = await getBalance();
-    let minimumBlanceCheck = totalBalance - MIN_BALANCE;
-    console.log(`total amount for buy `, minimumBlanceCheck);
-    if (minimumBlanceCheck > MIN_BALANCE) {
-      const buyingAmount = minimumBlanceCheck / (SYMBOLS.length - index);
-      console.log(`single coin buyingAmount `, buyingAmount);
-      try {
-        // symbol ke sath sath current price lake deta hai
-        const symbolObject = await getSymboldetailsForBuyingcoin(
-          SYMBOLS[index]
-        );
-        console.log(
-          `coin current currentPrice -------> ${symbolObject?.symbol} ||||`,
-          symbolObject?.price
-        );
-
-        if (symbolObject?.status == true) {
-          quantity = parseFloat(buyingAmount / symbolObject?.price).toFixed(
-            precision
+      console.log(`=========== start for buy ============> `, index);
+      const totalBalance = await getBalance();
+      let minimumBlanceCheck = totalBalance - MIN_BALANCE;
+      console.log(`total amount for buy `, minimumBlanceCheck);
+      if (minimumBlanceCheck > MIN_BALANCE) {
+        const buyingAmount = minimumBlanceCheck / (SYMBOLS.length - index);
+        console.log(`single coin buyingAmount `, buyingAmount);
+        try {
+          // symbol ke sath sath current price lake deta hai
+          const symbolObject = await getSymboldetailsForBuyingcoin(
+            SYMBOLS[index]
+          );
+          console.log(
+            `coin current currentPrice -------> ${symbolObject?.symbol} ||||`,
+            symbolObject?.price
           );
 
-          const order = await placeOrder(symbolObject?.symbol, "BUY", quantity);
+          if (symbolObject?.status == true) {
+            quantity = parseFloat(buyingAmount / symbolObject?.price).toFixed(
+              precision
+            );
 
-          const orderStatus = await waitForOrderFill(
-            symbolObject?.symbol,
-            order.orderId
-          );
+            const order = await placeOrder(
+              symbolObject?.symbol,
+              "BUY",
+              quantity
+            );
 
-          if (orderStatus && orderStatus.status === "FILLED") {
-            const data = {
-              symbol: symbolObject?.symbol,
-              orderId: order.orderId,
-              buyingTimeCoinPrice: symbolObject?.price,
-              quantity,
-              buyingAmount: buyingAmount,
-              sellingTimeCurrentPrice: "1234",
-              profitAmount: "1223",
-              status: "0",
-            };
+            const orderStatus = await waitForOrderFill(
+              symbolObject?.symbol,
+              order.orderId
+            );
 
-            sendTelegram(
-              `🟢COIN NAME - ${symbolObject?.symbol} ,
+            if (orderStatus && orderStatus.status === "FILLED") {
+              const data = {
+                symbol: symbolObject?.symbol,
+                orderId: order.orderId,
+                buyingTimeCoinPrice: symbolObject?.price,
+                quantity,
+                buyingAmount: buyingAmount,
+                sellingTimeCurrentPrice: "1234",
+                profitAmount: "1223",
+                status: "0",
+              };
+
+              sendTelegram(
+                `🟢COIN NAME - ${symbolObject?.symbol} ,
              COIN CURRENT MARKET PRICE - ${symbolObject?.price},
             MY BUYING AMOUNT - ${buyingAmount},
             QUANTITY - ${quantity}`
-            );
-            // data base me save karane ke liye
-            const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
-              data: data,
-            });
+              );
+              // data base me save karane ke liye
+              const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
+                data: data,
+              });
 
-            console.log(
-              `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
-            );
-          } else if (order === null) {
-            log(`❌ Buy order failed`);
+              console.log(
+                `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
+              );
+            } else if (order === null) {
+              log(`❌ Buy order failed`);
+            }
+          } else {
+            console.log("dont buy  ", symbolObject?.symbol);
           }
-        } else {
-          console.log("dont buy  ", symbolObject?.symbol);
+          index++;
+        } catch (e) {
+          log(`❌ Error: ${e.message}`);
         }
-        index++;
-      } catch (e) {
-        log(`❌ Error: ${e.message}`);
+      } else {
+        console.log("dont have sufficient balance ");
       }
-    } else {
-      console.log("dont have sufficient balance ");
+    } catch (error) {
+      console.log(`error`, error);
+      errorLogs(error, "BUY");
     }
+
     console.log(`============= end  ==========`);
     await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
   }
@@ -340,87 +376,95 @@ const startBotForSell = async () => {
   log("🚀 Starting Bot...");
   let index = 0;
   while (true) {
-    if (index == 5) {
-      index = 0;
-    }
-    console.log(`=========== start sell ============> `, index);
+    try {
+      if (index == 5) {
+        index = 0;
+      }
+      console.log(`=========== start sell ============> `, index);
 
-    const totalBalance = await getBalance();
-    let minimumBlanceCheck = totalBalance - MIN_BALANCE;
-    console.log(`my balance without mini balance `, minimumBlanceCheck);
+      const totalBalance = await getBalance();
+      let minimumBlanceCheck = totalBalance - MIN_BALANCE;
+      console.log(`my balance without mini balance `, minimumBlanceCheck);
 
-    if (minimumBlanceCheck > MIN_BALANCE) {
-      try {
-        // symbol lake dega sell ke liye
-        const symbolObject = await getSymbolDetailsForSellCoin(SYMBOLS[index]);
-        console.log(
-          `coin current Market price from api -------> ${symbolObject?.symbol} ||||`,
-          symbolObject?.currentMarketprice
-        );
-        console.log(
-          `buy time price -------> ${symbolObject?.symbol} ---`,
-          symbolObject?.buyingTimeCoinPrice
-        );
-
-        // false meens 0 hum isko bech skte hai ----
-        if (symbolObject?.status == false) {
+      if (minimumBlanceCheck > MIN_BALANCE) {
+        try {
+          // symbol lake dega sell ke liye
+          const symbolObject = await getSymbolDetailsForSellCoin(
+            SYMBOLS[index]
+          );
           console.log(
-            "my selling conditon -->>>",
-            symbolObject?.currentMarketprice >
-              parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
+            `coin current Market price from api -------> ${symbolObject?.symbol} ||||`,
+            symbolObject?.currentMarketprice
+          );
+          console.log(
+            `buy time price -------> ${symbolObject?.symbol} ---`,
+            symbolObject?.buyingTimeCoinPrice
           );
 
-          if (
-            symbolObject?.currentMarketprice >
-            parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
-          ) {
-            let mainAmount =
-              symbolObject?.currentMarketprice * symbolObject?.quantity;
-            let profitAmount = mainAmount - symbolObject?.buyingAmount;
-
-            const order = await placeOrder(
-              symbolObject?.symbol,
-              "SELL",
-              symbolObject?.quantity
+          // false meens 0 hum isko bech skte hai ----
+          if (symbolObject?.status == false) {
+            console.log(
+              "my selling conditon -->>>",
+              symbolObject?.currentMarketprice >
+                parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.02
             );
 
-            const orderStatus = await waitForOrderFill(
-              symbolObject?.symbol,
-              symbolObject?.orderId
-            );
-            if (orderStatus && orderStatus.status === "FILLED") {
-              const data = {
-                id: symbolObject?.Objectid,
-                sellingTimeCurrentPrice: symbolObject?.currentMarketprice,
-                profitAmount,
-                status: 1,
-              };
+            if (
+              symbolObject?.currentMarketprice >
+              parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.02
+            ) {
+              let mainAmount =
+                symbolObject?.currentMarketprice * symbolObject?.quantity;
+              let profitAmount = mainAmount - symbolObject?.buyingAmount;
 
-              sendTelegram(
-                `🔴COIN NAME - ${symbolObject?.symbol} ,
+              const order = await placeOrder(
+                symbolObject?.symbol,
+                "SELL",
+                symbolObject?.quantity
+              );
+
+              const orderStatus = await waitForOrderFill(
+                symbolObject?.symbol,
+                symbolObject?.orderId
+              );
+              if (orderStatus && orderStatus.status === "FILLED") {
+                const data = {
+                  id: symbolObject?.Objectid,
+                  sellingTimeCurrentPrice: symbolObject?.currentMarketprice,
+                  profitAmount,
+                  status: 1,
+                };
+
+                sendTelegram(
+                  `🔴COIN NAME - ${symbolObject?.symbol} ,
              COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
             MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
             QUANTITY - ${quantity}
             PROFIT AMOUNT - ${profitAmount}`
-              );
-              const response = await axios.put(
-                `${API_ENDPOINT}${symbolObject?.Objectid}`,
-                {
-                  data,
-                }
-              );
+                );
+                const response = await axios.put(
+                  `${API_ENDPOINT}${symbolObject?.Objectid}`,
+                  {
+                    data,
+                  }
+                );
+              }
             }
+          } else {
+            console.log("dont sell  ", symbolObject?.symbol);
           }
-        } else {
-          console.log("dont sell  ", symbolObject?.symbol);
-        }
 
-        index++;
-      } catch (e) {
-        log(`❌ Error: ${e.message}`);
+          index++;
+        } catch (e) {
+          log(`❌ Error: ${e.message}`);
+        }
+      } else {
+        console.log("dont have sufficient balance ");
       }
-    } else {
-      console.log("dont have sufficient balance ");
+    } catch (error) {
+      console.log(`error`, error);
+
+      errorLogs(error, "SELL");
     }
 
     console.log(`============= end  ==========`);
