@@ -287,8 +287,9 @@ const startBotForBuy = async () => {
       if (index == 5) {
         index = 0;
       }
-      let treadCount = await axios.get(`${API_ENDPOINT}treadCount`);
-      console.log(`treadCount`, treadCount);
+      const response = await axios.get(`${API_ENDPOINT}treadCount`);
+      console.log(`treadCount`, response?.data);
+      let treadCount = response?.data;
 
       if (treadCount >= SYMBOLS.length) {
         treadCount == 0;
