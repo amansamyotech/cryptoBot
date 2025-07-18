@@ -60,9 +60,40 @@ const getPrecision = async (symbol) => {
   return precision;
 };
 
+// order ki details lake dega
+const getOrderDetails = async (apiKey, apiSecret, symbol, orderId) => {
+  try {
+    const timestamp = Date.now();
 
+    const params = {
+      symbol,
+      orderId,
+      timestamp,
+    };
 
+    const query = new URLSearchParams(params).toString();
 
+    const signature = crypto
+      .createHmac("sha256", apiSecret)
+      .update(query)
+      .digest("hex");
+
+    const url = `${FUTURES_API_BASE}/fapi/v1/userTrades?${query}&signature=${signature}`;
+
+    const res = await axios.get(url, {
+      headers: {
+        "X-MBX-APIKEY": apiKey,
+      },
+    });
+
+    const trades = res.data;
+
+    return trades;
+  } catch (error) {
+    console.error("❌ Failed to fetch trade details:");
+    console.error(error.response?.data || error.message);
+  }
+};
 
 // GET symbol details for sell coin
 const getSymbolDetailsForSellCoin = async (symbol) => {
@@ -260,7 +291,21 @@ const waitForOrderFill = async (symbol, orderId, maxWaitTime = 30000) => {
     const orderStatus = await checkOrderStatus(symbol, orderId);
 
     if (orderStatus.status === "FILLED") {
-      return orderStatus;
+      const orderDetails = await getOrderDetails(
+        apiKey,
+        apiSecret,
+        symbol,
+        orderId
+      );
+      const order = orderDetails[0];
+
+      const result = {
+        sellTotalFee: order?.commission,
+        realizedPnl: order?.realizedPnl,
+        orderStatus,
+      };
+
+      return result;
     }
 
     if (
@@ -328,12 +373,12 @@ const startBotForBuy = async () => {
 
             console.log(`order during the buy coin`, order);
 
-            const orderStatus = await waitForOrderFill(
+            const orderDetail = await waitForOrderFill(
               symbolObject?.symbol,
               order.orderId
             );
 
-            if (orderStatus && orderStatus.status === "FILLED") {
+            if (orderDetail && orderDetail?.orderStatus === "FILLED") {
               const data = {
                 symbol: symbolObject?.symbol,
                 orderIdBuy: order.orderId,
@@ -419,12 +464,12 @@ const startBotForSell = async () => {
             console.log(
               "my selling conditon -->>>",
               symbolObject?.currentMarketprice >
-                parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.02
+                parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
             );
 
             if (
               symbolObject?.currentMarketprice >
-              parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.02
+              parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
             ) {
               let mainAmount =
                 symbolObject?.currentMarketprice * symbolObject?.quantity;
@@ -437,16 +482,18 @@ const startBotForSell = async () => {
               );
               console.log("order data during to sell coin ", order);
 
-              const orderStatus = await waitForOrderFill(
+              const orderDetail = await waitForOrderFill(
                 symbolObject?.symbol,
                 order?.orderId
               );
-              if (orderStatus && orderStatus.status === "FILLED") {
+              if (orderDetail && orderDetail.orderStatus === "FILLED") {
                 const data = {
                   id: symbolObject?.Objectid,
                   orderIdSell: order?.orderId,
                   sellingTimeCurrentPrice: symbolObject?.currentMarketprice,
                   profitAmount,
+                  realizedPnl: orderDetail?.realizedPnl,
+                  sellTotalFee: orderDetail?.sellTotalFee,
                   status: 1,
                 };
 

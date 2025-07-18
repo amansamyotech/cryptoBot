@@ -15,6 +15,9 @@ const tradeSchema = new Schema(
     realizedPnl: {
       type: String,
     },
+    sellTotalFee: {
+      type: String,
+    },
     buyingTimeCoinPrice: {
       type: Types.Decimal128,
     },
