@@ -6,7 +6,13 @@ const tradeSchema = new Schema(
     symbol: {
       type: String,
     },
-    orderId: {
+    orderIdBuy: {
+      type: String,
+    },
+    orderIdSell: {
+      type: String,
+    },
+    realizedPnl: {
       type: String,
     },
     buyingTimeCoinPrice: {
