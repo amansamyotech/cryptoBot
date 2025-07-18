@@ -284,11 +284,34 @@ const checkOrderStatus = async (symbol, orderId) => {
 };
 
 // wait krna hai order fill hua ya nahi db me entry krne se phle
-const waitForOrderFill = async (symbol, orderId, maxWaitTime = 30000) => {
+const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
   const startTime = Date.now();
 
   while (Date.now() - startTime < maxWaitTime) {
     const orderStatus = await checkOrderStatus(symbol, orderId);
+    if (side == "BUY") {
+      if (orderStatus.status === "FILLED") {
+        return orderStatus;
+      }
+    } else {
+      if (orderStatus.status === "FILLED") {
+        const orderDetails = await getOrderDetails(
+          apiKey,
+          apiSecret,
+          symbol,
+          orderId
+        );
+        const order = orderDetails[0];
+
+        const result = {
+          sellTotalFee: order?.commission,
+          realizedPnl: order?.realizedPnl,
+          orderStatus,
+        };
+
+        return result;
+      }
+    }
 
     if (orderStatus.status === "FILLED") {
       const orderDetails = await getOrderDetails(
@@ -375,7 +398,8 @@ const startBotForBuy = async () => {
 
             const orderDetail = await waitForOrderFill(
               symbolObject?.symbol,
-              order.orderId
+              order.orderId,
+              "BUY"
             );
 
             if (orderDetail && orderDetail?.orderStatus === "FILLED") {
@@ -484,7 +508,8 @@ const startBotForSell = async () => {
 
               const orderDetail = await waitForOrderFill(
                 symbolObject?.symbol,
-                order?.orderId
+                order?.orderId,
+                "SELL"
               );
               if (orderDetail && orderDetail.orderStatus === "FILLED") {
                 const data = {
