@@ -291,8 +291,8 @@ const startBotForBuy = async () => {
       console.log(`treadCount`, response?.data);
       let treadCount = response?.data;
 
-      if (treadCount >= SYMBOLS.length) {
-        treadCount == 0;
+      if (treadCount == SYMBOLS.length) {
+        treadCount = 0;
       }
       console.log(`=========== start for buy ============> `);
       const totalBalance = await getBalance();
