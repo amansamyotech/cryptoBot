@@ -22,10 +22,63 @@ const MIN_BALANCE = 6.5;
 const API_ENDPOINT = "http://localhost:3000/api/trades/";
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
 
+const params = {
+  symbol: "1000BONKUSDT",
+  orderId: "11568109200",
+  timestamp: Date.now(),
+};
 const sign = (params) => {
   const query = new URLSearchParams(params).toString();
   return crypto.createHmac("sha256", apiSecret).update(query).digest("hex");
 };
+
+const signature = sign(params);
+console.log("signature", signature);
+
+const getTradeDetailsAndPrint = async (apiKey, apiSecret, symbol, orderId) => {
+  try {
+    const timestamp = Date.now();
+
+    const params = {
+      symbol,
+      orderId,
+      timestamp,
+    };
+
+    const query = new URLSearchParams(params).toString();
+
+    const signature = crypto
+      .createHmac("sha256", apiSecret)
+      .update(query)
+      .digest("hex");
+
+    const url = `${FUTURES_API_BASE}/fapi/v1/userTrades?${query}&signature=${signature}`;
+
+    const res = await axios.get(url, {
+      headers: {
+        "X-MBX-APIKEY": apiKey,
+      },
+    });
+
+    const trades = res.data;
+
+    console.log(`✅ Trade details for order ${orderId}:`);
+    console.log(trades);
+
+    const totalFee = trades.reduce(
+      (sum, trade) => sum + parseFloat(trade.commission),
+      0
+    );
+    const feeAsset = trades[0]?.commissionAsset || "N/A";
+
+    console.log(`💰 Total Fee: ${totalFee} ${feeAsset}`);
+  } catch (error) {
+    console.error("❌ Failed to fetch trade details:");
+    console.error(error.response?.data || error.message);
+  }
+};
+
+getTradeDetailsAndPrint(apiKey, apiSecret, "1000BONKUSDT", "11568109200");
 
 //get total balance of user
 const getBalance = async () => {
@@ -322,6 +375,8 @@ const startBotForBuy = async () => {
               quantity
             );
 
+            console.log(`order during the buy coin`, order);
+
             const orderStatus = await waitForOrderFill(
               symbolObject?.symbol,
               order.orderId
@@ -429,6 +484,7 @@ const startBotForSell = async () => {
                 "SELL",
                 symbolObject?.quantity
               );
+              console.log("order data during to sell coin ", order);
 
               const orderStatus = await waitForOrderFill(
                 symbolObject?.symbol,
@@ -480,5 +536,5 @@ const startBotForSell = async () => {
   }
 };
 
-startBotForBuy();
-startBotForSell();
+// startBotForBuy();
+// startBotForSell();
