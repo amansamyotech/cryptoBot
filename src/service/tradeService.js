@@ -54,9 +54,17 @@ const checkSymbols = async (symbol) => {
   //   }
   // }
 };
+
+const getCountOfOpenTread = async () => {
+  const treadCount = await Trade.countDocuments({ status: "0" });
+
+  return treadCount;
+};
+
 module.exports = {
   createTrade,
   getAllTrades,
   updateTrade,
   checkSymbols,
+  getCountOfOpenTread,
 };

@@ -287,13 +287,18 @@ const startBotForBuy = async () => {
       if (index == 5) {
         index = 0;
       }
+      let treadCount = await axios.get(`${API_ENDPOINT}treadCount`);
+      console.log(`treadCount`, treadCount);
 
-      console.log(`=========== start for buy ============> `, index);
+      if (treadCount >= SYMBOLS.length) {
+        treadCount == 0;
+      }
+      console.log(`=========== start for buy ============> `);
       const totalBalance = await getBalance();
       let minimumBlanceCheck = totalBalance - MIN_BALANCE;
       console.log(`total amount for buy `, minimumBlanceCheck);
       if (minimumBlanceCheck > MIN_BALANCE) {
-        const buyingAmount = minimumBlanceCheck / (SYMBOLS.length - index);
+        const buyingAmount = minimumBlanceCheck / (SYMBOLS.length - treadCount);
         console.log(`single coin buyingAmount `, buyingAmount);
         try {
           // symbol ke sath sath current price lake deta hai

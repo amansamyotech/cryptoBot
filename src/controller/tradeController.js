@@ -1,7 +1,7 @@
 const tradeService = require("../service/tradeService.js");
 
 const createTrade = async (req, res) => {
-      const { data } = req.body;
+  const { data } = req.body;
 
   try {
     const trade = await tradeService.createTrade(data);
@@ -21,10 +21,19 @@ const getAllTrades = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+const getCountOfOpenTread = async (req, res) => {
+  try {
+    const trades = await tradeService.getCountOfOpenTread();
+    res.status(200).json(trades);
+  } catch (error) {
+    console.error("Error fetching trades:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
 const updateTrade = async (req, res) => {
   try {
     const { id } = req.params;
-    const {data} = req.body
+    const { data } = req.body;
     const updatedTrade = await tradeService.updateTrade(id, data);
 
     if (!updatedTrade) {
@@ -55,4 +64,5 @@ module.exports = {
   getAllTrades,
   updateTrade,
   checkSymbols,
+  getCountOfOpenTread
 };
