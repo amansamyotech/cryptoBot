@@ -402,7 +402,7 @@ const startBotForBuy = async () => {
               "BUY"
             );
 
-            if (orderDetail && orderDetail?.orderStatus === "FILLED") {
+            if (orderDetail) {
               const data = {
                 symbol: symbolObject?.symbol,
                 orderIdBuy: order.orderId,
