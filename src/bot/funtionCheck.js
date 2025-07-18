@@ -50,7 +50,7 @@ const getTradeDetailsAndPrint = async (apiKey, apiSecret, symbol, orderId) => {
     const trades = res.data;
 
     console.log(`✅ Trade details for order ${orderId}:`);
-    console.log(trades);
+    console.log(trades?.[0]?.realizedPnl);
 
     const totalFee = trades.reduce(
       (sum, trade) => sum + parseFloat(trade.commission),
