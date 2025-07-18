@@ -7,10 +7,17 @@ const path = require("path");
 const { sendTelegram } = require("../helper/teleMassage.js");
 
 const FUTURES_API_BASE = "https://fapi.binance.com";
+//orignal with symboll
+// const apiKey =
+//   "6bd1UA2kXR2lgLPv1pt9bNEOJE70h1MbXMvmoH1SceWUNw0kvXAQEdigQUgfNprI";
+// const apiSecret =
+//   "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR";
+
+
 const apiKey =
-  "6bd1UA2kXR2lgLPv1pt9bNEOJE70h1MbXMvmoH1SceWUNw0kvXAQEdigQUgfNprI";
+  "uMAxmpJSfdoVCCI76lGqWiM7om17Jue6CZHUVMaAPEPAu36egK6Pzk8QTfoeq4RP";
 const apiSecret =
-  "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR";
+  "VIaeb6MxIvLCTczm2ju74rvFifSY2BA1Fwkisx0B76jeMB0tmppCZtIRqV9MgnOE";
 const SYMBOLS = [
   "1000PEPEUSDT",
   "1000SHIBUSDT",
