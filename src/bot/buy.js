@@ -22,7 +22,6 @@ const MIN_BALANCE = 6.5;
 const API_ENDPOINT = "http://localhost:3000/api/trades/";
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
 
-
 const sign = (params) => {
   const query = new URLSearchParams(params).toString();
   return crypto.createHmac("sha256", apiSecret).update(query).digest("hex");
@@ -60,6 +59,10 @@ const getPrecision = async (symbol) => {
   console.log(`${symbol} → stepSize: ${stepSize}, precision: ${precision}`);
   return precision;
 };
+
+
+
+
 
 // GET symbol details for sell coin
 const getSymbolDetailsForSellCoin = async (symbol) => {

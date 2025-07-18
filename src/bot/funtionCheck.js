@@ -86,5 +86,5 @@ const checkOrderStatus = async (symbol, orderId) => {
   }
 };
 
-// getTradeDetailsAndPrint(apiKey, apiSecret, "1000BONKUSDT", "11568109200");
-checkOrderStatus("1000BONKUSDT", "11568109200");
+getTradeDetailsAndPrint(apiKey, apiSecret, "1000BONKUSDT", "11568109200");
+// checkOrderStatus("1000BONKUSDT", "11568109200");
