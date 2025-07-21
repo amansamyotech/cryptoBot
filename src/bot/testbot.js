@@ -473,7 +473,7 @@ const startBotForSell = async () => {
               );
               console.log(`orderDetail during the sell`, orderDetail);
 
-              if (orderDetail && orderDetail.status === "FILLED") {
+              if (orderDetail && orderDetail.orderStatus === "FILLED") {
                 const data = {
                   id: symbolObject?.Objectid,
                   orderIdSell: order?.orderId,
