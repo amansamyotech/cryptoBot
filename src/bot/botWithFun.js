@@ -137,7 +137,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   await setLeverage(symbol);
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
-  const qty = parseFloat((maxSpend / entryPrice).toFixed(1));
+  const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
   const stopLoss = (entryPrice * 0.99).toFixed(2);
 
   await binance.futuresMarketBuy(symbol, qty);
@@ -190,4 +190,4 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 60 * 1000); // Run every 1 minute
+}, 10000); // Run every 10 sec
