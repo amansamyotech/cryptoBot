@@ -137,7 +137,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   await setLeverage(symbol);
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
-  const qty = parseFloat((maxSpend / entryPrice).toFixed(4));
+  const qty = parseFloat((maxSpend / entryPrice).toFixed(1));
   const stopLoss = (entryPrice * 0.99).toFixed(2);
 
   await binance.futuresMarketBuy(symbol, qty);
