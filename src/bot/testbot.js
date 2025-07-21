@@ -419,9 +419,9 @@ const startBotForSell = async () => {
   let index = 0;
   while (true) {
     try {
-      if (index == 3) {
+      if (index == 5) {
         index = 0;
-        break;
+        
       }
       console.log(`=========== start sell ============> `, index);
 
