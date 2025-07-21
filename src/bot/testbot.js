@@ -420,11 +420,11 @@ const startBotForSell = async () => {
       }
       console.log(`=========== start sell ============> `, index);
 
-      const totalBalance = await getBalance();
-      let minimumBlanceCheck = totalBalance - MIN_BALANCE;
-      console.log(`my balance without mini balance `, minimumBlanceCheck);
+    //   const totalBalance = await getBalance();
+    //   let minimumBlanceCheck = totalBalance - MIN_BALANCE;
+    //   console.log(`my balance without mini balance `, minimumBlanceCheck);
 
-      if (minimumBlanceCheck > MIN_BALANCE) {
+      if (true) {
         try {
           // symbol lake dega sell ke liye
           const symbolObject = await getSymbolDetailsForSellCoin(
@@ -444,12 +444,12 @@ const startBotForSell = async () => {
             console.log(
               "my selling conditon -->>>",
               symbolObject?.currentMarketprice >
-                parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
+                parseFloat(symbolObject?.buyingTimeCoinPrice) 
             );
 
             if (
               symbolObject?.currentMarketprice >
-              parseFloat(symbolObject?.buyingTimeCoinPrice) * 1.01
+              parseFloat(symbolObject?.buyingTimeCoinPrice) 
             ) {
               let mainAmount =
                 symbolObject?.currentMarketprice * symbolObject?.quantity;
