@@ -138,16 +138,16 @@ async function placeBuyOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
-  console.log(`qty------->`,qty);
-  
+  console.log(`qty------->`, qty);
+
   const stopLoss = (entryPrice * 0.99).toFixed(2);
 
   await binance.futuresMarketBuy(symbol, qty);
   console.log(`Bought ${symbol} at ${entryPrice}`);
 
-  await binance.futuresOrder("STOP_MARKET", symbol, qty, null, {
+  await binance.futuresOrder("SELL", symbol, qty, null, {
     stopPrice: stopLoss,
-    side: "SELL",
+    type: "STOP_MARKET",
     reduceOnly: true,
     timeInForce: "GTC",
   });
