@@ -13,7 +13,6 @@ const binance = new Binance().options({
 
 // ⚙️ Bot Config
 const symbols = [
-  "BTCUSDT",
   "PEPEUSDT",
   "DOGEUSDT",
   "ETHUSDT",
@@ -171,4 +170,4 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 60 * 1000); // Run every 1 minute
+}, 10000); // Run every 1 minute
