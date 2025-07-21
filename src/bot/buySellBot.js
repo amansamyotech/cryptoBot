@@ -2,6 +2,7 @@
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
+const { sendTelegram } = require("../helper/teleMassage.js");
 
 // 🔐 Configure your Binance Futures API keys
 const binance = new Binance().options({
@@ -12,7 +13,13 @@ const binance = new Binance().options({
 });
 
 // ⚙️ Bot Config
-const symbols = ["DOGEUSDT", "1000PEPEUSDT"];
+const symbols = [
+  "1000PEPEUSDT",
+  "1000SHIBUSDT",
+  "1000BONKUSDT",
+  "1000FLOKIUSDT",
+  "DOGEUSDT",
+];
 const interval = "5m";
 const leverage = 1; // Leverage
 
@@ -117,19 +124,19 @@ async function processSymbol(symbol, maxSpendPerTrade) {
     return;
   }
 
-  await placeBuyOrder(symbol, maxSpendPerTrade);
-  openPositions[symbol] = true;
-
-  //   const decision = await decideTradeDirection(symbol);
-  //   if (decision === "LONG") {
-  //     await placeBuyOrder(symbol, maxSpendPerTrade);
-  //     openPositions[symbol] = true;
-  //   } else if (decision === "SHORT") {
-  //     await placeShortOrder(symbol, maxSpendPerTrade);
-  //     openPositions[symbol] = true;
-  //   } else {
-  //     console.log(`No trade signal for ${symbol}`);
-  //   }
+  const decision = await decideTradeDirection(symbol);
+  if (decision === "LONG") {
+    sendTelegram(`✨ LONG SIGNAL for ${symbol}`);
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+    openPositions[symbol] = true;
+  } else if (decision === "SHORT") {
+    sendTelegram(`✨ SHORT SIGNAL for ${symbol}`);
+    await placeShortOrder(symbol, maxSpendPerTrade);
+    openPositions[symbol] = true;
+  } else {
+    sendTelegram(`No trade signal for ${symbol}`);
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 // 💰 Place Buy Order + Stop Loss
@@ -143,9 +150,10 @@ async function placeBuyOrder(symbol, maxSpend) {
   const stopLoss = (entryPrice * 0.99).toFixed(2);
 
   await binance.futuresMarketBuy(symbol, qty);
+  sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
   console.log(`Bought ${symbol} at ${entryPrice}`);
 
-  await binance.futuresOrder("STOP_MARKET" ,"SELL", symbol, qty, null, {
+  await binance.futuresOrder("STOP_MARKET", "SELL", symbol, qty, null, {
     stopPrice: stopLoss,
     reduceOnly: true,
     timeInForce: "GTC",
@@ -162,6 +170,7 @@ async function placeShortOrder(symbol, maxSpend) {
   const stopLoss = (entryPrice * 1.01).toFixed(2);
 
   await binance.futuresMarketSell(symbol, qty);
+  sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
   console.log(`Shorted ${symbol} at ${entryPrice}`);
 
   await binance.futuresOrder("STOP_MARKET", symbol, qty, null, {
@@ -191,4 +200,4 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 10000); // Run every 10 sec
+}, 60 * 1000); // Run every 10 sec
