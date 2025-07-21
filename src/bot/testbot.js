@@ -18,10 +18,10 @@ const apiSecret =
 // const apiSecret =
 //   "VIaeb6MxIvLCTczm2ju74rvFifSY2BA1Fwkisx0B76jeMB0tmppCZtIRqV9MgnOE";
 const SYMBOLS = [
-//   "1000PEPEUSDT",
-//   "1000SHIBUSDT",
-//   "1000BONKUSDT",
-//   "1000FLOKIUSDT",
+  //   "1000PEPEUSDT",
+  //   "1000SHIBUSDT",
+  //   "1000BONKUSDT",
+  //   "1000FLOKIUSDT",
   "DOGEUSDT",
 ];
 const MIN_BALANCE = 28;
@@ -308,12 +308,12 @@ const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
 const startBotForBuy = async () => {
   let index = 0;
   const precision = await getPrecision();
-//   sendTelegram("---------Buy Bot Started---------");
+  //   sendTelegram("---------Buy Bot Started---------");
   while (true) {
     try {
       if (index == 1) {
         index = 0;
-        break
+        break;
       }
       const response = await axios.get(`${API_ENDPOINT}treadCount`);
       console.log(`treadCount`, response?.data);
@@ -326,7 +326,7 @@ const startBotForBuy = async () => {
       const totalBalance = await getBalance();
       let minimumBlanceCheck = totalBalance - MIN_BALANCE;
       console.log(`total amount for buy `, minimumBlanceCheck);
-      if (minimumBlanceCheck > MIN_BALANCE) {
+      if (true) {
         const buyingAmount = minimumBlanceCheck / (SYMBOLS.length - treadCount);
         console.log(`single coin buyingAmount `, buyingAmount);
         try {
@@ -370,12 +370,12 @@ const startBotForBuy = async () => {
                 status: "0",
               };
 
-            //   sendTelegram(
-            //     `🟢COIN NAME - ${symbolObject?.symbol} ,
-            //  COIN CURRENT MARKET PRICE - ${symbolObject?.price},
-            // MY BUYING AMOUNT - ${buyingAmount},
-            // QUANTITY - ${quantity}`
-            //   );
+              //   sendTelegram(
+              //     `🟢COIN NAME - ${symbolObject?.symbol} ,
+              //  COIN CURRENT MARKET PRICE - ${symbolObject?.price},
+              // MY BUYING AMOUNT - ${buyingAmount},
+              // QUANTITY - ${quantity}`
+              //   );
               // data base me save karane ke liye
               const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
                 data: data,
@@ -410,7 +410,7 @@ const startBotForBuy = async () => {
 
 //start bot for sell
 const startBotForSell = async () => {
-//   sendTelegram("---------SELL Bot Started---------");
+  //   sendTelegram("---------SELL Bot Started---------");
   log("🚀 Starting Bot...");
   let index = 0;
   while (true) {
@@ -420,9 +420,9 @@ const startBotForSell = async () => {
       }
       console.log(`=========== start sell ============> `, index);
 
-    //   const totalBalance = await getBalance();
-    //   let minimumBlanceCheck = totalBalance - MIN_BALANCE;
-    //   console.log(`my balance without mini balance `, minimumBlanceCheck);
+      //   const totalBalance = await getBalance();
+      //   let minimumBlanceCheck = totalBalance - MIN_BALANCE;
+      //   console.log(`my balance without mini balance `, minimumBlanceCheck);
 
       if (true) {
         try {
@@ -444,12 +444,12 @@ const startBotForSell = async () => {
             console.log(
               "my selling conditon -->>>",
               symbolObject?.currentMarketprice >
-                parseFloat(symbolObject?.buyingTimeCoinPrice) 
+                parseFloat(symbolObject?.buyingTimeCoinPrice)
             );
 
             if (
               symbolObject?.currentMarketprice >
-              parseFloat(symbolObject?.buyingTimeCoinPrice) 
+              parseFloat(symbolObject?.buyingTimeCoinPrice)
             ) {
               let mainAmount =
                 symbolObject?.currentMarketprice * symbolObject?.quantity;
@@ -478,13 +478,13 @@ const startBotForSell = async () => {
                   status: 1,
                 };
 
-            //     sendTelegram(
-            //       `🔴COIN NAME - ${symbolObject?.symbol} ,
-            //  COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
-            // MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
-            // QUANTITY - ${quantity}
-            // PROFIT AMOUNT - ${profitAmount}`
-            //     );
+                //     sendTelegram(
+                //       `🔴COIN NAME - ${symbolObject?.symbol} ,
+                //  COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
+                // MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
+                // QUANTITY - ${quantity}
+                // PROFIT AMOUNT - ${profitAmount}`
+                //     );
                 const response = await axios.put(
                   `${API_ENDPOINT}${symbolObject?.Objectid}`,
                   {
