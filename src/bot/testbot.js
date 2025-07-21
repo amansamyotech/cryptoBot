@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
-const { sendTelegram } = require("../helper/teleMassage.js");
+// const { sendTelegram } = require("../helper/teleMassage.js");
 
 const FUTURES_API_BASE = "https://fapi.binance.com";
 //orignal with symboll
@@ -18,13 +18,13 @@ const apiSecret =
 // const apiSecret =
 //   "VIaeb6MxIvLCTczm2ju74rvFifSY2BA1Fwkisx0B76jeMB0tmppCZtIRqV9MgnOE";
 const SYMBOLS = [
-  "1000PEPEUSDT",
-  "1000SHIBUSDT",
-  "1000BONKUSDT",
-  "1000FLOKIUSDT",
+//   "1000PEPEUSDT",
+//   "1000SHIBUSDT",
+//   "1000BONKUSDT",
+//   "1000FLOKIUSDT",
   "DOGEUSDT",
 ];
-const MIN_BALANCE = 6.5;
+const MIN_BALANCE = 28;
 const API_ENDPOINT = "http://localhost:3000/api/trades/";
 const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
 
@@ -308,11 +308,12 @@ const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
 const startBotForBuy = async () => {
   let index = 0;
   const precision = await getPrecision();
-  sendTelegram("---------Buy Bot Started---------");
+//   sendTelegram("---------Buy Bot Started---------");
   while (true) {
     try {
-      if (index == 5) {
+      if (index == 1) {
         index = 0;
+        break
       }
       const response = await axios.get(`${API_ENDPOINT}treadCount`);
       console.log(`treadCount`, response?.data);
@@ -369,12 +370,12 @@ const startBotForBuy = async () => {
                 status: "0",
               };
 
-              sendTelegram(
-                `🟢COIN NAME - ${symbolObject?.symbol} ,
-             COIN CURRENT MARKET PRICE - ${symbolObject?.price},
-            MY BUYING AMOUNT - ${buyingAmount},
-            QUANTITY - ${quantity}`
-              );
+            //   sendTelegram(
+            //     `🟢COIN NAME - ${symbolObject?.symbol} ,
+            //  COIN CURRENT MARKET PRICE - ${symbolObject?.price},
+            // MY BUYING AMOUNT - ${buyingAmount},
+            // QUANTITY - ${quantity}`
+            //   );
               // data base me save karane ke liye
               const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
                 data: data,
@@ -409,7 +410,7 @@ const startBotForBuy = async () => {
 
 //start bot for sell
 const startBotForSell = async () => {
-  sendTelegram("---------SELL Bot Started---------");
+//   sendTelegram("---------SELL Bot Started---------");
   log("🚀 Starting Bot...");
   let index = 0;
   while (true) {
@@ -477,13 +478,13 @@ const startBotForSell = async () => {
                   status: 1,
                 };
 
-                sendTelegram(
-                  `🔴COIN NAME - ${symbolObject?.symbol} ,
-             COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
-            MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
-            QUANTITY - ${quantity}
-            PROFIT AMOUNT - ${profitAmount}`
-                );
+            //     sendTelegram(
+            //       `🔴COIN NAME - ${symbolObject?.symbol} ,
+            //  COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
+            // MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
+            // QUANTITY - ${quantity}
+            // PROFIT AMOUNT - ${profitAmount}`
+            //     );
                 const response = await axios.put(
                   `${API_ENDPOINT}${symbolObject?.Objectid}`,
                   {
