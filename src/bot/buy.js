@@ -267,7 +267,8 @@ const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
     if (orderStatus.status === "FILLED") {
       if (side == "BUY") {
         return orderStatus;
-      } else {
+      }
+      if (side == "SELL") {
         const orderDetails = await getOrderDetails(
           apiKey,
           apiSecret,
@@ -279,7 +280,7 @@ const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
         const result = {
           sellTotalFee: order?.commission,
           realizedPnl: order?.realizedPnl,
-          orderStatus,
+          orderStatus: orderStatus?.status,
         };
 
         return result;
@@ -482,7 +483,8 @@ const startBotForSell = async () => {
              COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
             MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
             QUANTITY - ${quantity}
-            PROFIT AMOUNT - ${profitAmount}`
+            Sell Fee: ${orderDetail?.sellTotalFee},
+            PROFIT AMOUNT - ${orderDetail?.realizedPnl}`
                 );
                 const response = await axios.put(
                   `${API_ENDPOINT}${symbolObject?.Objectid}`,
