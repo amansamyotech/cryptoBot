@@ -264,10 +264,13 @@ const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
 
   while (Date.now() - startTime < maxWaitTime) {
     const orderStatus = await checkOrderStatus(symbol, orderId);
+    console.log(`orderStatus.status`, orderStatus.status);
+
     if (orderStatus.status === "FILLED") {
       if (side == "BUY") {
         return orderStatus;
-      } else {
+      }
+      if (side == "SELL") {
         const orderDetails = await getOrderDetails(
           apiKey,
           apiSecret,
@@ -275,6 +278,7 @@ const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
           orderId
         );
         const order = orderDetails[0];
+        console.log(`order`, order);
 
         const result = {
           sellTotalFee: order?.commission,
@@ -415,8 +419,9 @@ const startBotForSell = async () => {
   let index = 0;
   while (true) {
     try {
-      if (index == 5) {
+      if (index == 3) {
         index = 0;
+        break;
       }
       console.log(`=========== start sell ============> `, index);
 
