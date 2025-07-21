@@ -283,7 +283,7 @@ const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
         const result = {
           sellTotalFee: order?.commission,
           realizedPnl: order?.realizedPnl,
-          orderStatus: order?.status,
+          orderStatus: orderStatus?.status,
         };
 
         return result;
@@ -421,7 +421,6 @@ const startBotForSell = async () => {
     try {
       if (index == 5) {
         index = 0;
-        
       }
       console.log(`=========== start sell ============> `, index);
 
@@ -472,8 +471,8 @@ const startBotForSell = async () => {
                 order?.orderId,
                 "SELL"
               );
-              console.log(`orderDetail during the sell` , orderDetail);
-              
+              console.log(`orderDetail during the sell`, orderDetail);
+
               if (orderDetail && orderDetail.status === "FILLED") {
                 const data = {
                   id: symbolObject?.Objectid,
