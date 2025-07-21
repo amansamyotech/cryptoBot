@@ -170,4 +170,4 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 10000); // Run every 1 minute
+}, 60* 1000); // Run every 1 minute
