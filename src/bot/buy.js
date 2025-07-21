@@ -18,7 +18,7 @@ const apiSecret =
 // const apiSecret =
 //   "VIaeb6MxIvLCTczm2ju74rvFifSY2BA1Fwkisx0B76jeMB0tmppCZtIRqV9MgnOE";
 const SYMBOLS = [
-  "1000PEPEUSDT",
+  
   "1000SHIBUSDT",
   "1000BONKUSDT",
   "1000FLOKIUSDT",

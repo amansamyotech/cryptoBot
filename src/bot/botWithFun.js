@@ -5,27 +5,32 @@ const axios = require("axios");
 
 // 🔐 Configure your Binance Futures API keys
 const binance = new Binance().options({
-  APIKEY: "uMAxmpJSfdoVCCI76lGqWiM7om17Jue6CZHUVMaAPEPAu36egK6Pzk8QTfoeq4RP",
-  APISECRET: "VIaeb6MxIvLCTczm2ju74rvFifSY2BA1Fwkisx0B76jeMB0tmppCZtIRqV9MgnOE",
+  APIKEY: "6bd1UA2kXR2lgLPv1pt9bNEOJE70h1MbXMvmoH1SceWUNw0kvXAQEdigQUgfNprI",
+  APISECRET: "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR",
   useServerTime: true,
   test: false, // Set to true for testnet
 });
 
 // ⚙️ Bot Config
-const symbols = [
-  "PEPEUSDT",
-  "DOGEUSDT",
-  "ETHUSDT",
-  "SOLUSDT",
-  "LINKUSDT",
-  "XRPUSDT",
-  "ADAUSDT",
-];
-const quantity = 0.001; // Adjust your trade size
+const symbols = ["DOGEUSDT", "1000PEPEUSDT"];
 const interval = "5m";
 const leverage = 1; // Leverage
 
 const openPositions = {}; // Track open positions
+
+// 💰 Get wallet balance
+async function getUsdtBalance() {
+  try {
+    const account = await binance.futuresBalance();
+    const usdtBalance = parseFloat(
+      account.find((asset) => asset.asset === "USDT")?.balance || 0
+    );
+    return usdtBalance;
+  } catch (err) {
+    console.error("Error fetching balance:", err);
+    return 0;
+  }
+}
 
 // Set leverage before trading
 async function setLeverage(symbol) {
@@ -33,7 +38,7 @@ async function setLeverage(symbol) {
     await binance.futuresLeverage(symbol, leverage);
     console.log(`Leverage set to ${leverage}x for ${symbol}`);
   } catch (err) {
-    console.error(`Failed to set leverage for ${symbol}:`, err.body);
+    console.error(`Failed to set leverage for ${symbol}:, err.body`);
   }
 }
 
@@ -80,59 +85,65 @@ async function getIndicators(symbol) {
   };
 }
 
-// 📈 Buy Logic
-async function checkBuy(symbol) {
-  if (openPositions[symbol]) {
-    console.log(`Skipping BUY for ${symbol}: Position already open.`);
-    return;
-  }
+// 🧠 Decide Trade Direction
+async function decideTradeDirection(symbol) {
   const ind = await getIndicators(symbol);
+
   if (
     ind.ema9 > ind.ema21 &&
     ind.rsi > 50 &&
     ind.macdLine > ind.macdSignal &&
     ind.volume > ind.avgVolume * 1.5
   ) {
-    console.log(`✨ BUY SIGNAL for ${symbol}`);
-    await placeBuyOrder(symbol);
-    openPositions[symbol] = true;
-  } else {
-    console.log(`No Buy Signal for ${symbol}`);
+    return "LONG";
   }
-}
 
-// 📉 Sell Logic
-async function checkSell(symbol) {
-  if (!openPositions[symbol]) {
-    console.log(`Skipping SELL for ${symbol}: No open position.`);
-    return;
-  }
-  const ind = await getIndicators(symbol);
   if (
     ind.ema9 < ind.ema21 &&
     ind.rsi < 50 &&
     ind.macdLine < ind.macdSignal &&
     ind.volume > ind.avgVolume * 1.2
   ) {
-    console.log(`❌ SELL SIGNAL for ${symbol}`);
-    await placeSellOrder(symbol);
-    openPositions[symbol] = false;
-  } else {
-    console.log(`No Sell Signal for ${symbol}`);
+    return "SHORT";
   }
+
+  return "HOLD";
 }
 
-// 🛒 Place Buy Order + Stop Loss
-async function placeBuyOrder(symbol) {
+// 📈 Buy/Short Logic
+async function processSymbol(symbol, maxSpendPerTrade) {
+  if (openPositions[symbol]) {
+    console.log(`Position already open for ${symbol}, skipping.`);
+    return;
+  }
+
+  await placeBuyOrder(symbol, maxSpendPerTrade);
+  openPositions[symbol] = true;
+
+  //   const decision = await decideTradeDirection(symbol);
+  //   if (decision === "LONG") {
+  //     await placeBuyOrder(symbol, maxSpendPerTrade);
+  //     openPositions[symbol] = true;
+  //   } else if (decision === "SHORT") {
+  //     await placeShortOrder(symbol, maxSpendPerTrade);
+  //     openPositions[symbol] = true;
+  //   } else {
+  //     console.log(`No trade signal for ${symbol}`);
+  //   }
+}
+
+// 💰 Place Buy Order + Stop Loss
+async function placeBuyOrder(symbol, maxSpend) {
   await setLeverage(symbol);
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
-  const stopLoss = (entryPrice * 0.99).toFixed(2); // 1% Stop Loss
+  const qty = parseFloat((maxSpend / entryPrice).toFixed(4));
+  const stopLoss = (entryPrice * 0.99).toFixed(2);
 
-  await binance.futuresMarketBuy(symbol, quantity);
+  await binance.futuresMarketBuy(symbol, qty);
   console.log(`Bought ${symbol} at ${entryPrice}`);
 
-  await binance.futuresOrder("STOP_MARKET", symbol, quantity, null, {
+  await binance.futuresOrder("STOP_MARKET", symbol, qty, null, {
     stopPrice: stopLoss,
     side: "SELL",
     reduceOnly: true,
@@ -141,17 +152,18 @@ async function placeBuyOrder(symbol) {
   console.log(`Stop loss set at ${stopLoss} for ${symbol}`);
 }
 
-// 💰 Place Sell Order + Stop Loss (for shorts)
-async function placeSellOrder(symbol) {
+// 📉 Place Short Order + Stop Loss
+async function placeShortOrder(symbol, maxSpend) {
   await setLeverage(symbol);
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
-  const stopLoss = (entryPrice * 1.01).toFixed(2); // 1% Stop Loss
+  const qty = parseFloat((maxSpend / entryPrice).toFixed(4));
+  const stopLoss = (entryPrice * 1.01).toFixed(2);
 
-  await binance.futuresMarketSell(symbol, quantity);
-  console.log(`Sold ${symbol} at ${entryPrice}`);
+  await binance.futuresMarketSell(symbol, qty);
+  console.log(`Shorted ${symbol} at ${entryPrice}`);
 
-  await binance.futuresOrder("STOP_MARKET", symbol, quantity, null, {
+  await binance.futuresOrder("STOP_MARKET", symbol, qty, null, {
     stopPrice: stopLoss,
     side: "BUY",
     reduceOnly: true,
@@ -162,12 +174,20 @@ async function placeSellOrder(symbol) {
 
 // 🔁 Main Loop
 setInterval(async () => {
+  const totalBalance = await getUsdtBalance();
+  const usableBalance = totalBalance - 6; // Keep $6 reserve
+  const maxSpendPerTrade = usableBalance / symbols.length;
+
+  if (usableBalance <= 0) {
+    console.log("Not enough balance to trade.");
+    return;
+  }
+
   for (const sym of symbols) {
     try {
-      await checkBuy(sym);
-      await checkSell(sym);
+      await processSymbol(sym, maxSpendPerTrade);
     } catch (err) {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 60* 1000); // Run every 1 minute
+}, 60 * 1000); // Run every 1 minute
