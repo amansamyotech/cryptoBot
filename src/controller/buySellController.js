@@ -1,7 +1,7 @@
 const tradeService = require("../service/buySellService.js");
 
 const createTrade = async (req, res) => {
-  const data = req.body;
+  const {data} = req.body;
 
   try {
     const trade = await tradeService.createTrade(data);
@@ -33,7 +33,7 @@ const getCountOfOpenTread = async (req, res) => {
 const updateTrade = async (req, res) => {
   try {
     const { id } = req.params;
-    const data = req.body;
+    const {data} = req.body;
     const updatedTrade = await tradeService.updateTrade(id, data);
 
     if (!updatedTrade) {
