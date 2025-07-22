@@ -279,48 +279,52 @@ async function placeShortOrder(symbol, maxSpend) {
 }
 
 // 🔁 Main Loop
-setInterval(async () => {
-  const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6; // Keep $6 reserve
-  const maxSpendPerTrade = usableBalance / symbols.length;
+// setInterval(async () => {
+//   const totalBalance = await getUsdtBalance();
+//   const usableBalance = totalBalance - 6; // Keep $6 reserve
+//   const maxSpendPerTrade = usableBalance / symbols.length;
 
-  if (usableBalance <= 6) {
-    console.log("Not enough balance to trade.");
-    return;
-  }
+//   if (usableBalance <= 6) {
+//     console.log("Not enough balance to trade.");
+//     return;
+//   }
 
-  for (const sym of symbols) {
-    try {
-      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-        symbols: sym,
-      });
+//   for (const sym of symbols) {
+//     try {
+//       const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+//         symbols: sym,
+//       });
 
-      let status = response?.data?.data.status;
+//       let status = response?.data?.data.status;
 
-      if (status == true) {
-        await processSymbol(sym, maxSpendPerTrade);
-      } else {
-        console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
-      }
-    } catch (err) {
-      console.error(`Error with ${sym}:`, err);
-    }
-  }
-}, 60 * 1000); // Run every 10 sec
+//       if (status == true) {
+//         await processSymbol(sym, maxSpendPerTrade);
+//       } else {
+//         console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
+//       }
+//     } catch (err) {
+//       console.error(`Error with ${sym}:`, err);
+//     }
+//   }
+// }, 60 * 1000); // Run every 10 sec
 
 async function checkOrders(symbol) {
   try {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
+    console.log(`response.data?.data`,response.data?.data);
+    
     const { found } = response.data?.data;
+
     if (found) {
       const { tradeDetails } = response.data?.data;
       const { stopLossOrderId, takeProfitOrderId, objectId } = tradeDetails;
-      console.log(`objectId `, objectId);
+      console.log(`objectId:`, objectId);
 
       if (!stopLossOrderId || !takeProfitOrderId) {
-        console.log(`No orders found for ${symbol}`);
+        console.log(`No order IDs found for ${symbol}`);
         return;
       }
+
       const stopLossStatus = await binance.futuresOrderStatus(symbol, {
         orderId: stopLossOrderId,
       });
@@ -329,28 +333,44 @@ async function checkOrders(symbol) {
         orderId: takeProfitOrderId,
       });
 
-      console.log(`Stop Loss Status for ${symbol}:`, stopLossStatus.status);
-      console.log(
-        `Take Profit Status for ${symbol}:`,
-        takeProfitStatus?.status
-      );
+      const stopLossOrderStatus = stopLossStatus?.status;
+      const takeProfitOrderStatus = takeProfitStatus?.status;
+
+      console.log(`Stop Loss Status for ${symbol}:`, stopLossOrderStatus);
+      console.log(`Take Profit Status for ${symbol}:`, takeProfitOrderStatus);
 
       const isEitherFilled =
-        stopLossStatus.status === "FILLED" ||
-        takeProfitStatus.status === "FILLED";
+        stopLossOrderStatus === "FILLED" ||
+        takeProfitOrderStatus === "FILLED";
+
       if (isEitherFilled) {
         console.log(
           `One of the orders is filled for ${symbol}, canceling both orders...`
         );
 
-        // await binance.futuresCancel(symbol, stopLossOrderId);
-        // await binance.futuresCancel(symbol, takeProfitOrderId);
+        // Optional: cancel both orders (if not already filled)
+        if (stopLossOrderStatus !== "FILLED") {
+          await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
+          console.log(`Stop Loss order canceled`);
+        }
 
-        console.log(`Both orders for ${symbol} have been canceled.`);
+        if (takeProfitOrderStatus !== "FILLED") {
+          await binance.futuresCancel(symbol, { orderId: takeProfitOrderId });
+          console.log(`Take Profit order canceled`);
+        }
+
+        // Update trade status to closed
         const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
           data: { status: "1" },
         });
-        console.log(`data`, data);
+        console.log(`data`,data?.data);
+        
+
+        console.log(`Trade marked as closed in DB for ${symbol}`);
+      } else {
+        console.log(
+          `Neither order is filled yet for ${symbol}. No action taken.`
+        );
       }
     }
   } catch (error) {
