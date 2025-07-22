@@ -111,8 +111,8 @@ async function decideTradeDirection(symbol) {
   if (
     ind.ema9 > ind.ema21 &&
     ind.rsi > 50 &&
-    ind.macdLine > ind.macdSignal &&
-    ind.volume > ind.avgVolume * 1.5
+    ind.macdLine > ind.macdSignal
+    // ind.volume > ind.avgVolume * 1.5
   ) {
     return "LONG";
   }
@@ -120,8 +120,8 @@ async function decideTradeDirection(symbol) {
   if (
     ind.ema9 < ind.ema21 &&
     ind.rsi < 50 &&
-    ind.macdLine < ind.macdSignal &&
-    ind.volume > ind.avgVolume * 1.2
+    ind.macdLine < ind.macdSignal
+    // ind.volume > ind.avgVolume * 1.2
   ) {
     return "SHORT";
   }
@@ -137,7 +137,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 
   const decision = await decideTradeDirection(symbol);
-  
+
   if (decision === "LONG") {
     sendTelegram(`✨ LONG SIGNAL for ${symbol}`);
     await placeBuyOrder(symbol, maxSpendPerTrade);
@@ -158,7 +158,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
-  
+
   const stopLoss = (entryPrice * 0.99).toFixed(2);
 
   await binance.futuresMarketBuy(symbol, qty);
