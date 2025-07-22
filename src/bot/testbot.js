@@ -340,7 +340,7 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 60 * 1000); // Run every 10 sec
+}, 60 * 5000); // Run every 5 minute
 
 async function checkOrders(symbol) {
   try {
