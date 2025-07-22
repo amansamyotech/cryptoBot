@@ -151,63 +151,65 @@ async function placeBuyOrder(symbol, maxSpend) {
   const adjustedEntryPrice = maxSpend / qty;
   const stopLoss = (adjustedEntryPrice * 0.98).toFixed(6);
   const takeProfit = (adjustedEntryPrice * 1.01).toFixed(6);
+  const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
+  if (parseFloat(stopLoss) < currentPrice) {
+    const buyOrder = await binance.futuresMarketBuy(symbol, qty);
+    sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
+    console.log(`Bought ${symbol} at ${entryPrice}`);
+    const buyOrderDetails = {
+      side: "LONG",
+      symbol,
+      quantity: qty,
+      LongTimeCoinPrice: entryPrice,
+      placeOrderId: buyOrder.orderId,
+    };
 
-  const buyOrder = await binance.futuresMarketBuy(symbol, qty);
-  sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
-  console.log(`Bought ${symbol} at ${entryPrice}`);
-  const buyOrderDetails = {
-    side: "LONG",
-    symbol,
-    quantity: qty,
-    LongTimeCoinPrice: entryPrice,
-    placeOrderId: buyOrder.orderId,
-  };
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: buyOrderDetails,
+    });
+    console.log(`tradeResponse`, tradeResponse?.data);
 
-  const tradeResponse = await axios.post(API_ENDPOINT, {
-    data: buyOrderDetails,
-  });
-  console.log(`tradeResponse`, tradeResponse?.data);
+    const tradeId = tradeResponse.data._id;
 
-  const tradeId = tradeResponse.data._id;
+    const stopLossOrder = await binance.futuresOrder(
+      "STOP_MARKET",
+      "SELL",
+      symbol,
+      qty,
+      null,
+      {
+        stopPrice: stopLoss,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+    console.log(`Stop loss set at ${stopLoss} for ${symbol}`);
 
-  const stopLossOrder = await binance.futuresOrder(
-    "STOP_MARKET",
-    "SELL",
-    symbol,
-    qty,
-    null,
-    {
-      stopPrice: stopLoss,
-      reduceOnly: true,
-      timeInForce: "GTC",
-    }
-  );
-  console.log(`Stop loss set at ${stopLoss} for ${symbol}`);
+    const takeProfitOrder = await binance.futuresOrder(
+      "TAKE_PROFIT_MARKET",
+      "SELL",
+      symbol,
+      qty,
+      null,
+      {
+        stopPrice: takeProfit,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
 
-  const takeProfitOrder = await binance.futuresOrder(
-    "TAKE_PROFIT_MARKET",
-    "SELL",
-    symbol,
-    qty,
-    null,
-    {
-      stopPrice: takeProfit,
-      reduceOnly: true,
-      timeInForce: "GTC",
-    }
-  );
+    console.log(`Take profit set at ${takeProfit} for ${symbol}`);
+    const Details = {
+      takeProfitPrice: takeProfit,
+      profitOrderId: takeProfitOrder.orderId,
+      stopLossPrice: stopLoss,
+      stopLossOrderId: stopLossOrder.orderId,
+    };
 
-  console.log(`Take profit set at ${takeProfit} for ${symbol}`);
-  const Details = {
-    takeProfitPrice: takeProfit,
-    profitOrderId: takeProfitOrder.orderId,
-    stopLossPrice: stopLoss,
-    stopLossOrderId: stopLossOrder.orderId,
-  };
-
-  await axios.put(`${API_ENDPOINT}${tradeId}`, {
-    data: Details,
-  });
+    await axios.put(`${API_ENDPOINT}${tradeId}`, {
+      data: Details,
+    });
+  }
 }
 
 // 📉 Place Short Order + Stop Loss
@@ -219,63 +221,66 @@ async function placeShortOrder(symbol, maxSpend) {
   const adjustedEntryPrice = maxSpend / qty;
   const stopLoss = (adjustedEntryPrice * 1.02).toFixed(6);
   const takeProfit = (adjustedEntryPrice * 0.99).toFixed(6);
+  const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
 
-  const shortOrder = await binance.futuresMarketSell(symbol, qty);
-  sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
-  console.log(`Shorted ${symbol} at ${entryPrice}`);
-  const shortOrderDetails = {
-    side: "SHORT",
-    symbol,
-    quantity: qty,
-    ShortTimeCurrentPrice: entryPrice,
-    placeOrderId: shortOrder.orderId,
-  };
+  if (parseFloat(stopLoss) > currentPrice) {
+    const shortOrder = await binance.futuresMarketSell(symbol, qty);
+    sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
+    console.log(`Shorted ${symbol} at ${entryPrice}`);
+    const shortOrderDetails = {
+      side: "SHORT",
+      symbol,
+      quantity: qty,
+      ShortTimeCurrentPrice: entryPrice,
+      placeOrderId: shortOrder.orderId,
+    };
 
-  const tradeResponse = await axios.post(API_ENDPOINT, {
-    data: shortOrderDetails,
-  });
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: shortOrderDetails,
+    });
 
-  console.log(`tradeResponse`, tradeResponse?.data);
+    console.log(`tradeResponse`, tradeResponse?.data);
 
-  const tradeId = tradeResponse.data._id;
+    const tradeId = tradeResponse.data._id;
 
-  const stopLossOrder = await binance.futuresOrder(
-    "STOP_MARKET",
-    "BUY",
-    symbol,
-    qty,
-    null,
-    {
-      stopPrice: stopLoss,
-      reduceOnly: true,
-      timeInForce: "GTC",
-    }
-  );
-  console.log(`Stop loss (short) set at ${stopLoss} for ${symbol}`);
+    const stopLossOrder = await binance.futuresOrder(
+      "STOP_MARKET",
+      "BUY",
+      symbol,
+      qty,
+      null,
+      {
+        stopPrice: stopLoss,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+    console.log(`Stop loss (short) set at ${stopLoss} for ${symbol}`);
 
-  const takeProfitOrder = await binance.futuresOrder(
-    "TAKE_PROFIT_MARKET",
-    "BUY",
-    symbol,
-    qty,
-    null,
-    {
-      stopPrice: takeProfit,
-      reduceOnly: true,
-      timeInForce: "GTC",
-    }
-  );
-  console.log(`Take profit (short) set at ${takeProfit} for ${symbol}`);
-  const Details = {
-    takeProfitPrice: takeProfit,
-    profitOrderId: takeProfitOrder.orderId,
-    stopLossPrice: stopLoss,
-    stopLossOrderId: stopLossOrder.orderId,
-  };
+    const takeProfitOrder = await binance.futuresOrder(
+      "TAKE_PROFIT_MARKET",
+      "BUY",
+      symbol,
+      qty,
+      null,
+      {
+        stopPrice: takeProfit,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+    console.log(`Take profit (short) set at ${takeProfit} for ${symbol}`);
+    const Details = {
+      takeProfitPrice: takeProfit,
+      profitOrderId: takeProfitOrder.orderId,
+      stopLossPrice: stopLoss,
+      stopLossOrderId: stopLossOrder.orderId,
+    };
 
-  await axios.put(`${API_ENDPOINT}${tradeId}`, {
-    data: Details,
-  });
+    await axios.put(`${API_ENDPOINT}${tradeId}`, {
+      data: Details,
+    });
+  }
 }
 
 // 🔁 Main Loop
