@@ -4,7 +4,7 @@ const BuySell = require("../models/BuySell.js");
 
 const createTrade = async (data) => {
   const trade = new BuySell(data);
-  return await BuySell.save();
+  return await trade.save();
 };
 
 const getAllTrades = async () => {
