@@ -157,7 +157,7 @@ async function placeBuyOrder(symbol, maxSpend) {
     data: buyOrderDetails,
   });
 
-  const tradeId = tradeResponse.data.tradeId;
+  const tradeId = tradeResponse.data.data._id;
 
   const stopLossOrder = await binance.futuresOrder(
     "STOP_MARKET",
@@ -223,7 +223,8 @@ async function placeShortOrder(symbol, maxSpend) {
   const tradeResponse = await axios.post(API_ENDPOINT, {
     data: shortOrderDetails,
   });
-  const tradeId = tradeResponse.data.tradeId;
+
+  const tradeId = tradeResponse.data.data._id;
 
   const stopLossOrder = await binance.futuresOrder(
     "STOP_MARKET",
