@@ -367,7 +367,7 @@ async function checkOrders(symbol) {
           recheckStopLoss?.status !== "CANCELED" &&
           recheckStopLoss?.status !== "FILLED"
         ) {
-          await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
+          await binance.futuresCancel(symbol,  stopLossOrderId );
           console.log(`Stop Loss order canceled`);
         } else {
           console.log(`Stop Loss already canceled or filled`);
@@ -383,7 +383,7 @@ async function checkOrders(symbol) {
           recheckTakeProfit?.status !== "CANCELED" &&
           recheckTakeProfit?.status !== "FILLED"
         ) {
-          await binance.futuresCancel(symbol, { orderId: takeProfitOrderId });
+          await binance.futuresCancel(symbol,  takeProfitOrderId );
           console.log(`Take Profit order canceled`);
         } else {
           console.log(`Take Profit already canceled or filled`);
