@@ -52,6 +52,8 @@ async function setLeverage(symbol) {
 // ⏳ Fetch candlestick data
 async function getCandles(symbol, interval, limit = 100) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
+  console.log(`Raw candles for ${symbol}:`, candles);
+
   return candles.map((c) => ({
     close: parseFloat(c[4]),
     volume: parseFloat(c[5]),
