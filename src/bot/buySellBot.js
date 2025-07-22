@@ -188,7 +188,7 @@ async function placeShortOrder(symbol, maxSpend) {
   await setLeverage(symbol);
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
-  const qty = parseFloat((maxSpend / entryPrice).toFixed(4));
+  const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
   const stopLoss = (entryPrice * 1.01 + 0.0001).toFixed(6);
   const takeProfit = (entryPrice * 0.99 - 0.0001).toFixed(6);
 
