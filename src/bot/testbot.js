@@ -217,8 +217,8 @@ async function placeShortOrder(symbol, maxSpend) {
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
   const adjustedEntryPrice = maxSpend / qty;
-  const stopLoss = (adjustedEntryPrice * 1.01).toFixed(6);
-  const takeProfit = (adjustedEntryPrice * 0.98).toFixed(6);
+  const stopLoss = (adjustedEntryPrice * 1.02).toFixed(6);
+  const takeProfit = (adjustedEntryPrice * 0.99).toFixed(6);
 
   const shortOrder = await binance.futuresMarketSell(symbol, qty);
   sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
@@ -279,34 +279,34 @@ async function placeShortOrder(symbol, maxSpend) {
 }
 
 // 🔁 Main Loop
-// setInterval(async () => {
-//   const totalBalance = await getUsdtBalance();
-//   const usableBalance = totalBalance - 6; // Keep $6 reserve
-//   const maxSpendPerTrade = usableBalance / symbols.length;
+setInterval(async () => {
+  const totalBalance = await getUsdtBalance();
+  const usableBalance = totalBalance - 6; // Keep $6 reserve
+  const maxSpendPerTrade = usableBalance / symbols.length;
 
-//   if (usableBalance <= 6) {
-//     console.log("Not enough balance to trade.");
-//     return;
-//   }
+  if (usableBalance <= 6) {
+    console.log("Not enough balance to trade.");
+    return;
+  }
 
-//   for (const sym of symbols) {
-//     try {
-//       const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-//         symbols: sym,
-//       });
+  for (const sym of symbols) {
+    try {
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
 
-//       let status = response?.data?.data.status;
+      let status = response?.data?.data.status;
 
-//       if (status == true) {
-//         await processSymbol(sym, maxSpendPerTrade);
-//       } else {
-//         console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
-//       }
-//     } catch (err) {
-//       console.error(`Error with ${sym}:`, err);
-//     }
-//   }
-// }, 60 * 1000); // Run every 10 sec
+      if (status == true) {
+        await processSymbol(sym, maxSpendPerTrade);
+      } else {
+        console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
+      }
+    } catch (err) {
+      console.error(`Error with ${sym}:`, err);
+    }
+  }
+}, 60 * 1000); // Run every 10 sec
 
 async function checkOrders(symbol) {
   try {
@@ -352,7 +352,10 @@ async function checkOrders(symbol) {
         const recheckStopLoss = await binance.futuresOrderStatus(symbol, {
           orderId: stopLossOrderId,
         });
-        if (recheckStopLoss?.status !== "CANCELED" && recheckStopLoss?.status !== "FILLED") {
+        if (
+          recheckStopLoss?.status !== "CANCELED" &&
+          recheckStopLoss?.status !== "FILLED"
+        ) {
           await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
           console.log(`Stop Loss order canceled`);
         } else {
@@ -365,7 +368,10 @@ async function checkOrders(symbol) {
         const recheckTakeProfit = await binance.futuresOrderStatus(symbol, {
           orderId: takeProfitOrderId,
         });
-        if (recheckTakeProfit?.status !== "CANCELED" && recheckTakeProfit?.status !== "FILLED") {
+        if (
+          recheckTakeProfit?.status !== "CANCELED" &&
+          recheckTakeProfit?.status !== "FILLED"
+        ) {
           await binance.futuresCancel(symbol, { orderId: takeProfitOrderId });
           console.log(`Take Profit order canceled`);
         } else {
@@ -379,7 +385,9 @@ async function checkOrders(symbol) {
       });
       console.log(`Trade marked as closed in DB for ${symbol}`, data?.data);
     } else {
-      console.log(`Neither order is filled yet for ${symbol}. No action taken.`);
+      console.log(
+        `Neither order is filled yet for ${symbol}. No action taken.`
+      );
     }
   } catch (error) {
     console.error("Error checking or canceling orders:", error);
