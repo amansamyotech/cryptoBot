@@ -1,6 +1,8 @@
 const tradeService = require("../service/buySellService.js");
 
 const createTrade = async (req, res) => {
+  console.log(`data`, data);
+
   const { data } = req.body;
 
   try {

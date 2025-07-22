@@ -143,6 +143,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const takeProfit = (adjustedEntryPrice * 1.01).toFixed(6);
 
   const buyOrder = await binance.futuresMarketBuy(symbol, qty);
+  sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
   console.log(`Bought ${symbol} at ${entryPrice}`);
   const buyOrderDetails = {
     side: "LONG",
@@ -155,7 +156,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const tradeResponse = await axios.post(API_ENDPOINT, {
     data: buyOrderDetails,
   });
-  sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
+  
   const tradeId = tradeResponse.data.tradeId;
 
   const stopLossOrder = await binance.futuresOrder(
