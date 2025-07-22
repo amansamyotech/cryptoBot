@@ -117,7 +117,7 @@ async function decideTradeDirection(symbol) {
     ind.macdLine > ind.macdSignal ? 1 : -1,
     ind.volume > ind.avgVolume * 1.5 ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
-console.log(`trendScore`,trendScore);
+  console.log(`trendScore`, trendScore);
 
   if (trendScore >= 3) return "LONG";
   if (trendScore <= -2) return "SHORT";
