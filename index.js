@@ -21,7 +21,7 @@ mongoose
     process.exit(1);
   });
 
-app.use("/api/trades", tradeRoutes);
+// app.use("/api/trades", tradeRoutes);
 app.use("/api/buySell", buySellRoutes);
 
 app.get("/", (req, res) => {
