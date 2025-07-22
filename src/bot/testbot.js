@@ -311,72 +311,64 @@ async function placeShortOrder(symbol, maxSpend) {
 async function checkOrders(symbol) {
   try {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
-    console.log(`response.data?.data`,response.data?.data);
-    
     const { found } = response.data?.data;
 
-    if (found) {
-      const { tradeDetails } = response.data?.data;
-      const { stopLossOrderId, takeProfitOrderId, objectId } = tradeDetails;
-      console.log(`objectId:`, objectId);
+    if (!found) return;
 
-      if (!stopLossOrderId || !takeProfitOrderId) {
-        console.log(`No order IDs found for ${symbol}`);
-        return;
-      }
+    const { tradeDetails } = response.data?.data;
+    const { stopLossOrderId, takeProfitOrderId, objectId } = tradeDetails;
 
-      const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-        orderId: stopLossOrderId,
-      });
+    if (!stopLossOrderId || !takeProfitOrderId) {
+      console.log(`No order IDs found for ${symbol}`);
+      return;
+    }
 
-      const takeProfitStatus = await binance.futuresOrderStatus(symbol, {
-        orderId: takeProfitOrderId,
-      });
+    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
+      orderId: stopLossOrderId,
+    });
 
-      const stopLossOrderStatus = stopLossStatus?.status;
-      const takeProfitOrderStatus = takeProfitStatus?.status;
+    const takeProfitStatus = await binance.futuresOrderStatus(symbol, {
+      orderId: takeProfitOrderId,
+    });
 
-      console.log(`Stop Loss Status for ${symbol}:`, stopLossOrderStatus);
-      console.log(`Take Profit Status for ${symbol}:`, takeProfitOrderStatus);
+    const stopLossOrderStatus = stopLossStatus?.status;
+    const takeProfitOrderStatus = takeProfitStatus?.status;
 
-      const isEitherFilled =
-        stopLossOrderStatus === "FILLED" ||
-        takeProfitOrderStatus === "FILLED";
+    console.log(`Stop Loss Status: ${stopLossOrderStatus}`);
+    console.log(`Take Profit Status: ${takeProfitOrderStatus}`);
 
-      if (isEitherFilled) {
-        console.log(
-          `One of the orders is filled for ${symbol}, canceling both orders...`
-        );
+    // Check if any one is FILLED
+    if (stopLossOrderStatus === "FILLED" || takeProfitOrderStatus === "FILLED") {
+      let filledOrder = null;
 
-        // Optional: cancel both orders (if not already filled)
-        if (stopLossOrderStatus !== "FILLED") {
-          await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
-          console.log(`Stop Loss order canceled`);
-        }
-
+      if (stopLossOrderStatus === "FILLED") {
+        filledOrder = "stopLoss";
         if (takeProfitOrderStatus !== "FILLED") {
           await binance.futuresCancel(symbol, { orderId: takeProfitOrderId });
           console.log(`Take Profit order canceled`);
         }
-
-        // Update trade status to closed
-        const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
-          data: { status: "1" },
-        });
-        console.log(`data`,data?.data);
-        
-
-        console.log(`Trade marked as closed in DB for ${symbol}`);
-      } else {
-        console.log(
-          `Neither order is filled yet for ${symbol}. No action taken.`
-        );
+      } else if (takeProfitOrderStatus === "FILLED") {
+        filledOrder = "takeProfit";
+        if (stopLossOrderStatus !== "FILLED") {
+          await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
+          console.log(`Stop Loss order canceled`);
+        }
       }
+
+      // Update trade in DB
+      const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
+        data: { status: "1", filledOrder },
+      });
+
+      console.log(`Trade marked as closed for ${symbol}. Filled: ${filledOrder}`);
+    } else {
+      console.log(`Neither order is filled yet for ${symbol}. No action taken.`);
     }
   } catch (error) {
     console.error("Error checking or canceling orders:", error);
   }
 }
+
 
 setInterval(async () => {
   for (const sym of symbols) {
