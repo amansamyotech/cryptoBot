@@ -296,8 +296,9 @@ setInterval(async () => {
 async function checkOrders(symbol) {
   try {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
-    const { tradeDetails, found } = response.data?.data;
+    const { found } = response.data?.data;
     if (found) {
+      const { tradeDetails } = response.data?.data;
       const { stopLossOrderId, takeProfitOrderId, objectId } = tradeDetails;
       if (!stopLossOrderId || !takeProfitOrderId) {
         console.log(`No orders found for ${symbol}`);
