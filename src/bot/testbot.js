@@ -330,7 +330,10 @@ async function checkOrders(symbol) {
       });
 
       console.log(`Stop Loss Status for ${symbol}:`, stopLossStatus.status);
-      console.log(`Take Profit Status for ${symbol}:`, takeProfitStatus?.status);
+      console.log(
+        `Take Profit Status for ${symbol}:`,
+        takeProfitStatus?.status
+      );
 
       const isEitherFilled =
         stopLossStatus.status === "FILLED" ||
@@ -344,9 +347,11 @@ async function checkOrders(symbol) {
         // await binance.futuresCancel(symbol, takeProfitOrderId);
 
         console.log(`Both orders for ${symbol} have been canceled.`);
-        await axios.put(`${API_ENDPOINT}${objectId}`, {
+        const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
           data: { status: "1" },
         });
+        console.log(`data`,data);
+        
       }
     }
   } catch (error) {
