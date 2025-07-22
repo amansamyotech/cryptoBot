@@ -279,34 +279,34 @@ async function placeShortOrder(symbol, maxSpend) {
 }
 
 // 🔁 Main Loop
-setInterval(async () => {
-  const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6; // Keep $6 reserve
-  const maxSpendPerTrade = usableBalance / symbols.length;
+// setInterval(async () => {
+//   const totalBalance = await getUsdtBalance();
+//   const usableBalance = totalBalance - 6; // Keep $6 reserve
+//   const maxSpendPerTrade = usableBalance / symbols.length;
 
-  if (usableBalance <= 6) {
-    console.log("Not enough balance to trade.");
-    return;
-  }
+//   if (usableBalance <= 6) {
+//     console.log("Not enough balance to trade.");
+//     return;
+//   }
 
-  for (const sym of symbols) {
-    try {
-      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-        symbols: sym,
-      });
+//   for (const sym of symbols) {
+//     try {
+//       const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+//         symbols: sym,
+//       });
 
-      let status = response?.data?.data.status;
+//       let status = response?.data?.data.status;
 
-      if (status == true) {
-        await processSymbol(sym, maxSpendPerTrade);
-      } else {
-        console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
-      }
-    } catch (err) {
-      console.error(`Error with ${sym}:`, err);
-    }
-  }
-}, 60 * 1000); // Run every 10 sec
+//       if (status == true) {
+//         await processSymbol(sym, maxSpendPerTrade);
+//       } else {
+//         console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
+//       }
+//     } catch (err) {
+//       console.error(`Error with ${sym}:`, err);
+//     }
+//   }
+// }, 60 * 1000); // Run every 10 sec
 
 async function checkOrders(symbol) {
   try {
@@ -315,6 +315,8 @@ async function checkOrders(symbol) {
     if (found) {
       const { tradeDetails } = response.data?.data;
       const { stopLossOrderId, takeProfitOrderId, objectId } = tradeDetails;
+      console.log(`objectId `, objectId);
+
       if (!stopLossOrderId || !takeProfitOrderId) {
         console.log(`No orders found for ${symbol}`);
         return;
@@ -327,13 +329,13 @@ async function checkOrders(symbol) {
         orderId: takeProfitOrderId,
       });
 
-      console.log(`Stop Loss Status for ${symbol}:`, stopLossStatus);
-      console.log(`Take Profit Status for ${symbol}:`, takeProfitStatus);
+      console.log(`Stop Loss Status for ${symbol}:`, stopLossStatus.status);
+      console.log(`Take Profit Status for ${symbol}:`, takeProfitStatus?.status);
 
-      if (
+      const isEitherFilled =
         stopLossStatus.status === "FILLED" ||
-        takeProfitStatus.status === "FILLED"
-      ) {
+        takeProfitStatus.status === "FILLED";
+      if (isEitherFilled) {
         console.log(
           `One of the orders is filled for ${symbol}, canceling both orders...`
         );
