@@ -81,6 +81,16 @@ async function getIndicators(symbol) {
 
   const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
 
+  console.log("----------Indicators----------", {
+    ema9: ema9.at(-1),
+    ema21: ema21.at(-1),
+    rsi: rsi.at(-1),
+    macdLine: macd.at(-1)?.MACD,
+    macdSignal: macd.at(-1)?.signal,
+    volume: volumes.at(-1),
+    avgVolume,
+  });
+
   return {
     ema9: ema9.at(-1),
     ema21: ema21.at(-1),
@@ -98,15 +108,23 @@ async function decideTradeDirection(symbol) {
 
   const ind = await getIndicators(symbol);
 
-  const trendScore = [
-    ind.ema9 > ind.ema21 ? 1 : -1,
-    ind.rsi > 55 ? 1 : ind.rsi < 45 ? -1 : 0,
-    ind.macdLine > ind.macdSignal ? 1 : -1,
-    ind.volume > ind.avgVolume * 1.5 ? 1 : 0,
-  ].reduce((a, b) => a + b, 0);
+  if (
+    ind.ema9 > ind.ema21 &&
+    ind.rsi > 50 &&
+    ind.macdLine > ind.macdSignal
+    // ind.volume > ind.avgVolume * 1.5
+  ) {
+    return "LONG";
+  }
 
-  if (trendScore >= 3) return "LONG";
-  if (trendScore <= -2) return "SHORT";
+  if (
+    ind.ema9 < ind.ema21 &&
+    ind.rsi < 50 &&
+    ind.macdLine < ind.macdSignal
+    // ind.volume > ind.avgVolume * 1.2
+  ) {
+    return "SHORT";
+  }
 
   return "HOLD";
 }
@@ -142,8 +160,8 @@ async function placeBuyOrder(symbol, maxSpend) {
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
 
-  const stopLoss = (maxSpend * 0.99 - 0.0001).toFixed(6);
-  const takeProfit = (maxSpend * 1.01 + 0.0001).toFixed(6);
+  const stopLoss = (entryPrice * 0.99 - 0.0001).toFixed(6);
+  const takeProfit = (entryPrice * 1.01 + 0.0001).toFixed(6);
 
   await binance.futuresMarketBuy(symbol, qty);
   sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
@@ -171,8 +189,8 @@ async function placeShortOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
-  const stopLoss = (maxSpend * 1.01 + 0.0001).toFixed(6);
-  const takeProfit = (maxSpend * 0.99 - 0.0001).toFixed(6);
+  const stopLoss = (entryPrice * 1.01 + 0.0001).toFixed(6);
+  const takeProfit = (entryPrice * 0.99 - 0.0001).toFixed(6);
 
   await binance.futuresMarketSell(symbol, qty);
   sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);

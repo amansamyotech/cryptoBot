@@ -1,526 +1,364 @@
-require("dotenv").config();
+// 📦 Dependencies
+const Binance = require("node-binance-api");
+const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
-const crypto = require("crypto");
-const fs = require("fs");
-const path = require("path");
+const { sendTelegram } = require("../helper/teleMassage.js");
 
-// const { sendTelegram } = require("../helper/teleMassage.js");
+const API_ENDPOINT = "http://localhost:3000/api/trades/";
 
-const FUTURES_API_BASE = "https://fapi.binance.com";
-//orignal with symboll
-const apiKey =
-  "6bd1UA2kXR2lgLPv1pt9bNEOJE70h1MbXMvmoH1SceWUNw0kvXAQEdigQUgfNprI";
-const apiSecret =
-  "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR";
+// 🔐 Configure your Binance Futures API keys
+const binance = new Binance().options({
+  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  useServerTime: true,
+  test: false, // Set to true for testnet
+});
 
-// const apiKey =
-//   "uMAxmpJSfdoVCCI76lGqWiM7om17Jue6CZHUVMaAPEPAu36egK6Pzk8QTfoeq4RP";
-// const apiSecret =
-//   "VIaeb6MxIvLCTczm2ju74rvFifSY2BA1Fwkisx0B76jeMB0tmppCZtIRqV9MgnOE";
-const SYMBOLS = [
-  //   "1000PEPEUSDT",
-  //   "1000SHIBUSDT",
-  //   "1000BONKUSDT",
-  //   "1000FLOKIUSDT",
+// ⚙️ Bot Config
+const symbols = [
+  "1000PEPEUSDT",
+  "1000SHIBUSDT",
+  "1000BONKUSDT",
+  "1000FLOKIUSDT",
   "DOGEUSDT",
 ];
-const MIN_BALANCE = 28;
-const API_ENDPOINT = "http://localhost:3000/api/trades/";
-const log = (msg) => console.log(`[${new Date().toISOString()}] ${msg}`);
+const interval = "5m";
+const leverage = 1; // Leverage
 
-const sign = (params) => {
-  const query = new URLSearchParams(params).toString();
-  return crypto.createHmac("sha256", apiSecret).update(query).digest("hex");
-};
+const openPositions = {}; // Track open positions
 
-//get total balance of user
-const getBalance = async () => {
-  const params = { timestamp: Date.now() };
-  const sig = sign(params);
-  const res = await axios.get(`${FUTURES_API_BASE}/fapi/v2/account`, {
-    params: { ...params, signature: sig },
-    headers: { "X-MBX-APIKEY": apiKey },
-  });
-  return parseFloat(
-    res.data.assets.find((a) => a.asset === "USDT").availableBalance
-  );
-};
-
-const getPrecision = async (symbol) => {
-  const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/exchangeInfo`);
-  const symbolInfo = res.data.symbols.find((s) => s.symbol === symbol);
-  if (!symbolInfo) {
-    console.error(`❌ Symbol not found: ${symbol}`);
+// 💰 Get wallet balance
+async function getUsdtBalance() {
+  try {
+    const account = await binance.futuresBalance();
+    const usdtBalance = parseFloat(
+      account.find((asset) => asset.asset === "USDT")?.balance || 0
+    );
+    return usdtBalance;
+  } catch (err) {
+    console.error("Error fetching balance:", err);
     return 0;
   }
-  const stepFilter = symbolInfo.filters.find(
-    (f) => f.filterType === "LOT_SIZE"
-  );
-  if (!stepFilter) {
-    console.error(`❌ LOT_SIZE filter not found for symbol: ${symbol}`);
-    return 0;
-  }
-  const stepSize = stepFilter.stepSize;
-  const precision = Math.max(0, stepSize.indexOf("1") - 1);
-  console.log(`${symbol} → stepSize: ${stepSize}, precision: ${precision}`);
-  return precision;
-};
+}
 
-// order ki details lake dega
-const getOrderDetails = async (apiKey, apiSecret, symbol, orderId) => {
+// Set leverage before trading
+async function setLeverage(symbol) {
   try {
-    const timestamp = Date.now();
-    const params = {
-      symbol,
-      orderId,
-      timestamp,
-    };
-
-    const query = new URLSearchParams(params).toString();
-
-    const sig = sign(params);
-    const url = `${FUTURES_API_BASE}/fapi/v1/userTrades?${query}&signature=${sig}`;
-
-    const res = await axios.get(url, {
-      headers: {
-        "X-MBX-APIKEY": apiKey,
-      },
-    });
-
-    const trades = res.data;
-
-    return trades;
-  } catch (error) {
-    console.error("❌ Failed to fetch trade details:");
-    console.error(error.response?.data || error.message);
+    await binance.futuresLeverage(symbol, leverage);
+    console.log(`Leverage set to ${leverage}x for ${symbol}`);
+  } catch (err) {
+    console.error(`Failed to set leverage for ${symbol}:, err.body`);
   }
-};
+}
 
-// GET symbol details for sell coin
-const getSymbolDetailsForSellCoin = async (symbol) => {
-  console.log("Input symbols:", symbol);
+// ⏳ Fetch candlestick data
+async function getCandles(symbol, interval, limit = 100) {
+  const candles = await binance.futuresCandles(symbol, interval, { limit });
+  return candles.map((c) => ({
+    close: parseFloat(c.close),
+    volume: parseFloat(c.volume),
+  }));
+}
 
-  const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-    symbols: symbol,
+// 📊 Calculate indicators
+async function getIndicators(symbol) {
+  const candles = await getCandles(symbol, interval);
+  const closes = candles.map((c) => c.close);
+  const volumes = candles.map((c) => c.volume);
+
+  const ema9 = technicalIndicators.EMA.calculate({ period: 9, values: closes });
+  const ema21 = technicalIndicators.EMA.calculate({
+    period: 21,
+    values: closes,
+  });
+  const rsi = technicalIndicators.RSI.calculate({ period: 14, values: closes });
+  const macd = technicalIndicators.MACD.calculate({
+    values: closes,
+    fastPeriod: 12,
+    slowPeriod: 26,
+    signalPeriod: 9,
+    SimpleMAOscillator: false,
+    SimpleMASignal: false,
   });
 
-  let status = response?.data?.data.status;
-  let object = {};
+  const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+
+  console.log("----------Indicators----------", {
+    ema9: ema9.at(-1),
+    ema21: ema21.at(-1),
+    rsi: rsi.at(-1),
+    macdLine: macd.at(-1)?.MACD,
+    macdSignal: macd.at(-1)?.signal,
+    volume: volumes.at(-1),
+    avgVolume,
+  });
+
+  return {
+    ema9: ema9.at(-1),
+    ema21: ema21.at(-1),
+    rsi: rsi.at(-1),
+    macdLine: macd.at(-1)?.MACD,
+    macdSignal: macd.at(-1)?.signal,
+    volume: volumes.at(-1),
+    avgVolume,
+  };
+}
+
+// 🧠 Decide Trade Direction
+async function decideTradeDirection(symbol) {
+  console.log(`decideTradeDirection(symbol)`, symbol);
+
+  const ind = await getIndicators(symbol);
+
+  if (
+    ind.ema9 > ind.ema21 &&
+    ind.rsi > 50 &&
+    ind.macdLine > ind.macdSignal
+    // ind.volume > ind.avgVolume * 1.5
+  ) {
+    return "LONG";
+  }
+
+  if (
+    ind.ema9 < ind.ema21 &&
+    ind.rsi < 50 &&
+    ind.macdLine < ind.macdSignal
+    // ind.volume > ind.avgVolume * 1.2
+  ) {
+    return "SHORT";
+  }
+
+  return "HOLD";
+}
+
+// 📈 Buy/Short Logic
+async function processSymbol(symbol, maxSpendPerTrade) {
+  const decision = await decideTradeDirection(symbol);
+
+  if (decision === "LONG") {
+    sendTelegram(`✨ LONG SIGNAL for ${symbol}`);
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+    openPositions[symbol] = true;
+  } else if (decision === "SHORT") {
+    sendTelegram(`✨ SHORT SIGNAL for ${symbol}`);
+    await placeShortOrder(symbol, maxSpendPerTrade);
+    openPositions[symbol] = true;
+  } else {
+    sendTelegram(`No trade signal for ${symbol}`);
+    console.log(`No trade signal for ${symbol}`);
+  }
+}
+
+// 💰 Place Buy Order + Stop Loss
+async function placeBuyOrder(symbol, maxSpend) {
+  await setLeverage(symbol);
+
+  const price = (await binance.futuresPrices())[symbol];
+  const entryPrice = parseFloat(price);
+  const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
+
+  const stopLoss = (entryPrice * 0.99 - 0.0001).toFixed(6);
+  const takeProfit = (entryPrice * 1.01 + 0.0001).toFixed(6);
+
+  const buyOrder = await binance.futuresMarketBuy(symbol, qty);
+  sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
+  console.log(`Bought ${symbol} at ${entryPrice}`);
+  const buyOrderDetails = {
+    side: "LONG",
+    symbol,
+    quantity: qty,
+    LongTimeCoinPrice: entryPrice,
+    placeOrderId: buyOrder.orderId,
+  };
+
+  const tradeResponse = await axios.post(API_ENDPOINT, {
+    data: buyOrderDetails,
+  });
+  const tradeId = tradeResponse.data.tradeId;
+
+  const stopLossOrder = await binance.futuresOrder(
+    "STOP_MARKET",
+    "SELL",
+    symbol,
+    qty,
+    null,
+    {
+      stopPrice: stopLoss,
+      reduceOnly: true,
+      timeInForce: "GTC",
+    }
+  );
+  console.log(`Stop loss set at ${stopLoss} for ${symbol}`);
+
+  const takeProfitOrder = await binance.futuresOrder(
+    "TAKE_PROFIT_MARKET",
+    "SELL",
+    symbol,
+    qty,
+    null,
+    {
+      stopPrice: takeProfit,
+      reduceOnly: true,
+      timeInForce: "GTC",
+    }
+  );
+
+  console.log(`Take profit set at ${takeProfit} for ${symbol}`);
+  const Details = {
+    takeProfitPrice: takeProfit,
+    profitOrderId: takeProfitOrder.orderId,
+    stopLossPrice: stopLoss,
+    stopLossOrderId: stopLossOrder.orderId,
+  };
+
+  await axios.put(`${API_ENDPOINT}${tradeId}`, {
+    data: Details,
+  });
+}
+
+// 📉 Place Short Order + Stop Loss
+async function placeShortOrder(symbol, maxSpend) {
+  await setLeverage(symbol);
+  const price = (await binance.futuresPrices())[symbol];
+  const entryPrice = parseFloat(price);
+  const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
+  const stopLoss = (entryPrice * 1.01 + 0.0001).toFixed(6);
+  const takeProfit = (entryPrice * 0.99 - 0.0001).toFixed(6);
+
+  const shortOrder = await binance.futuresMarketSell(symbol, qty);
+  sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
+  console.log(`Shorted ${symbol} at ${entryPrice}`);
+  const shortOrderDetails = {
+    side: "SHORT",
+    symbol,
+    quantity: qty,
+    ShortTimeCurrentPrice: entryPrice,
+    placeOrderId: shortOrder.orderId,
+  };
+
+  const tradeResponse = await axios.post(API_ENDPOINT, {
+    data: shortOrderDetails,
+  });
+  const tradeId = tradeResponse.data.tradeId;
+
+  const stopLossOrder = await binance.futuresOrder(
+    "STOP_MARKET",
+    "BUY",
+    symbol,
+    qty,
+    null,
+    {
+      stopPrice: stopLoss,
+      reduceOnly: true,
+      timeInForce: "GTC",
+    }
+  );
+  console.log(`Stop loss (short) set at ${stopLoss} for ${symbol}`);
+
+  const takeProfitOrder = await binance.futuresOrder(
+    "TAKE_PROFIT_MARKET",
+    "BUY",
+    symbol,
+    qty,
+    null,
+    {
+      stopPrice: takeProfit,
+      reduceOnly: true,
+      timeInForce: "GTC",
+    }
+  );
+  console.log(`Take profit (short) set at ${takeProfit} for ${symbol}`);
+  const Details = {
+    takeProfitPrice: takeProfit,
+    profitOrderId: takeProfitOrder.orderId,
+    stopLossPrice: stopLoss,
+    stopLossOrderId: stopLossOrder.orderId,
+  };
+
+  await axios.put(`${API_ENDPOINT}${tradeId}`, {
+    data: Details,
+  });
+}
+
+// 🔁 Main Loop
+setInterval(async () => {
+  const totalBalance = await getUsdtBalance();
+  const usableBalance = totalBalance - 6; // Keep $6 reserve
+  const maxSpendPerTrade = usableBalance / symbols.length;
+
+  if (usableBalance <= 0) {
+    console.log("Not enough balance to trade.");
+    return;
+  }
+
+  for (const sym of symbols) {
+    try {
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
+
+      let status = response?.data?.data.status;
+
+      if (status == true) {
+        await processSymbol(sym, maxSpendPerTrade);
+      } else {
+        console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
+      }
+    } catch (err) {
+      console.error(`Error with ${sym}:`, err);
+    }
+  }
+}, 60 * 1000); // Run every 10 sec
+
+async function checkOrders(symbol) {
   try {
-    // false means status 0 --- means  sold krna hai
-    if (status == false) {
-      let symbol = response?.data?.data.symbol;
-      let orderId = response?.data?.data.trades?.[0]?.orderId;
-      let Objectid = response?.data?.data.trades?.[0]?._id;
-      let buyingTimeCoinPrice =
-        response?.data?.data.trades?.[0]?.buyingTimeCoinPrice?.$numberDecimal;
-      let buyingAmount =
-        response?.data?.data?.trades?.[0]?.buyingAmount?.$numberDecimal;
-      let quantity = parseFloat(
-        response?.data?.data.trades?.[0]?.quantity?.$numberDecimal
+    const response = await axios.get(`${API_ENDPOINT}${symbol}`);
+    const { tradeDetails, found } = response.data?.data;
+    if (found) {
+      const { stopLossOrderId, takeProfitOrderId } = tradeDetails;
+      if (!stopLossOrderId || !takeProfitOrderId) {
+        console.log(`No orders found for ${symbol}`);
+        return;
+      }
+      const stopLossStatus = await binance.futuresOrderStatus(
+        symbol,
+        stopLossOrderId
+      );
+      const takeProfitStatus = await binance.futuresOrderStatus(
+        symbol,
+        takeProfitOrderId
       );
 
-      //call api for current price of symbol
-      const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
-        params: { symbol },
-      });
-      let currentMarketprice = res.data.price;
-      object = {
-        symbol,
-        quantity,
-        Objectid,
-        buyingTimeCoinPrice,
-        currentMarketprice,
-        status,
-        orderId,
-        buyingAmount,
-      };
-      return object;
-    } else {
-      object = {
-        symbol,
-        status,
-      };
-      return object;
-    }
-  } catch (err) {
-    log(`❌ Price fetch failed for ${symbolName}: ${err.message}`);
-    return object;
-  }
-};
+      console.log(`Stop Loss Status for ${symbol}:`, stopLossStatus);
+      console.log(`Take Profit Status for ${symbol}:`, takeProfitStatus);
 
-// GET symbol details for BUY coin
-const getSymboldetailsForBuyingcoin = async (symbol) => {
-  console.log("Input symbols:", symbol);
-
-  const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-    symbols: symbol,
-  });
-
-  let status = response?.data?.data.status;
-  let object = {};
-  try {
-    // true means status 1 means already sold
-    if (status == true) {
-      let symbol = response?.data?.data.symbol;
-      console.log(`symbol`, symbol);
-
-      // get current price of coin
-      const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/ticker/price`, {
-        params: { symbol },
-      });
-      let price = res.data.price;
-      object = {
-        symbol,
-        price,
-        status,
-      };
-      return object;
-    } else {
-      object = {
-        symbol,
-        status,
-      };
-      return object;
-    }
-  } catch (err) {
-    log(`❌ Price fetch failed for ${symbolName}: ${err.message}`);
-    return object;
-  }
-};
-
-// place order for buy or sell done ke liye
-const placeOrder = async (symbol, side, quantity) => {
-  try {
-    let params = {
-      symbol,
-      side,
-      type: "MARKET",
-      quantity,
-      timestamp: Date.now(),
-    };
-    console.log(`params`, params);
-
-    const sig = sign(params);
-
-    const res = await axios.post(`${FUTURES_API_BASE}/fapi/v1/order`, null, {
-      params: { ...params, signature: sig },
-      headers: { "X-MBX-APIKEY": apiKey },
-    });
-
-    return res.data;
-  } catch (e) {
-    log(`❌ Order error for ${symbol}: ${e.response?.data?.msg || e.message}`);
-    throw e;
-  }
-};
-
-const errorLogs = (error, type) => {
-  const errorLog = `
-========== ERROR ==========
-Time: ${new Date().toISOString()}
-Message: ${error.message}
-Stack: ${error.stack}
-Type : ${type}
-===========================
-`;
-
-  // Define file path
-  const logFilePath = path.join(__dirname, "error-log.txt");
-
-  // Append the error log to the file
-  fs.appendFile(logFilePath, errorLog, (err) => {
-    if (err) {
-      console.error("Failed to write error to file:", err);
-    } else {
-      console.log("Error logged to error-log.txt");
-    }
-  });
-};
-
-// check the order status
-const checkOrderStatus = async (symbol, orderId) => {
-  try {
-    const params = {
-      symbol,
-      orderId,
-      timestamp: Date.now(),
-    };
-    const sig = sign(params);
-    const res = await axios.get(`${FUTURES_API_BASE}/fapi/v1/order`, {
-      params: { ...params, signature: sig },
-      headers: { "X-MBX-APIKEY": apiKey },
-    });
-    return res.data;
-  } catch (e) {
-    log(`❌ Order status check error: ${e.response?.data?.msg || e.message}`);
-    throw e;
-  }
-};
-
-// wait krna hai order fill hua ya nahi db me entry krne se phle
-const waitForOrderFill = async (symbol, orderId, side, maxWaitTime = 30000) => {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < maxWaitTime) {
-    const orderStatus = await checkOrderStatus(symbol, orderId);
-    console.log(`orderStatus.status`, orderStatus.status);
-
-    if (orderStatus.status === "FILLED") {
-      if (side == "BUY") {
-        return orderStatus;
-      }
-      if (side == "SELL") {
-        const orderDetails = await getOrderDetails(
-          apiKey,
-          apiSecret,
-          symbol,
-          orderId
+      if (
+        stopLossStatus.status === "FILLED" ||
+        takeProfitStatus.status === "FILLED"
+      ) {
+        console.log(
+          `One of the orders is filled for ${symbol}, canceling both orders...`
         );
-        const order = orderDetails[0];
-        console.log(`order`, order);
 
-        const result = {
-          sellTotalFee: order?.commission,
-          realizedPnl: order?.realizedPnl,
-          orderStatus: orderStatus?.status,
-        };
+        await binance.futuresCancel(symbol, stopLossOrderId);
+        await binance.futuresCancel(symbol, takeProfitOrderId);
 
-        return result;
+        console.log(`Both orders for ${symbol} have been canceled.`);
       }
     }
-
-    if (
-      orderStatus.status === "CANCELED" ||
-      orderStatus.status === "REJECTED"
-    ) {
-      log(`❌ Order ${orderStatus.status} for ${symbol}`);
-      throw new Error(`Order ${orderStatus.status}`);
-    }
-
-    log(
-      `⏳ Waiting for ${symbol} order to fill... Status: ${orderStatus.status}`
-    );
-    await new Promise((res) => setTimeout(res, 2000));
+  } catch (error) {
+    console.error("Error checking or canceling orders:", error);
   }
+}
 
-  log(`⏰ Order fill timeout for ${symbol}`);
-  throw new Error("Order fill timeout");
-};
-
-//start bot for buy
-const startBotForBuy = async () => {
-  let index = 0;
-  const precision = await getPrecision();
-  //   sendTelegram("---------Buy Bot Started---------");
-  while (true) {
-    try {
-      if (index == 1) {
-        index = 0;
-        break;
+function startOrderCheck(symbol) {
+  setInterval(() => {
+    for (const sym of symbols) {
+      try {
+        checkOrders(sym);
+      } catch (err) {
+        console.error(`Error with ${sym}:`, err);
       }
-      const response = await axios.get(`${API_ENDPOINT}treadCount`);
-      console.log(`treadCount`, response?.data);
-      let treadCount = response?.data;
-
-      if (treadCount == SYMBOLS.length) {
-        treadCount = 0;
-      }
-      console.log(`=========== start for buy ============> `);
-      const totalBalance = await getBalance();
-      let minimumBlanceCheck = totalBalance - MIN_BALANCE;
-      console.log(`total amount for buy `, minimumBlanceCheck);
-      if (true) {
-        const buyingAmount = minimumBlanceCheck / (SYMBOLS.length - treadCount);
-        console.log(`single coin buyingAmount `, buyingAmount);
-        try {
-          // symbol ke sath sath current price lake deta hai
-          const symbolObject = await getSymboldetailsForBuyingcoin(
-            SYMBOLS[index]
-          );
-          console.log(
-            `coin current currentPrice -------> ${symbolObject?.symbol} ||||`,
-            symbolObject?.price
-          );
-
-          if (symbolObject?.status == true) {
-            const quantity = parseFloat(
-              buyingAmount / symbolObject?.price
-            ).toFixed(precision);
-
-            const order = await placeOrder(
-              symbolObject?.symbol,
-              "BUY",
-              quantity
-            );
-
-            console.log(`order during the buy coin`, order);
-
-            const orderDetail = await waitForOrderFill(
-              symbolObject?.symbol,
-              order.orderId,
-              "BUY"
-            );
-
-            if (orderDetail && orderDetail.status == "FILLED") {
-              const data = {
-                symbol: symbolObject?.symbol,
-                orderIdBuy: order.orderId,
-                buyingTimeCoinPrice: symbolObject?.price,
-                quantity,
-                buyingAmount: buyingAmount,
-                sellingTimeCurrentPrice: "1234",
-                profitAmount: "1223",
-                status: "0",
-              };
-
-              //   sendTelegram(
-              //     `🟢COIN NAME - ${symbolObject?.symbol} ,
-              //  COIN CURRENT MARKET PRICE - ${symbolObject?.price},
-              // MY BUYING AMOUNT - ${buyingAmount},
-              // QUANTITY - ${quantity}`
-              //   );
-              // data base me save karane ke liye
-              const saveIntoDb = await axios.post(`${API_ENDPOINT}`, {
-                data: data,
-              });
-
-              console.log(
-                `order placed   quantity : ${quantity} symbol:  ${symbolObject?.symbol} @ ${symbolObject?.price} buyingAmount : ${buyingAmount}`
-              );
-            } else if (order === null) {
-              log(`❌ Buy order failed`);
-            }
-          } else {
-            console.log("dont buy  ", symbolObject?.symbol);
-          }
-        } catch (e) {
-          log(`❌ Error: ${e.message}`);
-        } finally {
-          index++;
-        }
-      } else {
-        console.log("dont have sufficient balance ");
-      }
-    } catch (error) {
-      console.log(`error`, error);
-      errorLogs(error, "BUY");
     }
-
-    console.log(`============= end  ==========`);
-    await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
-  }
-};
-
-//start bot for sell
-const startBotForSell = async () => {
-  //   sendTelegram("---------SELL Bot Started---------");
-  log("🚀 Starting Bot...");
-  let index = 0;
-  while (true) {
-    try {
-      if (index == 5) {
-        index = 0;
-      }
-      console.log(`=========== start sell ============> `, index);
-
-      //   const totalBalance = await getBalance();
-      //   let minimumBlanceCheck = totalBalance - MIN_BALANCE;
-      //   console.log(`my balance without mini balance `, minimumBlanceCheck);
-
-      if (true) {
-        try {
-          // symbol lake dega sell ke liye
-          const symbolObject = await getSymbolDetailsForSellCoin(
-            SYMBOLS[index]
-          );
-          console.log(
-            `coin current Market price from api -------> ${symbolObject?.symbol} ||||`,
-            symbolObject?.currentMarketprice
-          );
-          console.log(
-            `buy time price -------> ${symbolObject?.symbol} ---`,
-            symbolObject?.buyingTimeCoinPrice
-          );
-
-          // false meens 0 hum isko bech skte hai ----
-          if (symbolObject?.status == false) {
-            console.log(
-              "my selling conditon -->>>",
-              symbolObject?.currentMarketprice >
-                parseFloat(symbolObject?.buyingTimeCoinPrice)
-            );
-
-            if (
-              symbolObject?.currentMarketprice >
-              parseFloat(symbolObject?.buyingTimeCoinPrice)
-            ) {
-              let mainAmount =
-                symbolObject?.currentMarketprice * symbolObject?.quantity;
-              let profitAmount = mainAmount - symbolObject?.buyingAmount;
-
-              const order = await placeOrder(
-                symbolObject?.symbol,
-                "SELL",
-                symbolObject?.quantity
-              );
-              console.log("order data during to sell coin ", order);
-
-              const orderDetail = await waitForOrderFill(
-                symbolObject?.symbol,
-                order?.orderId,
-                "SELL"
-              );
-              console.log(`orderDetail during the sell`, orderDetail);
-
-              if (orderDetail && orderDetail.orderStatus === "FILLED") {
-                const data = {
-                  id: symbolObject?.Objectid,
-                  orderIdSell: order?.orderId,
-                  sellingTimeCurrentPrice: symbolObject?.currentMarketprice,
-                  profitAmount,
-                  realizedPnl: orderDetail?.realizedPnl,
-                  sellTotalFee: orderDetail?.sellTotalFee,
-                  status: 1,
-                };
-
-                //     sendTelegram(
-                //       `🔴COIN NAME - ${symbolObject?.symbol} ,
-                //  COIN CURRENT MARKET PRICE - ${symbolObject?.currentMarketprice},
-                // MY BUYING TIME PRICE - ${symbolObject?.buyingTimeCoinPrice},
-                // QUANTITY - ${quantity}
-                // PROFIT AMOUNT - ${profitAmount}`
-                //     );
-                const response = await axios.put(
-                  `${API_ENDPOINT}${symbolObject?.Objectid}`,
-                  {
-                    data,
-                  }
-                );
-              }
-            }
-          } else {
-            console.log("dont sell  ", symbolObject?.symbol);
-          }
-
-          index++;
-        } catch (e) {
-          log(`❌ Error: ${e.message}`);
-        }
-      } else {
-        console.log("dont have sufficient balance ");
-      }
-    } catch (error) {
-      console.log(`error`, error);
-
-      errorLogs(error, "SELL");
-    }
-
-    console.log(`============= end  ==========`);
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-};
-
-startBotForBuy();
-startBotForSell();
+  }, 30000);
+}
