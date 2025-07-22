@@ -149,7 +149,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
   const adjustedEntryPrice = maxSpend / qty;
-  const stopLoss = (adjustedEntryPrice * 0.99).toFixed(6);
+  const stopLoss = (adjustedEntryPrice * 0.98).toFixed(6);
   const takeProfit = (adjustedEntryPrice * 1.01).toFixed(6);
 
   const buyOrder = await binance.futuresMarketBuy(symbol, qty);
@@ -218,7 +218,7 @@ async function placeShortOrder(symbol, maxSpend) {
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
   const adjustedEntryPrice = maxSpend / qty;
   const stopLoss = (adjustedEntryPrice * 1.01).toFixed(6);
-  const takeProfit = (adjustedEntryPrice * 0.99).toFixed(6);
+  const takeProfit = (adjustedEntryPrice * 0.98).toFixed(6);
 
   const shortOrder = await binance.futuresMarketSell(symbol, qty);
   sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
@@ -279,34 +279,34 @@ async function placeShortOrder(symbol, maxSpend) {
 }
 
 // 🔁 Main Loop
-// setInterval(async () => {
-//   const totalBalance = await getUsdtBalance();
-//   const usableBalance = totalBalance - 6; // Keep $6 reserve
-//   const maxSpendPerTrade = usableBalance / symbols.length;
+setInterval(async () => {
+  const totalBalance = await getUsdtBalance();
+  const usableBalance = totalBalance - 6; // Keep $6 reserve
+  const maxSpendPerTrade = usableBalance / symbols.length;
 
-//   if (usableBalance <= 6) {
-//     console.log("Not enough balance to trade.");
-//     return;
-//   }
+  if (usableBalance <= 6) {
+    console.log("Not enough balance to trade.");
+    return;
+  }
 
-//   for (const sym of symbols) {
-//     try {
-//       const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-//         symbols: sym,
-//       });
+  for (const sym of symbols) {
+    try {
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
 
-//       let status = response?.data?.data.status;
+      let status = response?.data?.data.status;
 
-//       if (status == true) {
-//         await processSymbol(sym, maxSpendPerTrade);
-//       } else {
-//         console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
-//       }
-//     } catch (err) {
-//       console.error(`Error with ${sym}:`, err);
-//     }
-//   }
-// }, 60 * 1000); // Run every 10 sec
+      if (status == true) {
+        await processSymbol(sym, maxSpendPerTrade);
+      } else {
+        console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
+      }
+    } catch (err) {
+      console.error(`Error with ${sym}:`, err);
+    }
+  }
+}, 60 * 1000); // Run every 10 sec
 
 async function checkOrders(symbol) {
   try {
@@ -350,8 +350,7 @@ async function checkOrders(symbol) {
         const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
           data: { status: "1" },
         });
-        console.log(`data`,data);
-        
+        console.log(`data`, data);
       }
     }
   } catch (error) {
