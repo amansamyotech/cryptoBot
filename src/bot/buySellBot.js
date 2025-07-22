@@ -6,8 +6,8 @@ const { sendTelegram } = require("../helper/teleMassage.js");
 
 // 🔐 Configure your Binance Futures API keys
 const binance = new Binance().options({
-  APIKEY: "6bd1UA2kXR2lgLPv1pt9bNEOJE70h1MbXMvmoH1SceWUNw0kvXAQEdigQUgfNprI",
-  APISECRET: "4zHQjwWb8AopnJx0yPjTKBNpW3ntoLaNK7PnbJjxwoB8ZSeaAaGTRLdIKLsixmPR",
+  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
   test: false, // Set to true for testnet
 });
