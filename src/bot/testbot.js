@@ -154,9 +154,9 @@ async function placeBuyOrder(symbol, maxSpend) {
   };
 
   const tradeResponse = await axios.post(API_ENDPOINT, {
-    data: buyOrderDetails,
+    buyOrderDetails,
   });
-  
+
   const tradeId = tradeResponse.data.tradeId;
 
   const stopLossOrder = await binance.futuresOrder(
@@ -195,7 +195,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   };
 
   await axios.put(`${API_ENDPOINT}${tradeId}`, {
-    data: Details,
+    Details,
   });
 }
 
@@ -221,7 +221,7 @@ async function placeShortOrder(symbol, maxSpend) {
   };
 
   const tradeResponse = await axios.post(API_ENDPOINT, {
-    data: shortOrderDetails,
+    shortOrderDetails,
   });
   const tradeId = tradeResponse.data.tradeId;
 
@@ -260,7 +260,7 @@ async function placeShortOrder(symbol, maxSpend) {
   };
 
   await axios.put(`${API_ENDPOINT}${tradeId}`, {
-    data: Details,
+    Details,
   });
 }
 
@@ -329,9 +329,7 @@ async function checkOrders(symbol) {
         await binance.futuresCancel(symbol, takeProfitOrderId);
 
         console.log(`Both orders for ${symbol} have been canceled.`);
-        await axios.put(`${API_ENDPOINT}${objectId}`, {
-          data: { status: "1" },
-        });
+        await axios.put(`${API_ENDPOINT}${objectId}`, { status: "1" });
       }
     }
   } catch (error) {
