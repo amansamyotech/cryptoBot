@@ -340,7 +340,7 @@ async function checkOrders(symbol) {
           `One of the orders is filled for ${symbol}, canceling both orders...`
         );
 
-        await binance.futuresCancel(symbol, stopLossOrderId);
+        // await binance.futuresCancel(symbol, stopLossOrderId);
         // await binance.futuresCancel(symbol, takeProfitOrderId);
 
         console.log(`Both orders for ${symbol} have been canceled.`);
