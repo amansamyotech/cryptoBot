@@ -84,6 +84,15 @@ async function getIndicators(symbol) {
   });
 
   const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
+  console.log(`avgVolume`, {
+    ema20: ema20.at(-1),
+    ema50: ema50.at(-1),
+    rsi: rsi.at(-1),
+    macdLine: macd.at(-1)?.MACD,
+    macdSignal: macd.at(-1)?.signal,
+    volume: volumes.at(-1),
+    avgVolume,
+  });
 
   return {
     ema20: ema20.at(-1),
@@ -108,6 +117,7 @@ async function decideTradeDirection(symbol) {
     ind.macdLine > ind.macdSignal ? 1 : -1,
     ind.volume > ind.avgVolume * 1.5 ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
+console.log(`trendScore`,trendScore);
 
   if (trendScore >= 3) return "LONG";
   if (trendScore <= -2) return "SHORT";
@@ -309,14 +319,13 @@ async function checkOrders(symbol) {
         console.log(`No orders found for ${symbol}`);
         return;
       }
-      const stopLossStatus = await binance.futuresOrderStatus(
-        symbol,
-        stopLossOrderId
-      );
-      const takeProfitStatus = await binance.futuresOrderStatus(
-        symbol,
-        takeProfitOrderId
-      );
+      const stopLossStatus = await binance.futuresOrderStatus(symbol, {
+        orderId: stopLossOrderId,
+      });
+
+      const takeProfitStatus = await binance.futuresOrderStatus(symbol, {
+        orderId: takeProfitOrderId,
+      });
 
       console.log(`Stop Loss Status for ${symbol}:`, stopLossStatus);
       console.log(`Take Profit Status for ${symbol}:`, takeProfitStatus);
