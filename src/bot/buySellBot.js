@@ -155,7 +155,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 // 💰 Place Buy Order + Stop Loss
 async function placeBuyOrder(symbol, maxSpend) {
   await setLeverage(symbol);
-  await binance.futuresMarginType(symbol, 'ISOLATED');
+  
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
@@ -186,7 +186,6 @@ async function placeBuyOrder(symbol, maxSpend) {
 // 📉 Place Short Order + Stop Loss
 async function placeShortOrder(symbol, maxSpend) {
   await setLeverage(symbol);
-  await binance.futuresMarginType(symbol, 'ISOLATED');
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(4));
