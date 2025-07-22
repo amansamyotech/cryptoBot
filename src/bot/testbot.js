@@ -20,7 +20,7 @@ const symbols = [
   "1000SHIBUSDT",
   "1000BONKUSDT",
   "1000FLOKIUSDT",
-  "DOGEUSDT",
+  // "DOGEUSDT",
 ];
 const interval = "5m";
 const leverage = 1; // Leverage
@@ -286,7 +286,7 @@ async function placeShortOrder(symbol, maxSpend) {
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6; // Keep $6 reserve
+  const usableBalance = totalBalance - 10; // Keep $6 reserve
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   if (usableBalance <= 6) {
