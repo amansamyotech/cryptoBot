@@ -144,22 +144,36 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 // 💰 Place Buy Order + Stop Loss
 async function placeBuyOrder(symbol, maxSpend) {
   await setLeverage(symbol);
-
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
   const adjustedEntryPrice = maxSpend / qty;
-  const stopLoss = (adjustedEntryPrice * 0.98).toFixed(6);
-  const takeProfit = (adjustedEntryPrice * 1.01).toFixed(6);
+  const exchangeInfo = await binance.futuresExchangeInfo();
+  const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+  const pricePrecision = symbolInfo.pricePrecision;
+  const quantityPrecision = symbolInfo.quantityPrecision;
+  const investedAmount = qty * adjustedEntryPrice;
+  const lossAmount = investedAmount * 0.02; // 2%
+  const profitAmount = investedAmount * 0.01; // 1%
+
+  const stopLoss = (adjustedEntryPrice - lossAmount / qty).toFixed(
+    pricePrecision
+  );
+  const takeProfit = (adjustedEntryPrice + profitAmount / qty).toFixed(
+    pricePrecision
+  );
+  const qtyFixed = qty.toFixed(quantityPrecision);
+
   const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
+
   if (parseFloat(stopLoss) < currentPrice) {
-    const buyOrder = await binance.futuresMarketBuy(symbol, qty);
+    const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
     console.log(`Bought ${symbol} at ${entryPrice}`);
     const buyOrderDetails = {
       side: "LONG",
       symbol,
-      quantity: qty,
+      quantity: qtyFixed,
       LongTimeCoinPrice: entryPrice,
       placeOrderId: buyOrder.orderId,
     };
@@ -175,7 +189,7 @@ async function placeBuyOrder(symbol, maxSpend) {
       "STOP_MARKET",
       "SELL",
       symbol,
-      qty,
+      qtyFixed,
       null,
       {
         stopPrice: stopLoss,
@@ -189,7 +203,7 @@ async function placeBuyOrder(symbol, maxSpend) {
       "TAKE_PROFIT_MARKET",
       "SELL",
       symbol,
-      qty,
+      qtyFixed,
       null,
       {
         stopPrice: takeProfit,
@@ -219,18 +233,33 @@ async function placeShortOrder(symbol, maxSpend) {
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
   const adjustedEntryPrice = maxSpend / qty;
-  const stopLoss = (adjustedEntryPrice * 1.02).toFixed(6);
-  const takeProfit = (adjustedEntryPrice * 0.99).toFixed(6);
+
+  const exchangeInfo = await binance.futuresExchangeInfo();
+  const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+  const pricePrecision = symbolInfo.pricePrecision;
+  const quantityPrecision = symbolInfo.quantityPrecision;
+  const investedAmount = qty * adjustedEntryPrice;
+  const lossAmount = investedAmount * 0.02; // 2%
+  const profitAmount = investedAmount * 0.01; // 1%
+
+  const stopLoss = (adjustedEntryPrice + lossAmount / qty).toFixed(
+    pricePrecision
+  );
+  const takeProfit = (adjustedEntryPrice - profitAmount / qty).toFixed(
+    pricePrecision
+  );
+  const qtyFixed = qty.toFixed(quantityPrecision);
+
   const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
 
   if (parseFloat(stopLoss) > currentPrice) {
-    const shortOrder = await binance.futuresMarketSell(symbol, qty);
+    const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
     const shortOrderDetails = {
       side: "SHORT",
       symbol,
-      quantity: qty,
+      quantity: qtyFixed,
       ShortTimeCurrentPrice: entryPrice,
       placeOrderId: shortOrder.orderId,
     };
@@ -247,7 +276,7 @@ async function placeShortOrder(symbol, maxSpend) {
       "STOP_MARKET",
       "BUY",
       symbol,
-      qty,
+      qtyFixed,
       null,
       {
         stopPrice: stopLoss,
@@ -261,7 +290,7 @@ async function placeShortOrder(symbol, maxSpend) {
       "TAKE_PROFIT_MARKET",
       "BUY",
       symbol,
-      qty,
+      qtyFixed,
       null,
       {
         stopPrice: takeProfit,
