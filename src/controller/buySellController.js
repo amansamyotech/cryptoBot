@@ -1,4 +1,4 @@
-const tradeService = require("../service/tradeService.js");
+const tradeService = require("../service/buySellService.js");
 
 const createTrade = async (req, res) => {
   const { data } = req.body;

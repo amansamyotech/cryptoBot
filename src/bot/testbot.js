@@ -4,7 +4,7 @@ const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
 const { sendTelegram } = require("../helper/teleMassage.js");
 
-const API_ENDPOINT = "http://localhost:3000/api/trades/";
+const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
 // 🔐 Configure your Binance Futures API keys
 const binance = new Binance().options({
@@ -24,8 +24,6 @@ const symbols = [
 ];
 const interval = "5m";
 const leverage = 1; // Leverage
-
-const openPositions = {}; // Track open positions
 
 // 💰 Get wallet balance
 async function getUsdtBalance() {
@@ -66,11 +64,15 @@ async function getIndicators(symbol) {
   const closes = candles.map((c) => c.close);
   const volumes = candles.map((c) => c.volume);
 
-  const ema9 = technicalIndicators.EMA.calculate({ period: 9, values: closes });
-  const ema21 = technicalIndicators.EMA.calculate({
-    period: 21,
+  const ema20 = technicalIndicators.EMA.calculate({
+    period: 20,
     values: closes,
   });
+  const ema50 = technicalIndicators.EMA.calculate({
+    period: 50,
+    values: closes,
+  });
+
   const rsi = technicalIndicators.RSI.calculate({ period: 14, values: closes });
   const macd = technicalIndicators.MACD.calculate({
     values: closes,
@@ -83,19 +85,9 @@ async function getIndicators(symbol) {
 
   const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
 
-  console.log("----------Indicators----------", {
-    ema9: ema9.at(-1),
-    ema21: ema21.at(-1),
-    rsi: rsi.at(-1),
-    macdLine: macd.at(-1)?.MACD,
-    macdSignal: macd.at(-1)?.signal,
-    volume: volumes.at(-1),
-    avgVolume,
-  });
-
   return {
-    ema9: ema9.at(-1),
-    ema21: ema21.at(-1),
+    ema20: ema20.at(-1),
+    ema50: ema50.at(-1),
     rsi: rsi.at(-1),
     macdLine: macd.at(-1)?.MACD,
     macdSignal: macd.at(-1)?.signal,
@@ -110,23 +102,15 @@ async function decideTradeDirection(symbol) {
 
   const ind = await getIndicators(symbol);
 
-  if (
-    ind.ema9 > ind.ema21 &&
-    ind.rsi > 50 &&
-    ind.macdLine > ind.macdSignal
-    // ind.volume > ind.avgVolume * 1.5
-  ) {
-    return "LONG";
-  }
+  const trendScore = [
+    ind.ema20 > ind.ema50 ? 1 : -1,
+    ind.rsi > 55 ? 1 : ind.rsi < 45 ? -1 : 0,
+    ind.macdLine > ind.macdSignal ? 1 : -1,
+    ind.volume > ind.avgVolume * 1.5 ? 1 : 0,
+  ].reduce((a, b) => a + b, 0);
 
-  if (
-    ind.ema9 < ind.ema21 &&
-    ind.rsi < 50 &&
-    ind.macdLine < ind.macdSignal
-    // ind.volume > ind.avgVolume * 1.2
-  ) {
-    return "SHORT";
-  }
+  if (trendScore >= 3) return "LONG";
+  if (trendScore <= -2) return "SHORT";
 
   return "HOLD";
 }
@@ -138,11 +122,9 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   if (decision === "LONG") {
     sendTelegram(`✨ LONG SIGNAL for ${symbol}`);
     await placeBuyOrder(symbol, maxSpendPerTrade);
-    openPositions[symbol] = true;
   } else if (decision === "SHORT") {
     sendTelegram(`✨ SHORT SIGNAL for ${symbol}`);
     await placeShortOrder(symbol, maxSpendPerTrade);
-    openPositions[symbol] = true;
   } else {
     sendTelegram(`No trade signal for ${symbol}`);
     console.log(`No trade signal for ${symbol}`);
@@ -156,12 +138,11 @@ async function placeBuyOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
-
-  const stopLoss = (entryPrice * 0.99 - 0.0001).toFixed(6);
-  const takeProfit = (entryPrice * 1.01 + 0.0001).toFixed(6);
+  const adjustedEntryPrice = maxSpend / qty;
+  const stopLoss = (adjustedEntryPrice * 0.99).toFixed(6);
+  const takeProfit = (adjustedEntryPrice * 1.01).toFixed(6);
 
   const buyOrder = await binance.futuresMarketBuy(symbol, qty);
-  sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
   console.log(`Bought ${symbol} at ${entryPrice}`);
   const buyOrderDetails = {
     side: "LONG",
@@ -174,6 +155,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const tradeResponse = await axios.post(API_ENDPOINT, {
     data: buyOrderDetails,
   });
+  sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
   const tradeId = tradeResponse.data.tradeId;
 
   const stopLossOrder = await binance.futuresOrder(
@@ -222,8 +204,9 @@ async function placeShortOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
-  const stopLoss = (entryPrice * 1.01 + 0.0001).toFixed(6);
-  const takeProfit = (entryPrice * 0.99 - 0.0001).toFixed(6);
+  const adjustedEntryPrice = maxSpend / qty;
+  const stopLoss = (adjustedEntryPrice * 1.01).toFixed(6);
+  const takeProfit = (adjustedEntryPrice * 0.99).toFixed(6);
 
   const shortOrder = await binance.futuresMarketSell(symbol, qty);
   sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
@@ -286,7 +269,7 @@ setInterval(async () => {
   const usableBalance = totalBalance - 6; // Keep $6 reserve
   const maxSpendPerTrade = usableBalance / symbols.length;
 
-  if (usableBalance <= 0) {
+  if (usableBalance <= 6) {
     console.log("Not enough balance to trade.");
     return;
   }
@@ -315,7 +298,7 @@ async function checkOrders(symbol) {
     const response = await axios.get(`${API_ENDPOINT}${symbol}`);
     const { tradeDetails, found } = response.data?.data;
     if (found) {
-      const { stopLossOrderId, takeProfitOrderId } = tradeDetails;
+      const { stopLossOrderId, takeProfitOrderId, objectId } = tradeDetails;
       if (!stopLossOrderId || !takeProfitOrderId) {
         console.log(`No orders found for ${symbol}`);
         return;
@@ -344,6 +327,9 @@ async function checkOrders(symbol) {
         await binance.futuresCancel(symbol, takeProfitOrderId);
 
         console.log(`Both orders for ${symbol} have been canceled.`);
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: { status: "1" },
+        });
       }
     }
   } catch (error) {
@@ -351,14 +337,8 @@ async function checkOrders(symbol) {
   }
 }
 
-function startOrderCheck(symbol) {
-  setInterval(() => {
-    for (const sym of symbols) {
-      try {
-        checkOrders(sym);
-      } catch (err) {
-        console.error(`Error with ${sym}:`, err);
-      }
-    }
-  }, 30000);
-}
+setInterval(async () => {
+  for (const sym of symbols) {
+    await checkOrders(sym);
+  }
+}, 30000);

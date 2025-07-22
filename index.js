@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const tradeRoutes = require("./src/routes/tradeRoutes.js");
+const buySellRoutes = require("./src/routes/buySellRoutes.js");
 const dotenv = require("dotenv");
 
 dotenv.config();
@@ -21,6 +22,7 @@ mongoose
   });
 
 app.use("/api/trades", tradeRoutes);
+app.use("/api/buySell", buySellRoutes);
 
 app.get("/", (req, res) => {
   res.send("🚀 Trade API is running...");

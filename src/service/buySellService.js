@@ -53,6 +53,7 @@ const getDetailsWithSymbol = async (symbol) => {
       const tradeDetails = {
         stopLossOrderId: trade.stopLossOrderId,
         takeProfitOrderId: trade.profitOrderId,
+        objectId: trade._id,
       };
       //get open trades
       return { symbol, tradeDetails, found: true };

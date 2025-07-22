@@ -141,9 +141,9 @@ async function placeBuyOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
-
-  const stopLoss = (maxSpend * 0.99 - 0.0001).toFixed(6);
-  const takeProfit = (maxSpend * 1.01 + 0.0001).toFixed(6);
+  const adjustedEntryPrice = maxSpend / qty;
+  const stopLoss = (adjustedEntryPrice * 0.99).toFixed(6);
+  const takeProfit = (adjustedEntryPrice * 1.01).toFixed(6);
 
   await binance.futuresMarketBuy(symbol, qty);
   sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
@@ -171,8 +171,9 @@ async function placeShortOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
-  const stopLoss = (maxSpend * 1.01 + 0.0001).toFixed(6);
-  const takeProfit = (maxSpend * 0.99 - 0.0001).toFixed(6);
+  const adjustedEntryPrice = maxSpend / qty;
+  const stopLoss = (adjustedEntryPrice * 1.01).toFixed(6);
+  const takeProfit = (adjustedEntryPrice * 0.99).toFixed(6);
 
   await binance.futuresMarketSell(symbol, qty);
   sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
