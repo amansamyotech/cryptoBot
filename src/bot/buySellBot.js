@@ -61,8 +61,6 @@ async function getCandles(symbol, interval, limit = 100) {
 // 📊 Calculate indicators
 async function getIndicators(symbol) {
   const candles = await getCandles(symbol, interval);
-  console.log(`candles---------->>>>>>>>>>`, candles);
-
   const closes = candles.map((c) => c.close);
   const volumes = candles.map((c) => c.volume);
 
@@ -139,8 +137,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 
   const decision = await decideTradeDirection(symbol);
-  console.log(`decision`, decision);
-
+  
   if (decision === "LONG") {
     sendTelegram(`✨ LONG SIGNAL for ${symbol}`);
     await placeBuyOrder(symbol, maxSpendPerTrade);
@@ -161,8 +158,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
-  console.log(`qty------->`, qty);
-
+  
   const stopLoss = (entryPrice * 0.99).toFixed(2);
 
   await binance.futuresMarketBuy(symbol, qty);
