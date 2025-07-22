@@ -61,6 +61,8 @@ async function getCandles(symbol, interval, limit = 100) {
 // 📊 Calculate indicators
 async function getIndicators(symbol) {
   const candles = await getCandles(symbol, interval);
+  console.log(`candles---------->>>>>>>>>>`, candles);
+
   const closes = candles.map((c) => c.close);
   const volumes = candles.map((c) => c.volume);
 
@@ -81,6 +83,16 @@ async function getIndicators(symbol) {
 
   const avgVolume = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
 
+  console.log("----------Indicators----------", {
+    ema9: ema9.at(-1),
+    ema21: ema21.at(-1),
+    rsi: rsi.at(-1),
+    macdLine: macd.at(-1)?.MACD,
+    macdSignal: macd.at(-1)?.signal,
+    volume: volumes.at(-1),
+    avgVolume,
+  });
+
   return {
     ema9: ema9.at(-1),
     ema21: ema21.at(-1),
@@ -94,6 +106,8 @@ async function getIndicators(symbol) {
 
 // 🧠 Decide Trade Direction
 async function decideTradeDirection(symbol) {
+  console.log(`decideTradeDirection(symbol)`, symbol);
+
   const ind = await getIndicators(symbol);
 
   if (
@@ -125,6 +139,8 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 
   const decision = await decideTradeDirection(symbol);
+  console.log(`decision`, decision);
+
   if (decision === "LONG") {
     sendTelegram(`✨ LONG SIGNAL for ${symbol}`);
     await placeBuyOrder(symbol, maxSpendPerTrade);
