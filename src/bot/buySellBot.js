@@ -160,6 +160,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
 
   const stopLoss = (entryPrice * 0.99).toFixed(2);
+  const takeProfit = (entryPrice * 0.99).toFixed(2);
 
   await binance.futuresMarketBuy(symbol, qty);
   sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
@@ -171,6 +172,14 @@ async function placeBuyOrder(symbol, maxSpend) {
     timeInForce: "GTC",
   });
   console.log(`Stop loss set at ${stopLoss} for ${symbol}`);
+
+  await binance.futuresOrder("TAKE_PROFIT_MARKET", "SELL", symbol, qty, null, {
+    stopPrice: takeProfit,
+    reduceOnly: true,
+    timeInForce: "GTC",
+  });
+
+  console.log(`Take profit set at ${takeProfit} for ${symbol}`);
 }
 
 // 📉 Place Short Order + Stop Loss
@@ -180,18 +189,25 @@ async function placeShortOrder(symbol, maxSpend) {
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(4));
   const stopLoss = (entryPrice * 1.01).toFixed(2);
+  const takeProfit = (entryPrice * 0.99).toFixed(2);
 
   await binance.futuresMarketSell(symbol, qty);
   sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
   console.log(`Shorted ${symbol} at ${entryPrice}`);
 
-  await binance.futuresOrder("STOP_MARKET", symbol, qty, null, {
+  await binance.futuresOrder("STOP_MARKET", "BUY", symbol, qty, null, {
     stopPrice: stopLoss,
-    side: "BUY",
     reduceOnly: true,
     timeInForce: "GTC",
   });
   console.log(`Stop loss (short) set at ${stopLoss} for ${symbol}`);
+
+  await binance.futuresOrder("TAKE_PROFIT_MARKET", "BUY", symbol, qty, null, {
+    stopPrice: takeProfit,
+    reduceOnly: true,
+    timeInForce: "GTC",
+  });
+  console.log(`Take profit (short) set at ${takeProfit} for ${symbol}`);
 }
 
 // 🔁 Main Loop
