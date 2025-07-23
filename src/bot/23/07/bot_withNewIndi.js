@@ -2,7 +2,7 @@
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
-const { sendTelegram } = require("../../../helper/teleMassage.js")
+const { sendTelegram } = require("../../../helper/teleMassage.js");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
@@ -53,6 +53,14 @@ async function setLeverage(symbol) {
 // ⏳ Fetch candlestick data
 async function getCandles(symbol, interval, limit = 100) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
+  console.log("candles", {
+    open: parseFloat(c.open),
+    high: parseFloat(c.high),
+    low: parseFloat(c.low),
+    close: parseFloat(c.close),
+    volume: parseFloat(c.volume),
+  });
+
   return candles.map((c) => ({
     open: parseFloat(c.open),
     high: parseFloat(c.high),
@@ -126,6 +134,19 @@ async function getIndicators(symbol) {
 
   const latestVolume = volumes.pop();
   const avgVolume = volumes.slice(-20).reduce((sum, v) => sum + v, 0) / 20;
+  console.log(`indicators`, {
+    ema20,
+    ema50,
+    rsi14,
+    macdLine,
+    macdSignal,
+    bbUpper: bb.upper,
+    bbLower: bb.lower,
+    adx,
+    vwma,
+    latestVolume,
+    avgVolume,
+  });
 
   return {
     ema20,
@@ -176,6 +197,7 @@ async function decideTradeDirection(symbol) {
   // Candlestick patterns
   if (isBullishEngulf(prev, curr)) score += 2;
   if (isBearishEngulf(prev, curr)) score += 2;
+  console.log(`decideTradeDirection(symbol)`, symbol, `score: ${score}`);
 
   // Determine direction
   if (score >= 6) return "LONG";
