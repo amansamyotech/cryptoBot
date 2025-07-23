@@ -194,8 +194,8 @@ async function decideTradeDirection(symbol) {
   if (isBearishEngulf(prev, curr)) score += 2;
   console.log(`Trade Decision Score for ${symbol}:`, score);
 
-  if (score >= 4) return "LONG";
-  if (score <= -4) return "SHORT";
+  if (score >= 3) return "LONG";
+  if (score <= -3) return "SHORT";
   return "HOLD";
 }
 
@@ -313,8 +313,8 @@ async function placeShortOrder(symbol, maxSpend) {
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
-  const lossAmount = investedAmount * 0.01; // 2%
-  const profitAmount = investedAmount * 0.02; // 1%
+  const lossAmount = investedAmount * 0.02; // 2%
+  const profitAmount = investedAmount * 0.01; // 1%
 
   const stopLoss = (adjustedEntryPrice + lossAmount / qty).toFixed(
     pricePrecision
@@ -414,7 +414,7 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 60 * 2000); // Run every 5 minute
+}, 60 * 1500); // Run every 5 minute
 
 async function checkOrders(symbol) {
   try {
