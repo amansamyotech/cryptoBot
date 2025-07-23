@@ -209,7 +209,7 @@ async function decideTradeDirection(symbol) {
     score += 1;
   if (curr) {
     const lastClose = curr.close;
-    if (bbLower !== null && ind.rsi14 < 35 && lastClose < ind.bbLower)
+    if (ind.bbLower !== null && ind.rsi14 < 35 && lastClose < ind.bbLower)
       score += 2;
     if (ind.bbUpper !== null && ind.rsi14 > 65 && lastClose > ind.bbUpper)
       score += 2;
