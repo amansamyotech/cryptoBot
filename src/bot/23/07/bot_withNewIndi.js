@@ -2,7 +2,7 @@
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
-const { sendTelegram } = require("../helper/teleMassage.js");
+const { sendTelegram } = require("../../../helper/teleMassage.js")
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
