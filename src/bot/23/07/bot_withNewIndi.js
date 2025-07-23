@@ -54,17 +54,7 @@ async function setLeverage(symbol) {
 async function getCandles(symbol, interval, limit = 100) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
-  console.log(
-    `candles`,
-    candles.map((c) => ({
-      open: parseFloat(c.open),
-      high: parseFloat(c.high),
-      low: parseFloat(c.low),
-      close: parseFloat(c.close),
-      volume: parseFloat(c.volume),
-    }))
-  );
-
+  
   return candles.map((c) => ({
     open: parseFloat(c.open),
     high: parseFloat(c.high),
@@ -153,20 +143,6 @@ async function getIndicators(symbol) {
     volumes.length >= 20
       ? volumes.slice(-20).reduce((sum, v) => sum + v, 0) / 20
       : null;
-  console.log(
-    `getIndicators(symbol)`,
-    ema20,
-    ema50,
-    rsi14,
-    macdLine,
-    macdSignal,
-    bbUpper,
-    bbLower,
-    adx,
-    vwma,
-    latestVolume,
-    avgVolume
-  );
   return {
     ema20,
     ema50,
