@@ -24,7 +24,7 @@ const symbols = [
   //   "DOGEUSDT",
 ];
 const interval = "5m";
-const leverage = 1; // Leverage
+const leverage = 3; // Leverage
 
 // 💰 Get wallet balance
 async function getUsdtBalance() {
