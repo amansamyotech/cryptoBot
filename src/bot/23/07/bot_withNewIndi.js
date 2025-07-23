@@ -228,7 +228,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
   const lossAmount = investedAmount * 0.01; // 2%
-  const profitAmount = investedAmount * 0.02; // 1%
+  const profitAmount = investedAmount * 0.01; // 1%
 
   const stopLoss = (adjustedEntryPrice - lossAmount / qty).toFixed(
     pricePrecision
@@ -313,7 +313,7 @@ async function placeShortOrder(symbol, maxSpend) {
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
-  const lossAmount = investedAmount * 0.02; // 2%
+  const lossAmount = investedAmount * 0.01; // 2%
   const profitAmount = investedAmount * 0.01; // 1%
 
   const stopLoss = (adjustedEntryPrice + lossAmount / qty).toFixed(
