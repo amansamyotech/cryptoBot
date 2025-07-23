@@ -54,7 +54,6 @@ async function setLeverage(symbol) {
 async function getCandles(symbol, interval, limit = 100) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
-  
   return candles.map((c) => ({
     open: parseFloat(c.open),
     high: parseFloat(c.high),
@@ -415,7 +414,7 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 60 * 1000); // Run every 5 minute
+}, 60 * 3000); // Run every 5 minute
 
 async function checkOrders(symbol) {
   try {
