@@ -195,8 +195,8 @@ async function decideTradeDirection(symbol) {
   if (isBearishEngulf(prev, curr)) score += 2;
   console.log(`Trade Decision Score for ${symbol}:`, score);
 
-  if (score >= 6) return "LONG";
-  if (score <= -6) return "SHORT";
+  if (score >= 4) return "LONG";
+  if (score <= -4) return "SHORT";
   return "HOLD";
 }
 
