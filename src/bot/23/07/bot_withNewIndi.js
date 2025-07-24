@@ -23,7 +23,7 @@ const symbols = [
   "1000SATSUSDT",
   //   "DOGEUSDT",
 ];
-const interval = "5m";
+const interval = "3m";
 const leverage = 3; // Leverage
 
 // 💰 Get wallet balance
@@ -228,7 +228,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
   const lossAmount = investedAmount * 0.01; // 2%
-  const profitAmount = investedAmount * 0.01; // 1%
+  const profitAmount = investedAmount * 0.02; // 1%
 
   const stopLoss = (adjustedEntryPrice - lossAmount / qty).toFixed(
     pricePrecision
@@ -314,7 +314,7 @@ async function placeShortOrder(symbol, maxSpend) {
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
   const lossAmount = investedAmount * 0.01; // 2%
-  const profitAmount = investedAmount * 0.01; // 1%
+  const profitAmount = investedAmount * 0.02; // 1%
 
   const stopLoss = (adjustedEntryPrice + lossAmount / qty).toFixed(
     pricePrecision
@@ -389,7 +389,7 @@ async function placeShortOrder(symbol, maxSpend) {
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6; // Keep $6 reserve
+  const usableBalance = totalBalance - 5.1; // Keep $6 reserve
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   if (usableBalance <= 6) {
@@ -414,7 +414,7 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err);
     }
   }
-}, 60 * 1500); // Run every 5 minute
+}, 60 * 1000); // Run every 5 minute
 
 async function checkOrders(symbol) {
   try {
