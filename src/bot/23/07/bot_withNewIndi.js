@@ -65,13 +65,107 @@ async function getCandles(symbol, interval, limit = 100) {
 
 // 📊 Calculate indicators
 async function getIndicators(symbol) {
+  //   const candles = await getCandles(symbol, interval, 100);
+  //   const closes = candles.map((c) => c.close);
+  //   const highs = candles.map((c) => c.high);
+  //   const lows = candles.map((c) => c.low);
+  //   const volumes = candles.map((c) => c.volume);
+
+  //   // EMA
+  //   const ema20Arr = technicalIndicators.EMA.calculate({
+  //     period: 20,
+  //     values: closes,
+  //   });
+  //   const ema50Arr = technicalIndicators.EMA.calculate({
+  //     period: 50,
+  //     values: closes,
+  //   });
+  //   const ema20 = ema20Arr.length ? ema20Arr.pop() : null;
+  //   const ema50 = ema50Arr.length ? ema50Arr.pop() : null;
+
+  //   // RSI
+  //   const rsiArr = technicalIndicators.RSI.calculate({
+  //     period: 14,
+  //     values: closes,
+  //   });
+  //   const rsi14 = rsiArr.length ? rsiArr.pop() : null;
+
+  //   // MACD
+  //   const macdArr = technicalIndicators.MACD.calculate({
+  //     values: closes,
+  //     fastPeriod: 12,
+  //     slowPeriod: 26,
+  //     signalPeriod: 9,
+  //     SimpleMAOscillator: false,
+  //     SimpleMASignal: false,
+  //   });
+  //   const macdData = macdArr.length ? macdArr.pop() : {};
+  //   const macdLine = macdData.MACD ?? null;
+  //   const macdSignal = macdData.signal ?? null;
+
+  //   // Bollinger Bands
+  //   const bbArr = technicalIndicators.BollingerBands.calculate({
+  //     period: 20,
+  //     stdDev: 2,
+  //     values: closes,
+  //   });
+  //   const bbData = bbArr.length ? bbArr.pop() : {};
+  //   const bbUpper = bbData.upper ?? null;
+  //   const bbLower = bbData.lower ?? null;
+
+  //   // ADX
+  //   const adxArr = technicalIndicators.ADX.calculate({
+  //     period: 14,
+  //     high: highs,
+  //     low: lows,
+  //     close: closes,
+  //   });
+  //   const adxData = adxArr.length ? adxArr.pop() : {};
+  //   const adx = adxData.adx ?? null;
+
+  //   // VWMA manual calculation (20-period)
+  //   let vwma = null;
+  //   if (closes.length >= 20 && volumes.length >= 20) {
+  //     const sliceCloses = closes.slice(-20);
+  //     const sliceVolumes = volumes.slice(-20);
+  //     const totalVol = sliceVolumes.reduce((a, b) => a + b, 0);
+  //     const weightedSum = sliceCloses.reduce(
+  //       (sum, c, i) => sum + c * sliceVolumes[i],
+  //       0
+  //     );
+  //     vwma = totalVol ? weightedSum / totalVol : null;
+  //   }
+
+  //   // Volume
+  //   const latestVolume = volumes.length ? volumes.pop() : null;
+  //   const avgVolume =
+  //     volumes.length >= 20
+  //       ? volumes.slice(-20).reduce((sum, v) => sum + v, 0) / 20
+  //       : null;
+  //   return {
+  //     ema20,
+  //     ema50,
+  //     rsi14,
+  //     macdLine,
+  //     macdSignal,
+  //     bbUpper,
+  //     bbLower,
+  //     adx,
+  //     vwma,
+  //     latestVolume,
+  //     avgVolume,
+  //   };
   const candles = await getCandles(symbol, interval, 100);
   const closes = candles.map((c) => c.close);
   const highs = candles.map((c) => c.high);
   const lows = candles.map((c) => c.low);
   const volumes = candles.map((c) => c.volume);
 
-  // EMA
+  // EMA calculations
+  const ema9Arr = technicalIndicators.EMA.calculate({
+    period: 9,
+    values: closes,
+  });
   const ema20Arr = technicalIndicators.EMA.calculate({
     period: 20,
     values: closes,
@@ -80,6 +174,8 @@ async function getIndicators(symbol) {
     period: 50,
     values: closes,
   });
+
+  const ema9 = ema9Arr.length ? ema9Arr.pop() : null;
   const ema20 = ema20Arr.length ? ema20Arr.pop() : null;
   const ema50 = ema50Arr.length ? ema50Arr.pop() : null;
 
@@ -89,6 +185,13 @@ async function getIndicators(symbol) {
     values: closes,
   });
   const rsi14 = rsiArr.length ? rsiArr.pop() : null;
+
+  // Additional RSI for confirmation
+  const rsi7Arr = technicalIndicators.RSI.calculate({
+    period: 7,
+    values: closes,
+  });
+  const rsi7 = rsi7Arr.length ? rsi7Arr.pop() : null;
 
   // MACD
   const macdArr = technicalIndicators.MACD.calculate({
@@ -102,6 +205,7 @@ async function getIndicators(symbol) {
   const macdData = macdArr.length ? macdArr.pop() : {};
   const macdLine = macdData.MACD ?? null;
   const macdSignal = macdData.signal ?? null;
+  const macdHistogram = macdData.histogram ?? null;
 
   // Bollinger Bands
   const bbArr = technicalIndicators.BollingerBands.calculate({
@@ -112,6 +216,7 @@ async function getIndicators(symbol) {
   const bbData = bbArr.length ? bbArr.pop() : {};
   const bbUpper = bbData.upper ?? null;
   const bbLower = bbData.lower ?? null;
+  const bbMiddle = bbData.middle ?? null;
 
   // ADX
   const adxArr = technicalIndicators.ADX.calculate({
@@ -122,6 +227,24 @@ async function getIndicators(symbol) {
   });
   const adxData = adxArr.length ? adxArr.pop() : {};
   const adx = adxData.adx ?? null;
+
+  // Stochastic
+  const stochArr = technicalIndicators.Stochastic.calculate({
+    high: highs,
+    low: lows,
+    close: closes,
+    period: 14,
+    signalPeriod: 3,
+  });
+  const stochData = stochArr.length ? stochArr.pop() : {};
+  const stochK = stochData.k ?? null;
+  const stochD = stochData.d ?? null;
+
+  // Price momentum
+  const currentPrice = closes[closes.length - 1];
+  const prevPrice = closes[closes.length - 2];
+  const priceChange = currentPrice - prevPrice;
+  const priceMomentum = (priceChange / prevPrice) * 100;
 
   // VWMA manual calculation (20-period)
   let vwma = null;
@@ -136,24 +259,33 @@ async function getIndicators(symbol) {
     vwma = totalVol ? weightedSum / totalVol : null;
   }
 
-  // Volume
-  const latestVolume = volumes.length ? volumes.pop() : null;
+  // Volume analysis
+  const latestVolume = volumes.length ? volumes[volumes.length - 1] : null;
   const avgVolume =
     volumes.length >= 20
       ? volumes.slice(-20).reduce((sum, v) => sum + v, 0) / 20
       : null;
+
   return {
+    ema9,
     ema20,
     ema50,
     rsi14,
+    rsi7,
     macdLine,
     macdSignal,
+    macdHistogram,
     bbUpper,
     bbLower,
+    bbMiddle,
     adx,
+    stochK,
+    stochD,
     vwma,
     latestVolume,
     avgVolume,
+    currentPrice,
+    priceMomentum,
   };
 }
 
@@ -164,38 +296,211 @@ function isBearishEngulf(prev, curr) {
   return prev && curr && curr.open > prev.close && curr.close < prev.open;
 }
 
+function isHammer(candle) {
+  if (!candle) return false;
+  const bodySize = Math.abs(candle.close - candle.open);
+  const lowerShadow = Math.min(candle.open, candle.close) - candle.low;
+  const upperShadow = candle.high - Math.max(candle.open, candle.close);
+  return lowerShadow > bodySize * 2 && upperShadow < bodySize;
+}
+
 // 🧠 Decide Trade Direction
 async function decideTradeDirection(symbol) {
+  //
   const ind = await getIndicators(symbol);
-  const candles = await getCandles(symbol, interval, 2);
-  const [prev, curr] = candles;
+  const candles = await getCandles(symbol, interval, 3);
+  const [prev2, prev, curr] = candles;
 
-  let score = 0;
-  if (ind.ema20 !== null && ind.ema50 !== null)
-    score += ind.ema20 > ind.ema50 ? 1 : -1;
-  if (ind.rsi14 !== null) score += ind.rsi14 > 55 ? 1 : ind.rsi14 < 45 ? -1 : 0;
-  if (ind.macdLine !== null && ind.macdSignal !== null)
-    score += ind.macdLine > ind.macdSignal ? 1 : -1;
-  if (
-    ind.latestVolume !== null &&
-    ind.avgVolume !== null &&
-    ind.latestVolume > ind.avgVolume * 1.5
-  )
-    score += 1;
-  if (curr) {
-    const lastClose = curr.close;
-    if (ind.bbLower !== null && ind.rsi14 < 35 && lastClose < ind.bbLower)
-      score += 2;
-    if (ind.bbUpper !== null && ind.rsi14 > 65 && lastClose > ind.bbUpper)
-      score += 2;
+  let bullishScore = 0;
+  let bearishScore = 0;
+  let confidence = 0;
+
+  // === TREND ANALYSIS ===
+  // EMA Trend (Strong Signal)
+  if (ind.ema9 !== null && ind.ema20 !== null && ind.ema50 !== null) {
+    // Strong bullish trend
+    if (ind.ema9 > ind.ema20 && ind.ema20 > ind.ema50) {
+      bullishScore += 3;
+      confidence += 1;
+    }
+    // Strong bearish trend
+    else if (ind.ema9 < ind.ema20 && ind.ema20 < ind.ema50) {
+      bearishScore += 3;
+      confidence += 1;
+    }
+    // Price above/below EMAs
+    if (ind.currentPrice > ind.ema20) bullishScore += 1;
+    else bearishScore += 1;
   }
-  if (ind.adx !== null && ind.adx > 25) score += 1;
-  if (isBullishEngulf(prev, curr)) score += 2;
-  if (isBearishEngulf(prev, curr)) score += 2;
-  console.log(`Trade Decision Score for ${symbol}:`, score);
 
-  if (score >= 3) return "LONG";
-  if (score <= -3) return "SHORT";
+  // === MOMENTUM ANALYSIS ===
+  // RSI Signals (More sensitive)
+  if (ind.rsi14 !== null) {
+    if (ind.rsi14 > 50) bullishScore += 1;
+    else bearishScore += 1;
+
+    // Oversold/Overbought with divergence potential
+    if (ind.rsi14 < 35) {
+      bullishScore += 2; // Potential reversal
+      confidence += 1;
+    }
+    if (ind.rsi14 > 65) {
+      bearishScore += 2; // Potential reversal
+      confidence += 1;
+    }
+  }
+
+  // Fast RSI for quick signals
+  if (ind.rsi7 !== null) {
+    if (ind.rsi7 > 60) bullishScore += 1;
+    else if (ind.rsi7 < 40) bearishScore += 1;
+  }
+
+  // MACD Analysis
+  if (ind.macdLine !== null && ind.macdSignal !== null) {
+    if (ind.macdLine > ind.macdSignal) {
+      bullishScore += 2;
+      confidence += 1;
+    } else {
+      bearishScore += 2;
+      confidence += 1;
+    }
+
+    // MACD Histogram momentum
+    if (ind.macdHistogram !== null) {
+      if (ind.macdHistogram > 0) bullishScore += 1;
+      else bearishScore += 1;
+    }
+  }
+
+  // === VOLATILITY & SUPPORT/RESISTANCE ===
+  // Bollinger Bands
+  if (ind.bbUpper !== null && ind.bbLower !== null && ind.bbMiddle !== null) {
+    const currentPrice = ind.currentPrice;
+    const bbPosition =
+      (currentPrice - ind.bbLower) / (ind.bbUpper - ind.bbLower);
+
+    // Price near lower band (potential bounce)
+    if (bbPosition < 0.2 && ind.rsi14 < 40) {
+      bullishScore += 2;
+      confidence += 1;
+    }
+    // Price near upper band (potential drop)
+    else if (bbPosition > 0.8 && ind.rsi14 > 60) {
+      bearishScore += 2;
+      confidence += 1;
+    }
+    // Price above/below middle band
+    else if (currentPrice > ind.bbMiddle) bullishScore += 1;
+    else bearishScore += 1;
+  }
+
+  // === VOLUME ANALYSIS ===
+  if (ind.latestVolume !== null && ind.avgVolume !== null) {
+    const volumeRatio = ind.latestVolume / ind.avgVolume;
+
+    // High volume confirmation
+    if (volumeRatio > 1.5) {
+      confidence += 2;
+      // Volume supports the direction
+      if (ind.priceMomentum > 0) bullishScore += 2;
+      else bearishScore += 2;
+    }
+    // Above average volume
+    else if (volumeRatio > 1.2) {
+      if (ind.priceMomentum > 0) bullishScore += 1;
+      else bearishScore += 1;
+    }
+  }
+
+  // === TREND STRENGTH ===
+  // ADX for trend strength
+  if (ind.adx !== null && ind.adx > 20) {
+    confidence += 1;
+    if (ind.adx > 30) confidence += 1; // Very strong trend
+  }
+
+  // === STOCHASTIC ===
+  if (ind.stochK !== null && ind.stochD !== null) {
+    // Stochastic oversold
+    if (ind.stochK < 25 && ind.stochD < 25) {
+      bullishScore += 2;
+      confidence += 1;
+    }
+    // Stochastic overbought
+    else if (ind.stochK > 75 && ind.stochD > 75) {
+      bearishScore += 2;
+      confidence += 1;
+    }
+    // Stochastic crossover
+    else if (ind.stochK > ind.stochD) bullishScore += 1;
+    else bearishScore += 1;
+  }
+
+  // === PRICE PATTERNS ===
+  // Candlestick patterns
+  if (isBullishEngulf(prev, curr)) {
+    bullishScore += 3;
+    confidence += 2;
+  }
+  if (isBearishEngulf(prev, curr)) {
+    bearishScore += 3;
+    confidence += 2;
+  }
+
+  // Hammer pattern (potential reversal)
+  if (isHammer(curr) && ind.rsi14 < 40) {
+    bullishScore += 2;
+    confidence += 1;
+  }
+
+  // === PRICE MOMENTUM ===
+  // Recent price momentum
+  if (ind.priceMomentum > 0.5) bullishScore += 1;
+  else if (ind.priceMomentum < -0.5) bearishScore += 1;
+
+  // Strong momentum
+  if (Math.abs(ind.priceMomentum) > 1) confidence += 1;
+
+  // === DECISION LOGIC ===
+  const totalBullish = bullishScore;
+  const totalBearish = bearishScore;
+  const scoreAdvantage = Math.abs(totalBullish - totalBearish);
+
+  console.log(`\n=== ${symbol} Analysis ===`);
+  console.log(`Bullish Score: ${totalBullish}`);
+  console.log(`Bearish Score: ${totalBearish}`);
+  console.log(`Confidence: ${confidence}`);
+  console.log(`Score Advantage: ${scoreAdvantage}`);
+  console.log(`RSI: ${ind.rsi14?.toFixed(2) || "N/A"}`);
+  console.log(`Price Momentum: ${ind.priceMomentum?.toFixed(3) || "N/A"}%`);
+  console.log(`ADX: ${ind.adx?.toFixed(2) || "N/A"}`);
+
+  // More aggressive decision thresholds
+  const minAdvantage = 3; // Reduced from 6
+  const minConfidence = 2; // Minimum confidence required
+
+  if (
+    totalBullish > totalBearish &&
+    scoreAdvantage >= minAdvantage &&
+    confidence >= minConfidence
+  ) {
+    console.log(`🟢 DECISION: LONG`);
+    return "LONG";
+  }
+
+  if (
+    totalBearish > totalBullish &&
+    scoreAdvantage >= minAdvantage &&
+    confidence >= minConfidence
+  ) {
+    console.log(`🔴 DECISION: SHORT`);
+    return "SHORT";
+  }
+
+  console.log(
+    `⚪ DECISION: HOLD (Advantage: ${scoreAdvantage}, Confidence: ${confidence})`
+  );
   return "HOLD";
 }
 
