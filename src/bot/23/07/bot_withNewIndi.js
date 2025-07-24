@@ -40,6 +40,34 @@ async function getUsdtBalance() {
   }
 }
 
+async function setLeverageAndMarginType(symbol) {
+  try {
+    await binance.futuresMarginType(symbol, "ISOLATED");
+    console.log(`Margin type set to ISOLATED for ${symbol}`);
+
+    await binance.futuresLeverage(symbol, leverage);
+    console.log(`Leverage set to ${leverage}x for ${symbol}`);
+  } catch (err) {
+    console.error(
+      `Failed to set leverage/margin for ${symbol}:`,
+      err.body || err.message
+    );
+    if (err.body && err.body.includes("No need to change margin type")) {
+      console.log(`Margin type already set to ISOLATED for ${symbol}`);
+      // Still try to set leverage
+      try {
+        await binance.futuresLeverage(symbol, leverage);
+        console.log(`Leverage set to ${leverage}x for ${symbol}`);
+      } catch (leverageErr) {
+        console.error(
+          `Failed to set leverage for ${symbol}:`,
+          leverageErr.body || leverageErr.message
+        );
+      }
+    }
+  }
+}
+
 // Set leverage before trading
 async function setLeverage(symbol) {
   try {
@@ -255,7 +283,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 // 💰 Place Buy Order + Stop Loss
 async function placeBuyOrder(symbol, maxSpend) {
-  await setLeverage(symbol);
+  await setLeverageAndMarginType(symbol);
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
@@ -265,15 +293,15 @@ async function placeBuyOrder(symbol, maxSpend) {
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
-  const lossAmount = investedAmount * 0.01; // 2%
-  const profitAmount = investedAmount * 0.02; // 1%
+  const stopLossPercentage = 0.01; // 1% loss
+  const takeProfitPercentage = 0.02;
+  const stopLoss = (adjustedEntryPrice * (1 - stopLossPercentage)).toFixed(
+    pricePrecision
+  );
+  const takeProfit = (adjustedEntryPrice * (1 + takeProfitPercentage)).toFixed(
+    pricePrecision
+  );
 
-  const stopLoss = (adjustedEntryPrice - lossAmount / qty).toFixed(
-    pricePrecision
-  );
-  const takeProfit = (adjustedEntryPrice + profitAmount / qty).toFixed(
-    pricePrecision
-  );
   const qtyFixed = qty.toFixed(quantityPrecision);
 
   const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
@@ -340,7 +368,7 @@ async function placeBuyOrder(symbol, maxSpend) {
 
 // 📉 Place Short Order + Stop Loss
 async function placeShortOrder(symbol, maxSpend) {
-  await setLeverage(symbol);
+  await setLeverageAndMarginType(symbol);
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const qty = parseFloat((maxSpend / entryPrice).toFixed(0));
@@ -350,16 +378,16 @@ async function placeShortOrder(symbol, maxSpend) {
   const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
-  const investedAmount = qty * adjustedEntryPrice;
-  const lossAmount = investedAmount * 0.01; // 2%
-  const profitAmount = investedAmount * 0.02; // 1%
 
-  const stopLoss = (adjustedEntryPrice + lossAmount / qty).toFixed(
+  const stopLossPercentage = 0.01; // 1% loss
+  const takeProfitPercentage = 0.02;
+  const stopLoss = (adjustedEntryPrice * (1 + stopLossPercentage)).toFixed(
     pricePrecision
   );
-  const takeProfit = (adjustedEntryPrice - profitAmount / qty).toFixed(
+  const takeProfit = (adjustedEntryPrice * (1 - takeProfitPercentage)).toFixed(
     pricePrecision
   );
+
   const qtyFixed = qty.toFixed(quantityPrecision);
 
   const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
@@ -428,7 +456,7 @@ async function placeShortOrder(symbol, maxSpend) {
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
   const usableBalance = totalBalance - 5.1; // Keep $6 reserve
-  const maxSpendPerTrade = usableBalance / symbols.length;
+  const maxSpendPerTrade = (usableBalance / symbols.length) * leverage;
 
   if (usableBalance <= 6) {
     console.log("Not enough balance to trade.");
