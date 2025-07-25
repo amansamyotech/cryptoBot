@@ -1,4 +1,3 @@
-// 📦 Dependencies
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
@@ -6,21 +5,19 @@ const { sendTelegram } = require("../../helper/teleMassage.js");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
-// 🔐 Configure your Binance Futures API keys
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
   APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
-  test: false, // Set to true for testnet
+  test: false,
 });
 
-// ⚙️ Bot Config
 const symbols = [
   "1000PEPEUSDT",
   "1000SHIBUSDT",
   "1000BONKUSDT",
   "1000FLOKIUSDT",
-//   "1000SATSUSDT",
+  //   "1000SATSUSDT",
   //   "DOGEUSDT",
 ];
 const interval = "3m";
@@ -133,6 +130,31 @@ async function getIndicators(symbol) {
     low,
   }).slice(-1)[0];
 
+  // ➕ UT BOT logic
+  const atr = technicalIndicators.ATR.calculate({
+    period: 10,
+    high,
+    low,
+    close,
+  });
+
+  let utBotSignal = "none";
+  if (atr.length >= 2) {
+    const multiplier = 1.5; // Tunable
+    const lastClose = close[close.length - 1];
+    const prevClose = close[close.length - 2];
+    const lastATR = atr[atr.length - 1];
+
+    const prevUpper = prevClose + multiplier * lastATR;
+    const prevLower = prevClose - multiplier * lastATR;
+
+    if (lastClose > prevUpper) {
+      utBotSignal = "LONG";
+    } else if (lastClose < prevLower) {
+      utBotSignal = "SHORT";
+    }
+  }
+
   return {
     ema20,
     ema50,
@@ -144,6 +166,7 @@ async function getIndicators(symbol) {
     adx: adx?.adx,
     latestVolume: volume[volume.length - 1],
     avgVolume: volume.slice(-20).reduce((acc, v) => acc + v, 0) / 20,
+    utBotSignal,
   };
 }
 
@@ -174,38 +197,33 @@ async function decideTradeDirection(symbol) {
   let score = 0;
   let signalCount = 0;
 
-  // EMA crossover (weight 1)
   if (ind.ema20 !== null && ind.ema50 !== null) {
     const val = ind.ema20 > ind.ema50 ? 1 : -1;
     score += val;
     signalCount++;
   }
 
-  // RSI (weight 1)
   if (ind.rsi14 !== null) {
     const val = ind.rsi14 > 55 ? 1 : ind.rsi14 < 45 ? -1 : 0;
     if (val !== 0) signalCount++;
     score += val;
   }
 
-  // MACD (weight 1.5)
   if (ind.macdLine !== null && ind.macdSignal !== null) {
-    const val = ind.macdLine > ind.macdSignal ? 1.5 : -1.5;
+    const val = ind.macdLine > ind.macdSignal ? 1 : -1;
     score += val;
     signalCount++;
   }
 
-  // Volume spike (weight 0.5)
   if (
     ind.latestVolume !== null &&
     ind.avgVolume !== null &&
     ind.latestVolume > ind.avgVolume * 1.5
   ) {
-    score += 0.5;
+    score += 1;
     signalCount++;
   }
 
-  // Bollinger bands + RSI (weight 2)
   if (curr) {
     const lastClose = curr.close;
     if (ind.bbLower !== null && ind.rsi14 < 35 && lastClose < ind.bbLower) {
@@ -218,25 +236,36 @@ async function decideTradeDirection(symbol) {
     }
   }
 
-  // ADX (weight 1)
-  if (ind.adx !== null && ind.adx > 30) {
+  if (ind.adx !== null && ind.adx > 25) {
     score += 1;
     signalCount++;
   }
 
-  // Engulfing patterns (weight 2.5)
   if (isBullishEngulf(prev, curr)) {
-    score += 2.5;
-    signalCount++;
-  }
-  if (isBearishEngulf(prev, curr)) {
-    score -= 2.5;
+    score += 2;
     signalCount++;
   }
 
-  // Decision thresholds (higher score & signals)
-  if (score >= 4 && signalCount >= 3) return "LONG";
-  if (score <= -4 && signalCount >= 3) return "SHORT";
+  if (isBearishEngulf(prev, curr)) {
+    score -= 2;
+    signalCount++;
+  }
+
+  // ➕ UT Bot signal (has highest priority)
+  if (ind.utBotSignal === "LONG") {
+    score += 3;
+    signalCount++;
+  } else if (ind.utBotSignal === "SHORT") {
+    score -= 3;
+    signalCount++;
+  }
+
+  console.log(
+    `Trade Decision Score for ${symbol}: ${score} | Signals: ${signalCount}`
+  );
+
+  if (score >= 3 && signalCount >= 3) return "LONG";
+  if (score <= -3 && signalCount >= 3) return "SHORT";
   return "HOLD";
 }
 
@@ -270,12 +299,6 @@ async function placeBuyOrder(symbol, maxSpend) {
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
-  const lotSizeFilter = symbolInfo.filters.find(f => f.filterType === 'LOT_SIZE');
-const priceFilter = symbolInfo.filters.find(f => f.filterType === 'PRICE_FILTER');
-
-const stepSize = parseFloat(lotSizeFilter.stepSize);
-const tickSize = parseFloat(priceFilter.tickSize);
-
 
   // 🧠 You want ROI of -1% and +2%, so divide by leverage to get price % change
   const desiredStopLossROI = -0.01; // -1% ROI
