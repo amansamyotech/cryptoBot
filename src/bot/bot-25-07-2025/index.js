@@ -19,8 +19,8 @@ const symbols = [
   "1000PEPEUSDT",
   "1000SHIBUSDT",
   "1000BONKUSDT",
-  //   "1000FLOKIUSDT",
-  //   "1000SATSUSDT",
+  "1000FLOKIUSDT",
+  "1000SATSUSDT",
   //   "DOGEUSDT",
 ];
 const interval = "3m";
@@ -235,8 +235,8 @@ async function decideTradeDirection(symbol) {
   }
 
   // Decision thresholds (higher score & signals)
-  if (score >= 5 && signalCount >= 4) return "LONG";
-  if (score <= -5 && signalCount >= 4) return "SHORT";
+  if (score >= 4 && signalCount >= 4) return "LONG";
+  if (score <= -4 && signalCount >= 4) return "SHORT";
   return "HOLD";
 }
 
