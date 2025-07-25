@@ -20,7 +20,7 @@ const symbols = [
   "1000SHIBUSDT",
   "1000BONKUSDT",
   "1000FLOKIUSDT",
-  "1000SATSUSDT",
+//   "1000SATSUSDT",
   //   "DOGEUSDT",
 ];
 const interval = "3m";
