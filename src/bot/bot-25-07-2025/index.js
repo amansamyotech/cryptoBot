@@ -24,7 +24,7 @@ const symbols = [
   //   "DOGEUSDT",
 ];
 const interval = "3m";
-const leverage = 1; // Leverage
+const leverage = 3; // Leverage
 
 // 💰 Get wallet balance
 async function getUsdtBalance() {
@@ -259,6 +259,7 @@ async function placeBuyOrder(symbol, maxSpend) {
   const price = (await binance.futuresPrices())[symbol];
   const entryPrice = parseFloat(price);
   const notionalValue = maxSpend * leverage;
+  //7 / 500 =
   const qty = parseFloat((notionalValue / entryPrice).toFixed(0));
   const adjustedEntryPrice = notionalValue / qty;
   const exchangeInfo = await binance.futuresExchangeInfo();
@@ -266,13 +267,29 @@ async function placeBuyOrder(symbol, maxSpend) {
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
-  const stopLossPercentage = 0.01; // 1% loss
-  const takeProfitPercentage = 0.02;
-  const stopLoss = (adjustedEntryPrice * (1 - stopLossPercentage)).toFixed(
+
+  // 🧠 You want ROI of -1% and +2%, so divide by leverage to get price % change
+  const desiredStopLossROI = -0.01; // -1% ROI
+  const desiredTakeProfitROI = 0.02; // +2% ROI
+
+  const priceChangeForStopLoss = desiredStopLossROI / leverage;
+  const priceChangeForTakeProfit = desiredTakeProfitROI / leverage;
+
+  const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
     pricePrecision
   );
-  const takeProfit = (adjustedEntryPrice * (1 + takeProfitPercentage)).toFixed(
-    pricePrecision
+  const takeProfit = (
+    adjustedEntryPrice *
+    (1 + priceChangeForTakeProfit)
+  ).toFixed(pricePrecision);
+
+  console.log(
+    `📉 Stop Loss ROI: ${desiredStopLossROI * 100}% --> Price: ${stopLoss}`
+  );
+  console.log(
+    `📈 Take Profit ROI: ${
+      desiredTakeProfitROI * 100
+    }% --> Price: ${takeProfit}`
   );
 
   const qtyFixed = qty.toFixed(quantityPrecision);
@@ -353,13 +370,31 @@ async function placeShortOrder(symbol, maxSpend) {
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
 
-  const stopLossPercentage = 0.01; // 1% loss
-  const takeProfitPercentage = 0.02;
-  const stopLoss = (adjustedEntryPrice * (1 + stopLossPercentage)).toFixed(
+  // Desired ROI targets:
+  const desiredStopLossROI = 0.01; // +1% ROI loss on margin → price goes up for short
+  const desiredTakeProfitROI = -0.02; // -2% ROI profit on margin → price goes down for short
+
+  // Calculate price moves by dividing ROI by leverage
+  const priceChangeForStopLoss = desiredStopLossROI / leverage; // positive for short stop loss (price up)
+  const priceChangeForTakeProfit = desiredTakeProfitROI / leverage; // negative for short take profit (price down)
+
+  const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
     pricePrecision
   );
-  const takeProfit = (adjustedEntryPrice * (1 - takeProfitPercentage)).toFixed(
-    pricePrecision
+  const takeProfit = (
+    adjustedEntryPrice *
+    (1 + priceChangeForTakeProfit)
+  ).toFixed(pricePrecision);
+
+  console.log(
+    `📉 Stop Loss (short) ROI: ${
+      desiredStopLossROI * 100
+    }% --> Price: ${stopLoss}`
+  );
+  console.log(
+    `📈 Take Profit (short) ROI: ${
+      desiredTakeProfitROI * 100
+    }% --> Price: ${takeProfit}`
   );
 
   const qtyFixed = qty.toFixed(quantityPrecision);
