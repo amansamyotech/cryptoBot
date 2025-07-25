@@ -19,9 +19,9 @@ const symbols = [
   "1000PEPEUSDT",
   "1000SHIBUSDT",
   "1000BONKUSDT",
-  "1000FLOKIUSDT",
-//   "1000SATSUSDT",
-  //   "DOGEUSDT",
+  //   "1000FLOKIUSDT",
+  //   "1000SATSUSDT",
+  "DOGEUSDT",
 ];
 const interval = "3m";
 const leverage = 1; // Leverage
@@ -235,8 +235,8 @@ async function decideTradeDirection(symbol) {
   }
 
   // Decision thresholds (higher score & signals)
-  if (score >= 4 && signalCount >= 4) return "LONG";
-  if (score <= -4 && signalCount >= 4) return "SHORT";
+  if (score >= 4 && signalCount >= 3) return "LONG";
+  if (score <= -4 && signalCount >= 3) return "SHORT";
   return "HOLD";
 }
 
@@ -270,6 +270,15 @@ async function placeBuyOrder(symbol, maxSpend) {
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
   const investedAmount = qty * adjustedEntryPrice;
+  const lotSizeFilter = symbolInfo.filters.find(
+    (f) => f.filterType === "LOT_SIZE"
+  );
+  const priceFilter = symbolInfo.filters.find(
+    (f) => f.filterType === "PRICE_FILTER"
+  );
+
+  const stepSize = parseFloat(lotSizeFilter.stepSize);
+  const tickSize = parseFloat(priceFilter.tickSize);
 
   // 🧠 You want ROI of -1% and +2%, so divide by leverage to get price % change
   const desiredStopLossROI = -0.01; // -1% ROI
@@ -278,14 +287,23 @@ async function placeBuyOrder(symbol, maxSpend) {
   const priceChangeForStopLoss = desiredStopLossROI / leverage;
   const priceChangeForTakeProfit = desiredTakeProfitROI / leverage;
 
-  const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
+  //   const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
+  //     pricePrecision
+  //   );
+  //   const takeProfit = (
+  //     adjustedEntryPrice *
+  //     (1 + priceChangeForTakeProfit)
+  //   ).toFixed(pricePrecision);
+
+  const rawStopLoss = adjustedEntryPrice * (1 + priceChangeForStopLoss);
+  const rawTakeProfit = adjustedEntryPrice * (1 + priceChangeForTakeProfit);
+
+  const stopLoss = (Math.floor(rawStopLoss / tickSize) * tickSize).toFixed(
     pricePrecision
   );
-  const takeProfit = (
-    adjustedEntryPrice *
-    (1 + priceChangeForTakeProfit)
-  ).toFixed(pricePrecision);
-
+  const takeProfit = (Math.floor(rawTakeProfit / tickSize) * tickSize).toFixed(
+    pricePrecision
+  );
   console.log(
     `📉 Stop Loss ROI: ${desiredStopLossROI * 100}% --> Price: ${stopLoss}`
   );
@@ -295,7 +313,9 @@ async function placeBuyOrder(symbol, maxSpend) {
     }% --> Price: ${takeProfit}`
   );
 
-  const qtyFixed = qty.toFixed(quantityPrecision);
+  const qtyFixed = (Math.floor(qty / stepSize) * stepSize).toFixed(
+    quantityPrecision
+  );
 
   const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
 
@@ -373,6 +393,16 @@ async function placeShortOrder(symbol, maxSpend) {
   const pricePrecision = symbolInfo.pricePrecision;
   const quantityPrecision = symbolInfo.quantityPrecision;
 
+  const lotSizeFilter = symbolInfo.filters.find(
+    (f) => f.filterType === "LOT_SIZE"
+  );
+  const priceFilter = symbolInfo.filters.find(
+    (f) => f.filterType === "PRICE_FILTER"
+  );
+
+  const stepSize = parseFloat(lotSizeFilter.stepSize);
+  const tickSize = parseFloat(priceFilter.tickSize);
+
   // Desired ROI targets:
   const desiredStopLossROI = 0.01; // +1% ROI loss on margin → price goes up for short
   const desiredTakeProfitROI = -0.02; // -2% ROI profit on margin → price goes down for short
@@ -381,14 +411,23 @@ async function placeShortOrder(symbol, maxSpend) {
   const priceChangeForStopLoss = desiredStopLossROI / leverage; // positive for short stop loss (price up)
   const priceChangeForTakeProfit = desiredTakeProfitROI / leverage; // negative for short take profit (price down)
 
-  const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
+  //   const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
+  //     pricePrecision
+  //   );
+  //   const takeProfit = (
+  //     adjustedEntryPrice *
+  //     (1 + priceChangeForTakeProfit)
+  //   ).toFixed(pricePrecision);
+
+  const rawStopLoss = adjustedEntryPrice * (1 + priceChangeForStopLoss);
+  const rawTakeProfit = adjustedEntryPrice * (1 + priceChangeForTakeProfit);
+
+  const stopLoss = (Math.floor(rawStopLoss / tickSize) * tickSize).toFixed(
     pricePrecision
   );
-  const takeProfit = (
-    adjustedEntryPrice *
-    (1 + priceChangeForTakeProfit)
-  ).toFixed(pricePrecision);
-
+  const takeProfit = (Math.floor(rawTakeProfit / tickSize) * tickSize).toFixed(
+    pricePrecision
+  );
   console.log(
     `📉 Stop Loss (short) ROI: ${
       desiredStopLossROI * 100
@@ -400,7 +439,9 @@ async function placeShortOrder(symbol, maxSpend) {
     }% --> Price: ${takeProfit}`
   );
 
-  const qtyFixed = qty.toFixed(quantityPrecision);
+  const qtyFixed = (Math.floor(qty / stepSize) * stepSize).toFixed(
+    quantityPrecision
+  );
 
   const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
 
