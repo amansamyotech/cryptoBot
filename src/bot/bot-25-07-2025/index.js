@@ -284,8 +284,10 @@ async function placeBuyOrder(symbol, maxSpend) {
   const desiredStopLossROI = -0.01; // -1% ROI
   const desiredTakeProfitROI = 0.02; // +2% ROI
 
-  const priceChangeForStopLoss = desiredStopLossROI / leverage;
-  const priceChangeForTakeProfit = desiredTakeProfitROI / leverage;
+  //   const priceChangeForStopLoss = desiredStopLossROI / leverage;
+  //   const priceChangeForTakeProfit = desiredTakeProfitROI / leverage;
+  const priceChangeForStopLoss = 0.01;
+  const priceChangeForTakeProfit = -0.02;
 
   //   const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
   //     pricePrecision
@@ -408,8 +410,11 @@ async function placeShortOrder(symbol, maxSpend) {
   const desiredTakeProfitROI = -0.02; // -2% ROI profit on margin → price goes down for short
 
   // Calculate price moves by dividing ROI by leverage
-  const priceChangeForStopLoss = desiredStopLossROI / leverage; // positive for short stop loss (price up)
-  const priceChangeForTakeProfit = desiredTakeProfitROI / leverage; // negative for short take profit (price down)
+  //   const priceChangeForStopLoss = desiredStopLossROI / leverage; // positive for short stop loss (price up)
+  //   const priceChangeForTakeProfit = desiredTakeProfitROI / leverage; // negative for short take profit (price down)
+
+  const priceChangeForStopLoss = -0.01;
+  const priceChangeForTakeProfit = 0.02;
 
   //   const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
   //     pricePrecision
