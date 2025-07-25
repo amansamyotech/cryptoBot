@@ -24,7 +24,7 @@ const symbols = [
   //   "DOGEUSDT",
 ];
 const interval = "3m";
-const leverage = 3; // Leverage
+const leverage = 1; // Leverage
 
 // 💰 Get wallet balance
 async function getUsdtBalance() {
@@ -174,33 +174,38 @@ async function decideTradeDirection(symbol) {
   let score = 0;
   let signalCount = 0;
 
+  // EMA crossover (weight 1)
   if (ind.ema20 !== null && ind.ema50 !== null) {
     const val = ind.ema20 > ind.ema50 ? 1 : -1;
     score += val;
     signalCount++;
   }
 
+  // RSI (weight 1)
   if (ind.rsi14 !== null) {
     const val = ind.rsi14 > 55 ? 1 : ind.rsi14 < 45 ? -1 : 0;
     if (val !== 0) signalCount++;
     score += val;
   }
 
+  // MACD (weight 1.5)
   if (ind.macdLine !== null && ind.macdSignal !== null) {
-    const val = ind.macdLine > ind.macdSignal ? 1 : -1;
+    const val = ind.macdLine > ind.macdSignal ? 1.5 : -1.5;
     score += val;
     signalCount++;
   }
 
+  // Volume spike (weight 0.5)
   if (
     ind.latestVolume !== null &&
     ind.avgVolume !== null &&
     ind.latestVolume > ind.avgVolume * 1.5
   ) {
-    score += 1;
+    score += 0.5;
     signalCount++;
   }
 
+  // Bollinger bands + RSI (weight 2)
   if (curr) {
     const lastClose = curr.close;
     if (ind.bbLower !== null && ind.rsi14 < 35 && lastClose < ind.bbLower) {
@@ -213,27 +218,25 @@ async function decideTradeDirection(symbol) {
     }
   }
 
-  if (ind.adx !== null && ind.adx > 25) {
+  // ADX (weight 1)
+  if (ind.adx !== null && ind.adx > 30) {
     score += 1;
     signalCount++;
   }
 
+  // Engulfing patterns (weight 2.5)
   if (isBullishEngulf(prev, curr)) {
-    score += 2;
+    score += 2.5;
     signalCount++;
   }
-
   if (isBearishEngulf(prev, curr)) {
-    score -= 2;
+    score -= 2.5;
     signalCount++;
   }
 
-  console.log(
-    `Trade Decision Score for ${symbol}:, score, "| Signals:", signalCount`
-  );
-
-  if (score >= 3 && signalCount >= 3) return "LONG";
-  if (score <= -3 && signalCount >= 3) return "SHORT";
+  // Decision thresholds (higher score & signals)
+  if (score >= 5 && signalCount >= 4) return "LONG";
+  if (score <= -5 && signalCount >= 4) return "SHORT";
   return "HOLD";
 }
 
