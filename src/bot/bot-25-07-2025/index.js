@@ -1,17 +1,21 @@
+// 📦 Dependencies
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
-const { sendTelegram } = require("../../helper/teleMassage.js");
+const { sendTelegram } = require("../../../helper/teleMassage.js");
+const { decideTradeDirection } = require("./decideTradeDirection.js");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
+// 🔐 Configure your Binance Futures API keys
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
   APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
-  test: false,
+  test: false, // Set to true for testnet
 });
 
+// ⚙️ Bot Config
 const symbols = [
   "1000PEPEUSDT",
   "1000SHIBUSDT",
@@ -21,7 +25,9 @@ const symbols = [
   //   "DOGEUSDT",
 ];
 const interval = "3m";
-const leverage = 1; // Leverage
+const leverage = 3; // Leverage
+const STOP_LOSS_ROI = -1; // -1% ROI for stop loss
+const TAKE_PROFIT_ROI = 2; // +2% ROI for take profit
 
 // 💰 Get wallet balance
 async function getUsdtBalance() {
@@ -37,236 +43,58 @@ async function getUsdtBalance() {
   }
 }
 
-async function setLeverageAndMarginType(symbol) {
-  try {
-    await binance.futuresMarginType(symbol, "ISOLATED");
-    console.log(`Margin type set to ISOLATED for ${symbol}`);
-
-    await binance.futuresLeverage(symbol, leverage);
-    console.log(`Leverage set to ${leverage}x for ${symbol}`);
-  } catch (err) {
-    console.error(
-      `Failed to set leverage/margin for ${symbol}:`,
-      err.body || err.message
-    );
-    if (err.body && err.body.includes("No need to change margin type")) {
-      console.log(`Margin type already set to ISOLATED for ${symbol}`);
-      // Still try to set leverage
-      try {
-        await binance.futuresLeverage(symbol, leverage);
-        console.log(`Leverage set to ${leverage}x for ${symbol}`);
-      } catch (leverageErr) {
-        console.error(
-          `Failed to set leverage for ${symbol}:`,
-          leverageErr.body || leverageErr.message
-        );
-      }
-    }
-  }
-}
-
 // Set leverage before trading
 async function setLeverage(symbol) {
   try {
     await binance.futuresLeverage(symbol, leverage);
     console.log(`Leverage set to ${leverage}x for ${symbol}`);
   } catch (err) {
-    console.error(`Failed to set leverage for ${symbol}:, err.body`);
+    console.error(`Failed to set leverage for ${symbol}:`, err.body);
   }
 }
 
-// ⏳ Fetch candlestick data
-async function getCandles(symbol, interval, limit = 100) {
-  const candles = await binance.futuresCandles(symbol, interval, { limit });
+// 📊 Calculate ROI-based prices for stop loss and take profit
+function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
+  // For futures trading, ROI = PnL / Margin Used × 100
+  // PnL = (Exit Price - Entry Price) × Quantity × (1 for LONG, -1 for SHORT)
 
-  return candles.map((c) => ({
-    open: parseFloat(c.open),
-    high: parseFloat(c.high),
-    low: parseFloat(c.low),
-    close: parseFloat(c.close),
-    volume: parseFloat(c.volume),
-  }));
+  const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100; // Negative value
+  const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100; // Positive value
+
+  let stopLossPrice, takeProfitPrice;
+
+  if (side === "LONG") {
+    // For LONG: PnL = (Exit Price - Entry Price) × Quantity
+    // Stop Loss: Exit Price = Entry Price + (PnL / Quantity)
+    stopLossPrice = entryPrice + stopLossPnL / quantity;
+    takeProfitPrice = entryPrice + takeProfitPnL / quantity;
+  } else {
+    // For SHORT: PnL = (Entry Price - Exit Price) × Quantity
+    // Stop Loss: Exit Price = Entry Price - (PnL / Quantity)
+    stopLossPrice = entryPrice - stopLossPnL / quantity;
+    takeProfitPrice = entryPrice - takeProfitPnL / quantity;
+  }
+
+  return { stopLossPrice, takeProfitPrice };
 }
 
-// 📊 Calculate indicators
-async function getIndicators(symbol) {
-  const candles = await getCandles(symbol, interval, 100);
-  if (candles.length < 100) return {};
-
-  const close = candles.map((c) => c.close);
-  const high = candles.map((c) => c.high);
-  const low = candles.map((c) => c.low);
-  const volume = candles.map((c) => c.volume);
-
-  const ema20 = technicalIndicators.EMA.calculate({
-    period: 20,
-    values: close,
-  }).slice(-1)[0];
-  const ema50 = technicalIndicators.EMA.calculate({
-    period: 50,
-    values: close,
-  }).slice(-1)[0];
-  const rsi14 = technicalIndicators.RSI.calculate({
-    period: 14,
-    values: close,
-  }).slice(-1)[0];
-  const macd = technicalIndicators.MACD.calculate({
-    values: close,
-    fastPeriod: 12,
-    slowPeriod: 26,
-    signalPeriod: 9,
-    SimpleMAOscillator: false,
-    SimpleMASignal: false,
-  }).slice(-1)[0];
-  const bb = technicalIndicators.BollingerBands.calculate({
-    period: 20,
-    stdDev: 2,
-    values: close,
-  }).slice(-1)[0];
-  const adx = technicalIndicators.ADX.calculate({
-    period: 14,
-    close,
-    high,
-    low,
-  }).slice(-1)[0];
-
-  // ➕ UT BOT logic
-  const atr = technicalIndicators.ATR.calculate({
-    period: 10,
-    high,
-    low,
-    close,
-  });
-
-  let utBotSignal = "none";
-  if (atr.length >= 2) {
-    const multiplier = 1.5; // Tunable
-    const lastClose = close[close.length - 1];
-    const prevClose = close[close.length - 2];
-    const lastATR = atr[atr.length - 1];
-
-    const prevUpper = prevClose + multiplier * lastATR;
-    const prevLower = prevClose - multiplier * lastATR;
-
-    if (lastClose > prevUpper) {
-      utBotSignal = "LONG";
-    } else if (lastClose < prevLower) {
-      utBotSignal = "SHORT";
-    }
+// 📊 Calculate current ROI for a position
+function calculateCurrentROI(
+  entryPrice,
+  currentPrice,
+  marginUsed,
+  quantity,
+  side
+) {
+  let pnl;
+  if (side === "LONG") {
+    pnl = (currentPrice - entryPrice) * quantity;
+  } else {
+    pnl = (entryPrice - currentPrice) * quantity;
   }
 
-  return {
-    ema20,
-    ema50,
-    rsi14,
-    macdLine: macd?.MACD,
-    macdSignal: macd?.signal,
-    bbUpper: bb?.upper,
-    bbLower: bb?.lower,
-    adx: adx?.adx,
-    latestVolume: volume[volume.length - 1],
-    avgVolume: volume.slice(-20).reduce((acc, v) => acc + v, 0) / 20,
-    utBotSignal,
-  };
-}
-
-function isBullishEngulf(prev, curr) {
-  return (
-    prev.open > prev.close &&
-    curr.open < curr.close &&
-    curr.open < prev.close &&
-    curr.close > prev.open
-  );
-}
-
-function isBearishEngulf(prev, curr) {
-  return (
-    prev.open < prev.close &&
-    curr.open > curr.close &&
-    curr.open > prev.close &&
-    curr.close < prev.open
-  );
-}
-
-// 🧠 Decide Trade Direction
-async function decideTradeDirection(symbol) {
-  const ind = await getIndicators(symbol);
-  const candles = await getCandles(symbol, interval, 2);
-  const [prev, curr] = candles;
-
-  let score = 0;
-  let signalCount = 0;
-
-  if (ind.ema20 !== null && ind.ema50 !== null) {
-    const val = ind.ema20 > ind.ema50 ? 1 : -1;
-    score += val;
-    signalCount++;
-  }
-
-  if (ind.rsi14 !== null) {
-    const val = ind.rsi14 > 55 ? 1 : ind.rsi14 < 45 ? -1 : 0;
-    if (val !== 0) signalCount++;
-    score += val;
-  }
-
-  if (ind.macdLine !== null && ind.macdSignal !== null) {
-    const val = ind.macdLine > ind.macdSignal ? 1 : -1;
-    score += val;
-    signalCount++;
-  }
-
-  if (
-    ind.latestVolume !== null &&
-    ind.avgVolume !== null &&
-    ind.latestVolume > ind.avgVolume * 1.5
-  ) {
-    score += 1;
-    signalCount++;
-  }
-
-  if (curr) {
-    const lastClose = curr.close;
-    if (ind.bbLower !== null && ind.rsi14 < 35 && lastClose < ind.bbLower) {
-      score += 2;
-      signalCount++;
-    }
-    if (ind.bbUpper !== null && ind.rsi14 > 65 && lastClose > ind.bbUpper) {
-      score += 2;
-      signalCount++;
-    }
-  }
-
-  if (ind.adx !== null && ind.adx > 25) {
-    score += 1;
-    signalCount++;
-  }
-
-  if (isBullishEngulf(prev, curr)) {
-    score += 2;
-    signalCount++;
-  }
-
-  if (isBearishEngulf(prev, curr)) {
-    score -= 2;
-    signalCount++;
-  }
-
-  // ➕ UT Bot signal (has highest priority)
-  if (ind.utBotSignal === "LONG") {
-    score += 3;
-    signalCount++;
-  } else if (ind.utBotSignal === "SHORT") {
-    score -= 3;
-    signalCount++;
-  }
-
-  console.log(
-    `Trade Decision Score for ${symbol}: ${score} | Signals: ${signalCount}`
-  );
-
-  if (score >= 3 && signalCount >= 3) return "LONG";
-  if (score <= -3 && signalCount >= 3) return "SHORT";
-  return "HOLD";
+  const roi = (pnl / marginUsed) * 100;
+  return { pnl, roi };
 }
 
 // 📈 Buy/Short Logic
@@ -285,68 +113,72 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 }
 
-// 💰 Place Buy Order + Stop Loss
-async function placeBuyOrder(symbol, maxSpend) {
-  await setLeverageAndMarginType(symbol);
-  const price = (await binance.futuresPrices())[symbol];
-  const entryPrice = parseFloat(price);
-  const notionalValue = maxSpend * leverage;
-  //7 / 500 =
-  const qty = parseFloat((notionalValue / entryPrice).toFixed(0));
-  const adjustedEntryPrice = notionalValue / qty;
-  const exchangeInfo = await binance.futuresExchangeInfo();
-  const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-  const pricePrecision = symbolInfo.pricePrecision;
-  const quantityPrecision = symbolInfo.quantityPrecision;
-  const investedAmount = qty * adjustedEntryPrice;
+// 💰 Place Buy Order + Stop Loss (LONG Position)
+async function placeBuyOrder(symbol, marginAmount) {
+  try {
+    await setLeverage(symbol);
 
-  // 🧠 You want ROI of -1% and +2%, so divide by leverage to get price % change
-  const desiredStopLossROI = -0.01; // -1% ROI
-  const desiredTakeProfitROI = 0.02; // +2% ROI
+    const price = (await binance.futuresPrices())[symbol];
+    const entryPrice = parseFloat(price);
 
-  const priceChangeForStopLoss = desiredStopLossROI / leverage;
-  const priceChangeForTakeProfit = desiredTakeProfitROI / leverage;
+    // Calculate position size with leverage
+    const positionValue = marginAmount * leverage;
+    const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-  const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
-    pricePrecision
-  );
-  const takeProfit = (
-    adjustedEntryPrice *
-    (1 + priceChangeForTakeProfit)
-  ).toFixed(pricePrecision);
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
 
-  console.log(
-    `📉 Stop Loss ROI: ${desiredStopLossROI * 100}% --> Price: ${stopLoss}`
-  );
-  console.log(
-    `📈 Take Profit ROI: ${
-      desiredTakeProfitROI * 100
-    }% --> Price: ${takeProfit}`
-  );
+    const qtyFixed = quantity.toFixed(quantityPrecision);
 
-  const qtyFixed = qty.toFixed(quantityPrecision);
+    // Calculate ROI-based stop loss and take profit prices
+    const { stopLossPrice, takeProfitPrice } = calculateROIPrices(
+      entryPrice,
+      marginAmount,
+      quantity,
+      "LONG"
+    );
 
-  const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
+    const stopLossFixed = stopLossPrice.toFixed(pricePrecision);
+    const takeProfitFixed = takeProfitPrice.toFixed(pricePrecision);
 
-  if (parseFloat(stopLoss) < currentPrice) {
+    console.log(`LONG Order Details for ${symbol}:`);
+    console.log(`Entry Price: ${entryPrice}`);
+    console.log(`Quantity: ${qtyFixed}`);
+    console.log(`Margin Used: ${marginAmount}`);
+    console.log(`Position Value: ${positionValue} (${leverage}x leverage)`);
+    console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
+    console.log(
+      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
+    );
+
+    // Place market buy order
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
-    sendTelegram(`🟢Bought ${symbol} at ${entryPrice}`);
+    sendTelegram(
+      `🟢 LONG ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${leverage}x`
+    );
     console.log(`Bought ${symbol} at ${entryPrice}`);
+
     const buyOrderDetails = {
       side: "LONG",
       symbol,
       quantity: qtyFixed,
       LongTimeCoinPrice: entryPrice,
       placeOrderId: buyOrder.orderId,
+      marginUsed: marginAmount,
+      leverage: leverage,
+      positionValue: positionValue,
     };
 
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: buyOrderDetails,
     });
-    console.log(`tradeResponse`, tradeResponse?.data);
+    console.log(`Trade Response:`, tradeResponse?.data);
 
     const tradeId = tradeResponse.data._id;
 
+    // Place stop loss order
     const stopLossOrder = await binance.futuresOrder(
       "STOP_MARKET",
       "SELL",
@@ -354,13 +186,16 @@ async function placeBuyOrder(symbol, maxSpend) {
       qtyFixed,
       null,
       {
-        stopPrice: stopLoss,
+        stopPrice: stopLossFixed,
         reduceOnly: true,
         timeInForce: "GTC",
       }
     );
-    console.log(`Stop loss set at ${stopLoss} for ${symbol}`);
+    console.log(
+      `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
+    );
 
+    // Place take profit order
     const takeProfitOrder = await binance.futuresOrder(
       "TAKE_PROFIT_MARKET",
       "SELL",
@@ -368,91 +203,97 @@ async function placeBuyOrder(symbol, maxSpend) {
       qtyFixed,
       null,
       {
-        stopPrice: takeProfit,
+        stopPrice: takeProfitFixed,
         reduceOnly: true,
         timeInForce: "GTC",
       }
     );
+    console.log(
+      `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
+    );
 
-    console.log(`Take profit set at ${takeProfit} for ${symbol}`);
-    const Details = {
-      takeProfitPrice: takeProfit,
+    const details = {
+      takeProfitPrice: takeProfitFixed,
       profitOrderId: takeProfitOrder.orderId,
-      stopLossPrice: stopLoss,
+      stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
 
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
-      data: Details,
+      data: details,
     });
+  } catch (error) {
+    console.error(`Error placing LONG order for ${symbol}:`, error);
+    sendTelegram(`❌ Error placing LONG order for ${symbol}: ${error.message}`);
   }
 }
 
-// 📉 Place Short Order + Stop Loss
-async function placeShortOrder(symbol, maxSpend) {
-  await setLeverageAndMarginType(symbol);
-  const price = (await binance.futuresPrices())[symbol];
-  const entryPrice = parseFloat(price);
-  const notionalValue = maxSpend * leverage;
-  const qty = parseFloat((notionalValue / entryPrice).toFixed(0));
-  const adjustedEntryPrice = notionalValue / qty;
+// 📉 Place Short Order + Stop Loss (SHORT Position)
+async function placeShortOrder(symbol, marginAmount) {
+  try {
+    await setLeverage(symbol);
 
-  const exchangeInfo = await binance.futuresExchangeInfo();
-  const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-  const pricePrecision = symbolInfo.pricePrecision;
-  const quantityPrecision = symbolInfo.quantityPrecision;
+    const price = (await binance.futuresPrices())[symbol];
+    const entryPrice = parseFloat(price);
 
-  // Desired ROI targets:
-  const desiredStopLossROI = 0.01; // +1% ROI loss on margin → price goes up for short
-  const desiredTakeProfitROI = -0.02; // -2% ROI profit on margin → price goes down for short
+    // Calculate position size with leverage
+    const positionValue = marginAmount * leverage;
+    const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-  // Calculate price moves by dividing ROI by leverage
-  const priceChangeForStopLoss = desiredStopLossROI / leverage; // positive for short stop loss (price up)
-  const priceChangeForTakeProfit = desiredTakeProfitROI / leverage; // negative for short take profit (price down)
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
 
-  const stopLoss = (adjustedEntryPrice * (1 + priceChangeForStopLoss)).toFixed(
-    pricePrecision
-  );
-  const takeProfit = (
-    adjustedEntryPrice *
-    (1 + priceChangeForTakeProfit)
-  ).toFixed(pricePrecision);
+    const qtyFixed = quantity.toFixed(quantityPrecision);
 
-  console.log(
-    `📉 Stop Loss (short) ROI: ${
-      desiredStopLossROI * 100
-    }% --> Price: ${stopLoss}`
-  );
-  console.log(
-    `📈 Take Profit (short) ROI: ${
-      desiredTakeProfitROI * 100
-    }% --> Price: ${takeProfit}`
-  );
+    // Calculate ROI-based stop loss and take profit prices
+    const { stopLossPrice, takeProfitPrice } = calculateROIPrices(
+      entryPrice,
+      marginAmount,
+      quantity,
+      "SHORT"
+    );
 
-  const qtyFixed = qty.toFixed(quantityPrecision);
+    const stopLossFixed = stopLossPrice.toFixed(pricePrecision);
+    const takeProfitFixed = takeProfitPrice.toFixed(pricePrecision);
 
-  const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
+    console.log(`SHORT Order Details for ${symbol}:`);
+    console.log(`Entry Price: ${entryPrice}`);
+    console.log(`Quantity: ${qtyFixed}`);
+    console.log(`Margin Used: ${marginAmount}`);
+    console.log(`Position Value: ${positionValue} (${leverage}x leverage)`);
+    console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
+    console.log(
+      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
+    );
 
-  if (parseFloat(stopLoss) > currentPrice) {
+    // Place market sell order
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
-    sendTelegram(`🔴Shorted ${symbol} at ${entryPrice}`);
+    sendTelegram(
+      `🔴 SHORT ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${leverage}x`
+    );
     console.log(`Shorted ${symbol} at ${entryPrice}`);
+
     const shortOrderDetails = {
       side: "SHORT",
       symbol,
       quantity: qtyFixed,
       ShortTimeCurrentPrice: entryPrice,
       placeOrderId: shortOrder.orderId,
+      marginUsed: marginAmount,
+      leverage: leverage,
+      positionValue: positionValue,
     };
 
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: shortOrderDetails,
     });
-
-    console.log(`tradeResponse`, tradeResponse?.data);
+    console.log(`Trade Response:`, tradeResponse?.data);
 
     const tradeId = tradeResponse.data._id;
 
+    // Place stop loss order
     const stopLossOrder = await binance.futuresOrder(
       "STOP_MARKET",
       "BUY",
@@ -460,13 +301,16 @@ async function placeShortOrder(symbol, maxSpend) {
       qtyFixed,
       null,
       {
-        stopPrice: stopLoss,
+        stopPrice: stopLossFixed,
         reduceOnly: true,
         timeInForce: "GTC",
       }
     );
-    console.log(`Stop loss (short) set at ${stopLoss} for ${symbol}`);
+    console.log(
+      `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
+    );
 
+    // Place take profit order
     const takeProfitOrder = await binance.futuresOrder(
       "TAKE_PROFIT_MARKET",
       "BUY",
@@ -474,45 +318,47 @@ async function placeShortOrder(symbol, maxSpend) {
       qtyFixed,
       null,
       {
-        stopPrice: takeProfit,
+        stopPrice: takeProfitFixed,
         reduceOnly: true,
         timeInForce: "GTC",
       }
     );
-    console.log(`Take profit (short) set at ${takeProfit} for ${symbol}`);
-    const Details = {
-      takeProfitPrice: takeProfit,
+    console.log(
+      `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
+    );
+
+    const details = {
+      takeProfitPrice: takeProfitFixed,
       profitOrderId: takeProfitOrder.orderId,
-      stopLossPrice: stopLoss,
+      stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
 
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
-      data: Details,
+      data: details,
     });
+  } catch (error) {
+    console.error(`Error placing SHORT order for ${symbol}:`, error);
+    sendTelegram(
+      `❌ Error placing SHORT order for ${symbol}: ${error.message}`
+    );
   }
 }
 
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6; // Keep $6 reserve
+  const usableBalance = totalBalance - 6; // Keep $5.1 reserve
   const maxSpendPerTrade = usableBalance / symbols.length;
-
-  console.log(`[MAIN LOOP DEBUG] Total Balance: ${totalBalance} USDT`);
-  console.log(`[MAIN LOOP DEBUG] Usable Balance: ${usableBalance} USDT`);
-  console.log(`[MAIN LOOP DEBUG] Margin Per Trade: ${maxSpendPerTrade} USDT`);
-  console.log(`[MAIN LOOP DEBUG] Leverage: ${leverage}x`);
-  console.log(
-    `[MAIN LOOP DEBUG] Notional Value Per Trade: ${
-      maxSpendPerTrade * leverage
-    } USDT`
-  );
 
   if (usableBalance <= 6) {
     console.log("Not enough balance to trade.");
     return;
   }
+
+  console.log(`Total Balance: ${totalBalance} USDT`);
+  console.log(`Usable Balance: ${usableBalance} USDT`);
+  console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
 
   for (const sym of symbols) {
     try {
@@ -525,108 +371,10 @@ setInterval(async () => {
       if (status == true) {
         await processSymbol(sym, maxSpendPerTrade);
       } else {
-        console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
+        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
       }
     } catch (err) {
-      console.error(`Error with ${sym}:`, err);
+      console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 60 * 1000); // Run every 5 minute
-
-async function checkOrders(symbol) {
-  try {
-    const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
-    console.log(`response.data?.data`, response.data?.data);
-
-    const { found } = response.data?.data;
-
-    if (!found) return;
-
-    const { tradeDetails } = response.data?.data;
-    const { stopLossOrderId, takeProfitOrderId, objectId } = tradeDetails;
-    console.log(
-      ` stopLossOrderId, takeProfitOrderId,`,
-      stopLossOrderId,
-      takeProfitOrderId
-    );
-
-    console.log(`objectId:`, objectId);
-
-    if (!stopLossOrderId || !takeProfitOrderId) {
-      console.log(`No order IDs found for ${symbol}`);
-      return;
-    }
-
-    // Get initial order statuses
-    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: stopLossOrderId,
-    });
-
-    const takeProfitStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: takeProfitOrderId,
-    });
-
-    const stopLossOrderStatus = stopLossStatus?.status;
-    const takeProfitOrderStatus = takeProfitStatus?.status;
-
-    console.log(`Stop Loss Status for ${symbol}:`, stopLossOrderStatus);
-    console.log(`Take Profit Status for ${symbol}:`, takeProfitOrderStatus);
-
-    const isStopLossFilled = stopLossOrderStatus === "FILLED";
-    const isTakeProfitFilled = takeProfitOrderStatus === "FILLED";
-
-    if (isStopLossFilled || isTakeProfitFilled) {
-      console.log(`One of the orders is filled for ${symbol}`);
-
-      // If Stop Loss is NOT filled, check again before canceling
-      if (!isStopLossFilled) {
-        const recheckStopLoss = await binance.futuresOrderStatus(symbol, {
-          orderId: stopLossOrderId,
-        });
-        if (
-          recheckStopLoss?.status !== "CANCELED" &&
-          recheckStopLoss?.status !== "FILLED"
-        ) {
-          await binance.futuresCancel(symbol, stopLossOrderId);
-          console.log(`Stop Loss order canceled`);
-        } else {
-          console.log(`Stop Loss already canceled or filled`);
-        }
-      }
-
-      // If Take Profit is NOT filled, check again before canceling
-      if (!isTakeProfitFilled) {
-        const recheckTakeProfit = await binance.futuresOrderStatus(symbol, {
-          orderId: takeProfitOrderId,
-        });
-        if (
-          recheckTakeProfit?.status !== "CANCELED" &&
-          recheckTakeProfit?.status !== "FILLED"
-        ) {
-          await binance.futuresCancel(symbol, takeProfitOrderId);
-          console.log(`Take Profit order canceled`);
-        } else {
-          console.log(`Take Profit already canceled or filled`);
-        }
-      }
-
-      // Mark trade as closed
-      const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
-        data: { status: "1" },
-      });
-      console.log(`Trade marked as closed in DB for ${symbol}`, data?.data);
-    } else {
-      console.log(
-        `Neither order is filled yet for ${symbol}. No action taken.`
-      );
-    }
-  } catch (error) {
-    console.error("Error checking or canceling orders:", error);
-  }
-}
-
-setInterval(async () => {
-  for (const sym of symbols) {
-    await checkOrders(sym);
-  }
-}, 30000);
+}, 60 * 1000); // Run every 1 minute

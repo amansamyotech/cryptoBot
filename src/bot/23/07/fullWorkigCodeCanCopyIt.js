@@ -513,3 +513,35 @@ setInterval(async () => {
     await checkOrders(sym);
   }
 }, 30000);
+
+
+
+
+
+// async function setLeverageAndMarginType(symbol) {
+//   try {
+//     await binance.futuresMarginType(symbol, "ISOLATED");
+//     console.log(`Margin type set to ISOLATED for ${symbol}`);
+
+//     await binance.futuresLeverage(symbol, leverage);
+//     console.log(`Leverage set to ${leverage}x for ${symbol}`);
+//   } catch (err) {
+//     console.error(
+//       `Failed to set leverage/margin for ${symbol}:`,
+//       err.body || err.message
+//     );
+//     if (err.body && err.body.includes("No need to change margin type")) {
+//       console.log(`Margin type already set to ISOLATED for ${symbol}`);
+//       // Still try to set leverage
+//       try {
+//         await binance.futuresLeverage(symbol, leverage);
+//         console.log(`Leverage set to ${leverage}x for ${symbol}`);
+//       } catch (leverageErr) {
+//         console.error(
+//           `Failed to set leverage for ${symbol}:`,
+//           leverageErr.body || leverageErr.message
+//         );
+//       }
+//     }
+//   }
+// }
