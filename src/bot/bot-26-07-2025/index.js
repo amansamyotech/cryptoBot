@@ -21,6 +21,7 @@ const symbols = [
 const interval = "1m";
 const leverage = 3;
 const MINIMUM_PROFIT_ROI = 2;
+const INITIAL_TAKE_PROFIT_ROI = 2; 
 const STOP_LOSS_ROI = -1;
 const TAKE_PROFIT_ROI = 2;
 async function getUsdtBalance() {
