@@ -2,7 +2,6 @@ const { EMA, Stochastic } = require("technicalindicators");
 const technicalIndicators = require("technicalindicators");
 const Binance = require("node-binance-api");
 
-
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
   APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
@@ -90,13 +89,11 @@ async function isSideways(symbol) {
     console.log(`📊 Sideways Analysis for ${symbol}:`);
     console.log(`   Price Range: ${priceRange}% (< 3% = sideways)`);
     console.log(
-      `   EMA Convergence: ${(convergenceRatio * 100)}% (> 60% = sideways)`
+      `   EMA Convergence: ${convergenceRatio * 100}% (> 60% = sideways)`
     );
+    console.log(`   ATR Volatility: ${atrPercentage}% (< 2% = sideways)`);
     console.log(
-      `   ATR Volatility: ${atrPercentage}% (< 2% = sideways)`
-    );
-    console.log(
-      `   Oscillation: ${(oscillationRatio * 100)}% (> 30% = sideways)`
+      `   Oscillation: ${oscillationRatio * 100}% (> 30% = sideways)`
     );
     console.log(`   Sideways Score: ${sidewaysScore}/4 (≥3 = sideways)`);
 
@@ -130,7 +127,7 @@ async function decideTradeDirection(symbol) {
   }
 
   // If not sideways, get candles and run other indicators
-  const candles = await getCandles(symbol, interval, 100);
+  const candles = await getCandles(symbol, interval, 300);
 
   const [emaAngleSignal, utSignal, stcSignal] = await Promise.all([
     getEMASignalWithAngle(candles), // Returns: LONG / SHORT / WAIT
@@ -174,40 +171,28 @@ const getUTBotSignal = async (candles) => {
   const highs = candles.map((c) => c.high);
   const lows = candles.map((c) => c.low);
 
-  if (closes.length < 300) {
+  if (closes.length < 100) {
     console.log("⚠️ Not enough data for UTBot signal");
     return "HOLD";
   }
 
-  // ATR for SHORT signal (period = 1)
-  const atrShort = technicalIndicators.ATR.calculate({
+  const period = 10;
+  const atr = technicalIndicators.ATR.calculate({
     high: highs,
     low: lows,
     close: closes,
-    period: 1,
+    period,
   });
-  const emaShort = technicalIndicators.EMA.calculate({
-    period: 1,
-    values: closes,
-  });
-  const lastATRShort = atrShort[atrShort.length - 1];
-  const lastEMAShort = emaShort[emaShort.length - 1];
-  const stopLineShort = lastEMAShort - 2 * lastATRShort;
 
-  // ATR for LONG signal (period = 300)
-  const atrLong = technicalIndicators.ATR.calculate({
-    high: highs,
-    low: lows,
-    close: closes,
-    period: 300,
-  });
-  const emaLong = technicalIndicators.EMA.calculate({
-    period: 1,
+  const ema = technicalIndicators.EMA.calculate({
+    period,
     values: closes,
   });
-  const lastATRLong = atrLong[atrLong.length - 1];
-  const lastEMALong = emaLong[emaLong.length - 1];
-  const stopLineLong = lastEMALong + 2 * lastATRLong;
+
+  const lastATR = atr[atr.length - 1];
+  const lastEMA = ema[ema.length - 1];
+  const stopLineLong = lastEMA + 2 * lastATR;
+  const stopLineShort = lastEMA - 2 * lastATR;
 
   const prevClose = closes[closes.length - 2];
   const currentClose = closes[closes.length - 1];
@@ -254,13 +239,15 @@ function getSTCSignal(closePrices) {
   const stc = calculateSTC(closePrices);
 
   if (!stc || stc.length < 2) {
-    return "HOLD"; // Changed from "NO SIGNAL" to "HOLD"
+    console.log("⚠️ Not enough STC data");
+    return "HOLD";
   }
 
   const prev = stc[stc.length - 2];
   const last = stc[stc.length - 1];
 
-  // Entry signals
+  console.log(`STC: Prev=${prev.toFixed(2)}, Last=${last.toFixed(2)}`);
+
   if (prev < 25 && last > 25 && last > prev) {
     return "LONG";
   } else if (prev > 75 && last < 75 && last < prev) {
@@ -278,7 +265,7 @@ function getAngleDegrees(y2, y1) {
 }
 
 function getEMASignalWithAngle(candles) {
-  if (candles.length < 20) return "HOLD"; 
+  if (candles.length < 20) return "HOLD";
 
   const closes = candles.map((c) => c.close);
 
@@ -298,16 +285,13 @@ function getEMASignalWithAngle(candles) {
   const ema15Now = ema15[i - offset]; // Adjusted index
 
   // Debug logs
-  console.log(
-    `EMA9: ${ema9Now} | EMA15: ${ema15Now} | Angle: ${angle}°`
-  );
+  console.log(`EMA9: ${ema9Now} | EMA15: ${ema15Now} | Angle: ${angle}°`);
 
-  if (ema9Now > ema15Now ) return "LONG";
-  if (ema9Now < ema15Now ) return "SHORT";
+  if (ema9Now > ema15Now) return "LONG";
+  if (ema9Now < ema15Now) return "SHORT";
 
   return "HOLD";
 }
-
 
 // Export the main function
 module.exports = { decideTradeDirection };
