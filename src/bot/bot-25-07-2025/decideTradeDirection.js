@@ -116,6 +116,10 @@ async function getUTBotSignal(symbol) {
     const priceUp = closes[closes.length - 1] > closes[closes.length - 2];
     const atrPeriod = priceUp ? 300 : 1;
 
+    console.log("ATR Period:", atrPeriod);
+    console.log("high.length:", highs.length);
+    console.log("Slice used:", highs.slice(-atrPeriod - 1).length);
+
     // Calculate ATR
     const atr = technicalIndicators.ATR.calculate({
       high: highs.slice(-atrPeriod - 1),
@@ -151,8 +155,11 @@ async function getUTBotSignal(symbol) {
 
     const longSignal =
       prevClose <= prevTrailingStop && currentClose > trailingStop;
+    console.log(`longSignal`, longSignal);
+
     const shortSignal =
       prevClose >= prevTrailingStop && currentClose < trailingStop;
+    console.log(`shortSignal`, shortSignal);
 
     console.log(`📊 UT Bot for ${symbol}:`);
     console.log(`   Current Price: ${currentClose.toFixed(4)}`);
