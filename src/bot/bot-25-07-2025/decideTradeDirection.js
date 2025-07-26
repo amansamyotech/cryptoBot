@@ -240,7 +240,7 @@ function calculateSTC(closePrices, fastLength = 27, length = 80) {
 function getSTCSignal(closePrices) {
   const stc = calculateSTC(closePrices);
 
-  console.log(`stc || stc.length < 2`, stc, stc.length);
+  console.log(`stc || stc.length < 2`,  stc.length);
 
   if (!stc || stc.length < 2) {
     console.log("⚠️ Not enough STC data");
