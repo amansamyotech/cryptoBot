@@ -99,7 +99,7 @@ async function getCandles(symbol, interval, limit = 100) {
 
 async function getUTBotSignal(symbol) {
   try {
-    const candles = await getCandles(symbol, interval, 350); // max needed 300+10
+    const candles = await getCandles(symbol, interval, 500); // max needed 300+10
 
     if (candles.length < 300) {
       console.log("⚠️ Not enough data for UT Bot");
