@@ -24,6 +24,8 @@ const MINIMUM_PROFIT_ROI = 2;
 const INITIAL_TAKE_PROFIT_ROI = 2; 
 const STOP_LOSS_ROI = -1;
 const TAKE_PROFIT_ROI = 2;
+
+let activePositions = new Map();
 async function getUsdtBalance() {
   try {
     const account = await binance.futuresBalance();
