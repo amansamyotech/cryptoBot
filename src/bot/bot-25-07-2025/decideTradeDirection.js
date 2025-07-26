@@ -278,7 +278,7 @@ function getAngleDegrees(y2, y1) {
 }
 
 function getEMASignalWithAngle(candles) {
-  if (candles.length < 20) return "HOLD"; // Ensure enough data
+  if (candles.length < 20) return "HOLD"; 
 
   const closes = candles.map((c) => c.close);
 
@@ -302,8 +302,8 @@ function getEMASignalWithAngle(candles) {
     `EMA9: ${ema9Now} | EMA15: ${ema15Now} | Angle: ${angle}°`
   );
 
-  if (ema9Now > ema15Now && angle >= 30) return "LONG";
-  if (ema9Now < ema15Now && angle <= -30) return "SHORT";
+  if (ema9Now > ema15Now ) return "LONG";
+  if (ema9Now < ema15Now ) return "SHORT";
 
   return "HOLD";
 }
