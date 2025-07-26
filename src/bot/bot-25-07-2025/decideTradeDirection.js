@@ -10,102 +10,92 @@ const binance = new Binance().options({
 });
 
 const interval = "30m";
-// You need to provide this function - checks if market is sideways
+
+// Improved sideways market detection
 async function isSideways(symbol) {
   try {
-    const candles = await getCandles(symbol, interval, 50);
+    const candles = await getCandles(symbol, interval, 100);
     const closes = candles.map((c) => c.close);
     const highs = candles.map((c) => c.high);
     const lows = candles.map((c) => c.low);
 
-    // Method 1: Price Range Analysis
-    const highest = Math.max(...highs);
-    const lowest = Math.min(...lows);
-    const priceRange = ((highest - lowest) / lowest) * 100;
-
-    // Method 2: Moving Average Convergence
-    const ema20 = EMA.calculate({ period: 20, values: closes });
-    const ema50 = EMA.calculate({ period: 50, values: closes });
-
-    if (ema20.length < 10 || ema50.length < 10) {
-      return false; // Not enough data
+    if (closes.length < 50) {
+      console.log(`⚠️ Not enough data for sideways analysis for ${symbol}`);
+      return false;
     }
 
-    // Check if EMAs are converging (sideways indication)
-    const recentEma20 = ema20.slice(-10);
-    const recentEma50 = ema50.slice(-10);
+    // Method 1: Bollinger Bands Squeeze Detection
+    const sma20 = technicalIndicators.SMA.calculate({ period: 20, values: closes });
+    const stdDev = technicalIndicators.StandardDeviation.calculate({ period: 20, values: closes });
+    
+    if (sma20.length < 10 || stdDev.length < 10) return false;
 
-    let convergenceCount = 0;
-    for (let i = 0; i < recentEma20.length; i++) {
-      const diff =
-        Math.abs((recentEma20[i] - recentEma50[i]) / recentEma50[i]) * 100;
-      if (diff < 1.5) convergenceCount++; // EMAs within 1.5% of each other
-    }
+    const currentSMA = sma20[sma20.length - 1];
+    const currentStdDev = stdDev[stdDev.length - 1];
+    const upperBB = currentSMA + (2 * currentStdDev);
+    const lowerBB = currentSMA - (2 * currentStdDev);
+    const bbWidth = ((upperBB - lowerBB) / currentSMA) * 100;
 
-    const convergenceRatio = convergenceCount / recentEma20.length;
-
-    // Method 3: Volatility Check (using ATR)
-    const atr = technicalIndicators.ATR.calculate({
+    // Method 2: ADX (Average Directional Index) for trend strength
+    const adx = technicalIndicators.ADX.calculate({
       high: highs,
       low: lows,
       close: closes,
-      period: 14,
+      period: 14
     });
 
-    if (atr.length < 5) return false;
+    if (adx.length < 5) return false;
+    const currentADX = adx[adx.length - 1].adx;
 
-    const recentATR = atr.slice(-5);
-    const avgATR =
-      recentATR.reduce((sum, val) => sum + val, 0) / recentATR.length;
-    const currentPrice = closes[closes.length - 1];
-    const atrPercentage = (avgATR / currentPrice) * 100;
+    // Method 3: Price Range Analysis (recent 20 candles)
+    const recentCandles = candles.slice(-20);
+    const recentHighs = recentCandles.map(c => c.high);
+    const recentLows = recentCandles.map(c => c.low);
+    const highest = Math.max(...recentHighs);
+    const lowest = Math.min(...recentLows);
+    const priceRange = ((highest - lowest) / lowest) * 100;
 
-    // Method 4: Price Oscillation Pattern
-    let oscillationCount = 0;
-    const recentCloses = closes.slice(-20);
-    for (let i = 1; i < recentCloses.length - 1; i++) {
-      const prev = recentCloses[i - 1];
-      const curr = recentCloses[i];
-      const next = recentCloses[i + 1];
-
-      // Check for oscillation pattern (up-down or down-up)
-      if ((curr > prev && curr > next) || (curr < prev && curr < next)) {
-        oscillationCount++;
-      }
+    // Method 4: Moving Average Convergence
+    const ema9 = EMA.calculate({ period: 9, values: closes });
+    const ema21 = EMA.calculate({ period: 21, values: closes });
+    
+    if (ema9.length < 10 || ema21.length < 10) return false;
+    
+    const recentEMA9 = ema9.slice(-10);
+    const recentEMA21 = ema21.slice(-10);
+    
+    let convergenceCount = 0;
+    for (let i = 0; i < recentEMA9.length; i++) {
+      const diff = Math.abs((recentEMA9[i] - recentEMA21[i]) / recentEMA21[i]) * 100;
+      if (diff < 1.0) convergenceCount++; // EMAs within 1% of each other
     }
-    const oscillationRatio = oscillationCount / (recentCloses.length - 2);
+    const convergenceRatio = convergenceCount / recentEMA9.length;
 
-    // Combine all methods for sideways detection
-    const isSidewaysConditions = [
-      priceRange < 3, // Price range less than 3%
-      convergenceRatio > 0.6, // EMAs converging 60% of the time
-      atrPercentage < 2, // Low volatility (ATR < 2% of price)
-      oscillationRatio > 0.3, // High oscillation pattern
-    ];
+    // Sideways conditions
+    const conditions = {
+      bbSqueeze: bbWidth < 4, // Bollinger Bands width less than 4%
+      lowTrend: currentADX < 25, // ADX below 25 indicates weak trend
+      smallRange: priceRange < 5, // Price range less than 5% in recent 20 candles
+      emaConvergence: convergenceRatio > 0.7 // EMAs converging 70% of the time
+    };
 
-    const sidewaysScore = isSidewaysConditions.filter(Boolean).length;
+    const sidewaysScore = Object.values(conditions).filter(Boolean).length;
     const isSidewaysMarket = sidewaysScore >= 3; // At least 3 out of 4 conditions
 
-    console.log(`📊 Sideways Analysis for ${symbol}:`);
-    console.log(`   Price Range: ${priceRange}% (< 3% = sideways)`);
-    console.log(
-      `   EMA Convergence: ${convergenceRatio * 100}% (> 60% = sideways)`
-    );
-    console.log(`   ATR Volatility: ${atrPercentage}% (< 2% = sideways)`);
-    console.log(
-      `   Oscillation: ${oscillationRatio * 100}% (> 30% = sideways)`
-    );
+    console.log(`📊 Enhanced Sideways Analysis for ${symbol}:`);
+    console.log(`   BB Width: ${bbWidth.toFixed(2)}% (< 4% = sideways)`);
+    console.log(`   ADX: ${currentADX.toFixed(2)} (< 25 = weak trend)`);
+    console.log(`   Price Range: ${priceRange.toFixed(2)}% (< 5% = sideways)`);
+    console.log(`   EMA Convergence: ${(convergenceRatio * 100).toFixed(1)}% (> 70% = sideways)`);
     console.log(`   Sideways Score: ${sidewaysScore}/4 (≥3 = sideways)`);
 
     return isSidewaysMarket;
   } catch (error) {
-    console.error(
-      `❌ Error in sideways detection for ${symbol}:`,
-      error.message
-    );
-    return false; // Default to not sideways if error occurs
+    console.error(`❌ Error in sideways detection for ${symbol}:`, error.message);
+    return false;
   }
 }
+
 async function getCandles(symbol, interval, limit = 100) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
@@ -166,6 +156,7 @@ async function decideTradeDirection(symbol) {
   }
 }
 
+// Updated UT Bot implementation based on TradingView script
 const getUTBotSignal = async (candles) => {
   const closes = candles.map((c) => c.close);
   const highs = candles.map((c) => c.high);
@@ -173,37 +164,82 @@ const getUTBotSignal = async (candles) => {
 
   console.log(`closes.length`, closes.length);
 
-  if (closes.length < 300) {
+  if (closes.length < 50) {
     console.log("⚠️ Not enough data for UTBot signal");
     return "HOLD";
   }
 
-  const period = 10;
+  // UT Bot parameters
+  const keyValue = 1; // Key Value (sensitivity)
+  const atrPeriod = 10; // ATR Period
+
+  // Calculate ATR
   const atr = technicalIndicators.ATR.calculate({
     high: highs,
     low: lows,
     close: closes,
-    period,
+    period: atrPeriod,
   });
 
-  const ema = technicalIndicators.EMA.calculate({
-    period,
-    values: closes,
-  });
+  if (atr.length < 2) return "HOLD";
 
-  const lastATR = atr[atr.length - 1];
-  const lastEMA = ema[ema.length - 1];
-  const stopLineLong = lastEMA + 2 * lastATR;
-  const stopLineShort = lastEMA - 2 * lastATR;
+  // Calculate nLoss = keyValue * ATR
+  const nLoss = keyValue * atr[atr.length - 1];
+  const prevNLoss = keyValue * atr[atr.length - 2];
 
-  const prevClose = closes[closes.length - 2];
-  const currentClose = closes[closes.length - 1];
+  // Get current and previous close prices
+  const src = closes[closes.length - 1];
+  const prevSrc = closes[closes.length - 2];
 
-  const isLong = prevClose <= stopLineLong && currentClose > stopLineLong;
-  const isShort = prevClose >= stopLineShort && currentClose < stopLineShort;
+  // Initialize trailing stops (simplified implementation)
+  let xATRTrailingStop = 0;
+  let prevXATRTrailingStop = 0;
 
-  if (isLong) return "LONG";
-  if (isShort) return "SHORT";
+  // Calculate previous trailing stop
+  if (closes.length >= 3) {
+    const src2 = closes[closes.length - 3];
+    if (prevSrc > prevXATRTrailingStop && src2 > prevXATRTrailingStop) {
+      prevXATRTrailingStop = Math.max(prevXATRTrailingStop, prevSrc - prevNLoss);
+    } else if (prevSrc < prevXATRTrailingStop && src2 < prevXATRTrailingStop) {
+      prevXATRTrailingStop = Math.min(prevXATRTrailingStop, prevSrc + prevNLoss);
+    } else if (prevSrc > prevXATRTrailingStop) {
+      prevXATRTrailingStop = prevSrc - prevNLoss;
+    } else {
+      prevXATRTrailingStop = prevSrc + prevNLoss;
+    }
+  }
+
+  // Calculate current trailing stop
+  if (src > prevXATRTrailingStop && prevSrc > prevXATRTrailingStop) {
+    xATRTrailingStop = Math.max(prevXATRTrailingStop, src - nLoss);
+  } else if (src < prevXATRTrailingStop && prevSrc < prevXATRTrailingStop) {
+    xATRTrailingStop = Math.min(prevXATRTrailingStop, src + nLoss);
+  } else if (src > prevXATRTrailingStop) {
+    xATRTrailingStop = src - nLoss;
+  } else {
+    xATRTrailingStop = src + nLoss;
+  }
+
+  // Calculate EMA(1) - which is essentially the close price
+  const ema1 = src;
+  const prevEma1 = prevSrc;
+
+  // Check for crossovers
+  const above = prevEma1 <= prevXATRTrailingStop && ema1 > xATRTrailingStop;
+  const below = prevEma1 >= prevXATRTrailingStop && ema1 < xATRTrailingStop;
+
+  // Generate signals
+  const buy = src > xATRTrailingStop && above;
+  const sell = src < xATRTrailingStop && below;
+
+  console.log(`UT Bot Debug:`);
+  console.log(`  Current Price: ${src.toFixed(4)}`);
+  console.log(`  ATR Trailing Stop: ${xATRTrailingStop.toFixed(4)}`);
+  console.log(`  Above: ${above}, Below: ${below}`);
+  console.log(`  Buy: ${buy}, Sell: ${sell}`);
+
+  if (buy) return "LONG";
+  if (sell) return "SHORT";
   return "HOLD";
 };
 
@@ -240,9 +276,7 @@ function calculateSTC(closePrices, fastLength = 27, length = 80) {
 function getSTCSignal(closePrices) {
   const stc = calculateSTC(closePrices);
 
-
-
-  if (!stc ) {
+  if (!stc) {
     console.log("⚠️ Not enough STC data");
     return "HOLD";
   }
