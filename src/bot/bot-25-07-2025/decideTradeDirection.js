@@ -99,37 +99,42 @@ async function getCandles(symbol, interval, limit = 100) {
 
 async function getUTBotSignal(symbol) {
   try {
-    const candles = await getCandles(symbol, interval, 500); // max needed 300+10
+    const candles = await getCandles(symbol, interval, 500); // fetch enough data
 
-    if (candles.length < 300) {
-      console.log("⚠️ Not enough data for UT Bot");
-      return "HOLD";
-    }
+    const closes = candles.map(c => c.close);
+    const highs = candles.map(c => c.high);
+    const lows = candles.map(c => c.low);
 
-    const closes = candles.map((c) => c.close);
-    const highs = candles.map((c) => c.high);
-    const lows = candles.map((c) => c.low);
-
-    // Dynamic Parameters based on price movement
     const keyValue = 1;
-
     const priceUp = closes[closes.length - 1] > closes[closes.length - 2];
-    const atrPeriod = priceUp ? 300 : 1;
 
-    console.log("ATR Period:", atrPeriod);
-    console.log("high.length:", highs.length);
-    console.log("Slice used:", highs.slice(-atrPeriod - 1).length);
+    // Option A: Use realistic UT Bot ATR periods
+    const atrPeriod = priceUp ? 21 : 5;
 
-    // Calculate ATR
+    // Option B: Use your original 300/1 (but this gives low ATR values, not recommended)
+    // const atrPeriod = priceUp ? 300 : 1;
+
+    const sliceStart = -atrPeriod - 5;
+    const highsSlice = highs.slice(sliceStart);
+    const lowsSlice = lows.slice(sliceStart);
+    const closesSlice = closes.slice(sliceStart);
+
     const atr = technicalIndicators.ATR.calculate({
-      high: highs.slice(-atrPeriod - 1),
-      low: lows.slice(-atrPeriod - 1),
-      close: closes.slice(-atrPeriod - 1),
+      high: highsSlice,
+      low: lowsSlice,
+      close: closesSlice,
       period: atrPeriod,
     });
-    console.log(`atr.length`, atr.length);
 
-    if (atr.length < 3) return "HOLD";
+    console.log(`🔍 Symbol: ${symbol}`);
+    console.log(`ATR Period: ${atrPeriod}`);
+    console.log(`Candles Slice Length: ${highsSlice.length}`);
+    console.log(`ATR Output Length: ${atr.length}`);
+
+    if (atr.length < 3) {
+      console.log("⚠️ Not enough ATR data");
+      return "HOLD";
+    }
 
     const currentClose = closes[closes.length - 1];
     const prevClose = closes[closes.length - 2];
@@ -141,41 +146,43 @@ async function getUTBotSignal(symbol) {
 
     let trailingStop, prevTrailingStop;
 
-    if (currentClose > prevClose) {
-      trailingStop = currentClose - nLoss;
-    } else {
-      trailingStop = currentClose + nLoss;
-    }
+    trailingStop = currentClose > prevClose
+      ? currentClose - nLoss
+      : currentClose + nLoss;
 
-    if (prevClose > closes[closes.length - 3]) {
-      prevTrailingStop = prevClose - prevNLoss;
-    } else {
-      prevTrailingStop = prevClose + prevNLoss;
-    }
+    prevTrailingStop = prevClose > closes[closes.length - 3]
+      ? prevClose - prevNLoss
+      : prevClose + prevNLoss;
 
     const longSignal =
       prevClose <= prevTrailingStop && currentClose > trailingStop;
-    console.log(`longSignal`, longSignal);
 
     const shortSignal =
       prevClose >= prevTrailingStop && currentClose < trailingStop;
-    console.log(`shortSignal`, shortSignal);
 
-    console.log(`📊 UT Bot for ${symbol}:`);
-    console.log(`   Current Price: ${currentClose.toFixed(4)}`);
-    console.log(`   Trailing Stop: ${trailingStop.toFixed(4)}`);
-    console.log(`   ATR Period Used: ${atrPeriod}`);
-    console.log(`   Long Signal: ${longSignal}`);
-    console.log(`   Short Signal: ${shortSignal}`);
+    console.log(`📈 Current Close: ${currentClose}`);
+    console.log(`Trailing Stop: ${trailingStop}`);
+    console.log(`Prev Trailing Stop: ${prevTrailingStop}`);
+    console.log(`Long: ${longSignal} | Short: ${shortSignal}`);
 
-    if (longSignal) return "LONG";
-    if (shortSignal) return "SHORT";
+    if (longSignal) {
+      console.log("✅ LONG SIGNAL");
+      return "LONG";
+    }
+
+    if (shortSignal) {
+      console.log("⛔ SHORT SIGNAL");
+      return "SHORT";
+    }
+
+    console.log("🔸 HOLD - No trade signal");
     return "HOLD";
-  } catch (error) {
-    console.error(`❌ UT Bot Error for ${symbol}:`, error.message);
+  } catch (err) {
+    console.error(`❌ Error in UT Bot for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
+
 
 // Main decision function - only uses UT Bot
 async function decideTradeDirection(symbol) {
