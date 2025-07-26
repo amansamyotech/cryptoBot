@@ -4,7 +4,7 @@ const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
 const { sendTelegram } = require("../../../helper/teleMassage.js");
 
-const API_ENDPOINT = "http://localhost:3000/api/buySell/";
+const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
 // 🔐 Configure your Binance Futures API keys
 const binance = new Binance().options({
@@ -19,12 +19,12 @@ const symbols = [
   "1000PEPEUSDT",
   "1000SHIBUSDT",
   "1000BONKUSDT",
-    "1000FLOKIUSDT",
+  "1000FLOKIUSDT",
   //   "1000SATSUSDT",
   //   "DOGEUSDT",
 ];
 const interval = "3m";
-const leverage = 1; // Leverage
+const leverage = 3; // Leverage
 
 // 💰 Get wallet balance
 async function getUsdtBalance() {
@@ -69,17 +69,12 @@ async function setLeverageAndMarginType(symbol) {
 }
 
 function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
-  // For futures trading, ROI = PnL / Margin Used × 100
-  // PnL = (Exit Price - Entry Price) × Quantity × (1 for LONG, -1 for SHORT)
-
   const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100; // Negative value
   const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100; // Positive value
 
   let stopLossPrice, takeProfitPrice;
 
   if (side === "LONG") {
-    // For LONG: PnL = (Exit Price - Entry Price) × Quantity
-    // Stop Loss: Exit Price = Entry Price + (PnL / Quantity)
     stopLossPrice = entryPrice + stopLossPnL / quantity;
     takeProfitPrice = entryPrice + takeProfitPnL / quantity;
   } else {
@@ -284,8 +279,8 @@ async function decideTradeDirection(symbol) {
     return "HOLD";
   }
 
-  if (score >= 5) return "LONG";
-  if (score <= -5) return "SHORT";
+  if (score >= 4) return "LONG";
+  if (score <= -4) return "SHORT";
   return "HOLD";
 }
 

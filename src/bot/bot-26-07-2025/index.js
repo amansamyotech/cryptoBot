@@ -21,7 +21,7 @@ const symbols = [
 const interval = "1m";
 const leverage = 3;
 const MINIMUM_PROFIT_ROI = 2;
-const INITIAL_TAKE_PROFIT_ROI = 2; 
+const INITIAL_TAKE_PROFIT_ROI = 2;
 const STOP_LOSS_ROI = -1;
 const TAKE_PROFIT_ROI = 2;
 
@@ -296,8 +296,8 @@ async function placeBuyOrder(symbol, marginAmount) {
     // );
 
     const details = {
-    //   takeProfitPrice: takeProfitFixed,
-    //   profitOrderId: takeProfitOrder.orderId,
+      //   takeProfitPrice: takeProfitFixed,
+      //   profitOrderId: takeProfitOrder.orderId,
       stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
@@ -409,8 +409,8 @@ async function placeShortOrder(symbol, marginAmount) {
     // );
 
     const details = {
-    //   takeProfitPrice: takeProfitFixed,
-    //   profitOrderId: takeProfitOrder.orderId,
+      //   takeProfitPrice: takeProfitFixed,
+      //   profitOrderId: takeProfitOrder.orderId,
       stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
@@ -427,7 +427,7 @@ async function placeShortOrder(symbol, marginAmount) {
       quantity: parseFloat(qtyFixed),
       tradeId,
       stopLossOrderId: stopLossOrder.orderId,
-      
+
       createdAt: Date.now(),
     });
 
@@ -506,7 +506,6 @@ console.log(`📊 Minimum Profit ROI: ${MINIMUM_PROFIT_ROI}%`);
 console.log(`🎯 Initial Take Profit ROI: ${INITIAL_TAKE_PROFIT_ROI}%`);
 console.log(`📉 Stop Loss ROI: ${STOP_LOSS_ROI}%`);
 console.log(`📈 Leverage: ${leverage}x`);
-
 
 async function checkOrders(symbol) {
   try {
