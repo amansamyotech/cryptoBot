@@ -279,25 +279,25 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(
       `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
-    const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT_MARKET",
-      "SELL",
-      symbol,
-      qtyFixed,
-      null,
-      {
-        stopPrice: takeProfitFixed,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
-    );
-    console.log(
-      `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
-    );
+    // const takeProfitOrder = await binance.futuresOrder(
+    //   "TAKE_PROFIT_MARKET",
+    //   "SELL",
+    //   symbol,
+    //   qtyFixed,
+    //   null,
+    //   {
+    //     stopPrice: takeProfitFixed,
+    //     reduceOnly: true,
+    //     timeInForce: "GTC",
+    //   }
+    // );
+    // console.log(
+    //   `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
+    // );
 
     const details = {
-      takeProfitPrice: takeProfitFixed,
-      profitOrderId: takeProfitOrder.orderId,
+    //   takeProfitPrice: takeProfitFixed,
+    //   profitOrderId: takeProfitOrder.orderId,
       stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
@@ -393,25 +393,25 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(
       `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
-    const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT_MARKET",
-      "BUY",
-      symbol,
-      qtyFixed,
-      null,
-      {
-        stopPrice: takeProfitFixed,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
-    );
-    console.log(
-      `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
-    );
+    // const takeProfitOrder = await binance.futuresOrder(
+    //   "TAKE_PROFIT_MARKET",
+    //   "BUY",
+    //   symbol,
+    //   qtyFixed,
+    //   null,
+    //   {
+    //     stopPrice: takeProfitFixed,
+    //     reduceOnly: true,
+    //     timeInForce: "GTC",
+    //   }
+    // );
+    // console.log(
+    //   `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
+    // );
 
     const details = {
-      takeProfitPrice: takeProfitFixed,
-      profitOrderId: takeProfitOrder.orderId,
+    //   takeProfitPrice: takeProfitFixed,
+    //   profitOrderId: takeProfitOrder.orderId,
       stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
@@ -528,7 +528,7 @@ async function checkOrders(symbol) {
 
     console.log(`objectId:`, objectId);
 
-    if (!stopLossOrderId || !takeProfitOrderId) {
+    if (!stopLossOrderId) {
       console.log(`No order IDs found for ${symbol}`);
       return;
     }
