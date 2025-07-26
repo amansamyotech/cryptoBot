@@ -314,7 +314,6 @@ async function placeBuyOrder(symbol, marginAmount) {
       quantity: parseFloat(qtyFixed),
       tradeId,
       stopLossOrderId: stopLossOrder.orderId,
-      profitOrderId: takeProfitOrder.orderId,
       createdAt: Date.now(),
     });
 
@@ -428,7 +427,7 @@ async function placeShortOrder(symbol, marginAmount) {
       quantity: parseFloat(qtyFixed),
       tradeId,
       stopLossOrderId: stopLossOrder.orderId,
-      profitOrderId: takeProfitOrder.orderId,
+      
       createdAt: Date.now(),
     });
 
