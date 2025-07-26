@@ -285,15 +285,17 @@ function getEMASignalWithAngle(candles) {
   const ema9 = EMA.calculate({ period: 9, values: closes });
   const ema15 = EMA.calculate({ period: 15, values: closes });
 
-  if (ema9.length < 2 || ema15.length < 2) return "HOLD";
+  const offset = ema9.length - ema15.length;
+  if (offset < 0 || ema15.length < 2) return "HOLD"; // Just in case
 
-  const i = ema9.length - 2; // candle[1] (2nd latest)
-  const prev = ema9[i - 1];
-  const curr = ema9[i];
+  const i = ema9.length - 2; // Second latest value in ema9
+  const ema9Prev = ema9[i - 1];
+  const ema9Curr = ema9[i];
 
-  const angle = getAngleDegrees(curr, prev);
+  const angle = getAngleDegrees(ema9Curr, ema9Prev);
+
   const ema9Now = ema9[i];
-  const ema15Now = ema15[i];
+  const ema15Now = ema15[i - offset]; // Adjusted index
 
   // Debug logs
   console.log(
@@ -305,6 +307,7 @@ function getEMASignalWithAngle(candles) {
 
   return "HOLD";
 }
+
 
 // Export the main function
 module.exports = { decideTradeDirection };
