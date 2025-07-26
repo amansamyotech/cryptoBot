@@ -173,7 +173,7 @@ const getUTBotSignal = async (candles) => {
 
   console.log(`closes.length`, closes.length);
 
-  if (closes.length < 100) {
+  if (closes.length < 300) {
     console.log("⚠️ Not enough data for UTBot signal");
     return "HOLD";
   }
@@ -240,9 +240,9 @@ function calculateSTC(closePrices, fastLength = 27, length = 80) {
 function getSTCSignal(closePrices) {
   const stc = calculateSTC(closePrices);
 
-  console.log(`stc || stc.length < 2`,  stc.length);
 
-  if (!stc || stc.length < 2) {
+
+  if (!stc ) {
     console.log("⚠️ Not enough STC data");
     return "HOLD";
   }
