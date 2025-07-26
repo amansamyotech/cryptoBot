@@ -25,6 +25,8 @@ const symbols = [
 ];
 const interval = "3m";
 const leverage = 3; // Leverage
+const STOP_LOSS_ROI = -1; // -1% ROI for stop loss
+const TAKE_PROFIT_ROI = 2; // +2% ROI for take 
 
 // 💰 Get wallet balance
 async function getUsdtBalance() {
