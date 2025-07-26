@@ -88,19 +88,15 @@ async function isSideways(symbol) {
     const isSidewaysMarket = sidewaysScore >= 3; // At least 3 out of 4 conditions
 
     console.log(`📊 Sideways Analysis for ${symbol}:`);
-    console.log(`   Price Range: ${priceRange.toFixed(2)}% (< 3% = sideways)`);
+    console.log(`   Price Range: ${priceRange}% (< 3% = sideways)`);
     console.log(
-      `   EMA Convergence: ${(convergenceRatio * 100).toFixed(
-        1
-      )}% (> 60% = sideways)`
+      `   EMA Convergence: ${(convergenceRatio * 100)}% (> 60% = sideways)`
     );
     console.log(
-      `   ATR Volatility: ${atrPercentage.toFixed(2)}% (< 2% = sideways)`
+      `   ATR Volatility: ${atrPercentage}% (< 2% = sideways)`
     );
     console.log(
-      `   Oscillation: ${(oscillationRatio * 100).toFixed(
-        1
-      )}% (> 30% = sideways)`
+      `   Oscillation: ${(oscillationRatio * 100)}% (> 30% = sideways)`
     );
     console.log(`   Sideways Score: ${sidewaysScore}/4 (≥3 = sideways)`);
 
@@ -301,9 +297,7 @@ function getEMASignalWithAngle(candles) {
 
   // Debug logs
   console.log(
-    `EMA9: ${ema9Now.toFixed(4)} | EMA15: ${ema15Now.toFixed(
-      4
-    )} | Angle: ${angle.toFixed(2)}°`
+    `EMA9: ${ema9Now} | EMA15: ${ema15Now} | Angle: ${angle}°`
   );
 
   if (ema9Now > ema15Now && angle >= 30) return "LONG";
