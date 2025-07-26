@@ -24,7 +24,7 @@ const symbols = [
   //   "1000SATSUSDT",
   //   "DOGEUSDT",
 ];
-const interval = "3m";
+const interval = "1m";
 const leverage = 3; // Leverage
 const STOP_LOSS_ROI = -1; // -1% ROI for stop loss
 const TAKE_PROFIT_ROI = 2; // +2% ROI for take profit

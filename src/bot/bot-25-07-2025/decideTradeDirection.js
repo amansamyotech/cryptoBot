@@ -10,7 +10,7 @@ const binance = new Binance().options({
   test: false, // Set to true for testnet
 });
 
-const interval = "3m";
+const interval = "1m";
 // You need to provide this function - checks if market is sideways
 async function isSideways(symbol) {
   try {
