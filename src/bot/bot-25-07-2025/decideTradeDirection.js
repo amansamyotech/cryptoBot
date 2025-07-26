@@ -1,5 +1,14 @@
 const { EMA, Stochastic } = require("technicalindicators");
 const technicalIndicators = require("technicalindicators");
+const Binance = require("node-binance-api");
+
+
+const binance = new Binance().options({
+  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  useServerTime: true,
+  test: false, // Set to true for testnet
+});
 
 const interval = "3m";
 // You need to provide this function - checks if market is sideways
