@@ -476,4 +476,4 @@ setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 30000);
+}, 20000);
