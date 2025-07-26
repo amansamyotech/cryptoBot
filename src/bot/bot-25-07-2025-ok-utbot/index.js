@@ -18,11 +18,10 @@ const binance = new Binance().options({
 // ⚙️ Bot Config
 const symbols = [
   "1000PEPEUSDT",
-  "1000SHIBUSDT",
   "1000BONKUSDT",
+  "DOGEUSDT",
+  "CKBUSDT",
   "1000FLOKIUSDT",
-  //   "1000SATSUSDT",
-  //   "DOGEUSDT",
 ];
 const interval = "1m";
 const leverage = 3; // Leverage

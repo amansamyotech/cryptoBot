@@ -8,8 +8,8 @@ const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
 // 🔐 Configure your Binance Futures API keys
 const binance = new Binance().options({
-  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
-  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
+  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
   useServerTime: true,
   test: false, // Set to true for testnet
 });
@@ -17,16 +17,15 @@ const binance = new Binance().options({
 // ⚙️ Bot Config
 const symbols = [
   "1000PEPEUSDT",
-  "1000SHIBUSDT",
   "1000BONKUSDT",
+  "DOGEUSDT",
+  "CKBUSDT",
   "1000FLOKIUSDT",
-  //   "1000SATSUSDT",
-  //   "DOGEUSDT",
 ];
 const interval = "3m";
 const leverage = 3; // Leverage
 const STOP_LOSS_ROI = -1; // -1% ROI for stop loss
-const TAKE_PROFIT_ROI = 2; // +2% ROI for take 
+const TAKE_PROFIT_ROI = 2; // +2% ROI for take
 
 // 💰 Get wallet balance
 async function getUsdtBalance() {
@@ -41,7 +40,6 @@ async function getUsdtBalance() {
     return 0;
   }
 }
-
 async function setLeverageAndMarginType(symbol) {
   try {
     await binance.futuresMarginType(symbol, "ISOLATED");
@@ -69,7 +67,6 @@ async function setLeverageAndMarginType(symbol) {
     }
   }
 }
-
 function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100; // Negative value
   const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100; // Positive value
@@ -88,7 +85,6 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
 
   return { stopLossPrice, takeProfitPrice };
 }
-
 // Set leverage before trading
 async function setLeverage(symbol) {
   try {
