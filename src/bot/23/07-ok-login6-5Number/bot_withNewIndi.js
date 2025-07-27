@@ -515,12 +515,11 @@ async function placeShortOrder(symbol, marginAmount) {
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
   const usableBalance = totalBalance - 209; // Keep $5.1 reserve
-  console.log(`usableBalance usableBalance usableBalance`,usableBalance);
-  console.log(`usableBalance usableBalance usableBalance`,totalBalance - 209);
-  
+  console.log(`usableBalance usableBalance usableBalance`, usableBalance);
+  console.log(`usableBalance usableBalance usableBalance`, totalBalance - 209);
+
   const maxSpendPerTrade = usableBalance / symbols.length;
-  console.log(`maxSpendPerTrade`,maxSpendPerTrade);
-  
+  console.log(`maxSpendPerTrade`, maxSpendPerTrade);
 
   if (usableBalance <= 6) {
     console.log("Not enough balance to trade.");
