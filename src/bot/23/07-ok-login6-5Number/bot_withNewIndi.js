@@ -40,40 +40,30 @@ async function getUsdtBalance() {
     return 0;
   }
 }
-async function setLeverageAndMarginType(symbol) {
-  try {
-    await binance.futuresMarginType(symbol, "ISOLATED");
-    console.log(`Margin type set to ISOLATED for ${symbol}`);
 
+// Set leverage before trading
+async function setLeverage(symbol) {
+  try {
     await binance.futuresLeverage(symbol, leverage);
     console.log(`Leverage set to ${leverage}x for ${symbol}`);
   } catch (err) {
-    console.error(
-      `Failed to set leverage/margin for ${symbol}:`,
-      err.body || err.message
-    );
-    if (err.body && err.body.includes("No need to change margin type")) {
-      console.log(`Margin type already set to ISOLATED for ${symbol}`);
-      // Still try to set leverage
-      try {
-        await binance.futuresLeverage(symbol, leverage);
-        console.log(`Leverage set to ${leverage}x for ${symbol}`);
-      } catch (leverageErr) {
-        console.error(
-          `Failed to set leverage for ${symbol}:`,
-          leverageErr.body || leverageErr.message
-        );
-      }
-    }
+    console.error(`Failed to set leverage for ${symbol}:`, err.body);
   }
 }
+
+// 📊 Calculate ROI-based prices for stop loss and take profit
 function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
+  // For futures trading, ROI = PnL / Margin Used × 100
+  // PnL = (Exit Price - Entry Price) × Quantity × (1 for LONG, -1 for SHORT)
+
   const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100; // Negative value
   const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100; // Positive value
 
   let stopLossPrice, takeProfitPrice;
 
   if (side === "LONG") {
+    // For LONG: PnL = (Exit Price - Entry Price) × Quantity
+    // Stop Loss: Exit Price = Entry Price + (PnL / Quantity)
     stopLossPrice = entryPrice + stopLossPnL / quantity;
     takeProfitPrice = entryPrice + takeProfitPnL / quantity;
   } else {
@@ -84,15 +74,6 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   }
 
   return { stopLossPrice, takeProfitPrice };
-}
-// Set leverage before trading
-async function setLeverage(symbol) {
-  try {
-    await binance.futuresLeverage(symbol, leverage);
-    console.log(`Leverage set to ${leverage}x for ${symbol}`);
-  } catch (err) {
-    console.error(`Failed to set leverage for ${symbol}:, err.body`);
-  }
 }
 
 // ⏳ Fetch candlestick data
@@ -298,7 +279,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 }
 
-// 💰 Place Buy Order + Stop Loss
+// 💰 Place Buy Order + Stop Loss (LONG Position)
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     await setLeverage(symbol);
@@ -413,7 +394,7 @@ async function placeBuyOrder(symbol, marginAmount) {
   }
 }
 
-// 📉 Place Short Order + Stop Loss
+// 📉 Place Short Order + Stop Loss (SHORT Position)
 async function placeShortOrder(symbol, marginAmount) {
   try {
     await setLeverage(symbol);
@@ -529,26 +510,21 @@ async function placeShortOrder(symbol, marginAmount) {
     );
   }
 }
+
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6; // Keep $6 reserve
+  const usableBalance = totalBalance - 6; // Keep $5.1 reserve
   const maxSpendPerTrade = usableBalance / symbols.length;
-
-  console.log(`[MAIN LOOP DEBUG] Total Balance: ${totalBalance} USDT`);
-  console.log(`[MAIN LOOP DEBUG] Usable Balance: ${usableBalance} USDT`);
-  console.log(`[MAIN LOOP DEBUG] Margin Per Trade: ${maxSpendPerTrade} USDT`);
-  console.log(`[MAIN LOOP DEBUG] Leverage: ${leverage}x`);
-  console.log(
-    `[MAIN LOOP DEBUG] Notional Value Per Trade: ${
-      maxSpendPerTrade * leverage
-    } USDT`
-  );
 
   if (usableBalance <= 6) {
     console.log("Not enough balance to trade.");
     return;
   }
+
+  console.log(`Total Balance: ${totalBalance} USDT`);
+  console.log(`Usable Balance: ${usableBalance} USDT`);
+  console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
 
   for (const sym of symbols) {
     try {
@@ -561,13 +537,13 @@ setInterval(async () => {
       if (status == true) {
         await processSymbol(sym, maxSpendPerTrade);
       } else {
-        console.log(`TREAD ALREADY OPEN FOR THAT SYMBOL : ${sym} `);
+        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
       }
     } catch (err) {
-      console.error(`Error with ${sym}:`, err);
+      console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 60 * 1000); // Run every 5 minute
+}, 60 * 1000); // Run every 1 minute
 
 async function checkOrders(symbol) {
   try {
