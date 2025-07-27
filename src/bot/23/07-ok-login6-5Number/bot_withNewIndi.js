@@ -258,8 +258,8 @@ async function decideTradeDirection(symbol) {
     return "HOLD";
   }
 
-  if (score >= 4) return "LONG";
-  if (score <= -4) return "SHORT";
+  if (score >= 5) return "LONG";
+  if (score <= -5) return "SHORT";
   return "HOLD";
 }
 
