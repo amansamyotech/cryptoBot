@@ -1,23 +1,15 @@
 const Binance = require("node-binance-api");
-const {
-  RSI,
-  MACD,
-  EMA,
-  ADX,
-  BollingerBands,
-  VWMA,
-} = require("technicalindicators");
+const technicalIndicators = require("technicalindicators");
+const { RSI, MACD, BollingerBands, EMA, ADX, VWMA } = require('technicalindicators');
+
 const axios = require("axios");
-
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
-
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
   APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
   test: false,
 });
-
 const symbols = [
   "1000PEPEUSDT",
   "1000BONKUSDT",
@@ -31,22 +23,22 @@ const MINIMUM_PROFIT_ROI = 2;
 const INITIAL_TAKE_PROFIT_ROI = 2;
 const STOP_LOSS_ROI = -1;
 const TAKE_PROFIT_ROI = 2;
-
+// 📈 Indicator Settings
 const RSI_PERIOD = 14;
 const MACD_FAST = 12;
 const MACD_SLOW = 26;
 const MACD_SIGNAL = 9;
 const BB_PERIOD = 20;
 const BB_STD_DEV = 2;
-const EMA_FAST = 9;
-const EMA_SLOW = 15;
-const EMA_TREND_SHORT = 20;
-const EMA_TREND_LONG = 50;
+const EMA_FAST = 12;
+const EMA_SLOW = 26;
+const EMA_TREND_SHORT = 50;
+const EMA_TREND_LONG = 200;
 const ADX_PERIOD = 14;
 const VWMA_PERIOD = 20;
-
 const LONG_THRESHOLD = 3;
 const SHORT_THRESHOLD = -3;
+// 📊 Scoring Thresholds
 
 async function getUsdtBalance() {
   try {
@@ -60,7 +52,6 @@ async function getUsdtBalance() {
     return 0;
   }
 }
-
 async function setLeverage(symbol) {
   try {
     await binance.futuresLeverage(symbol, leverage);
@@ -69,7 +60,6 @@ async function setLeverage(symbol) {
     console.error(`Failed to set leverage for ${symbol}:`, err.body);
   }
 }
-
 function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100;
   const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100;
@@ -87,78 +77,251 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   return { stopLossPrice, takeProfitPrice };
 }
 
-async function getCandles(symbol, interval, limit = 500) {
-  const candles = await binance.futuresCandles(symbol, interval, { limit });
+async function getCandles(symbol, interval, limit = 200) {
+  try {
+    console.log(`Fetching candles for ${symbol}...`);
+    const candles = await binance.futuresCandles(symbol, interval, { limit });
+    
+    if (!candles || candles.length === 0) {
+      throw new Error(`No candle data received for ${symbol}`);
+    }
 
-  return candles.map((c) => ({
-    open: parseFloat(c.open),
-    high: parseFloat(c.high),
-    low: parseFloat(c.low),
-    close: parseFloat(c.close),
-    volume: parseFloat(c.volume),
-  }));
+    if (candles.length < 50) {
+      throw new Error(`Insufficient candle data for ${symbol}: only ${candles.length} candles received`);
+    }
+
+    const processedCandles = candles.map((c) => {
+      const processed = {
+        open: parseFloat(c.open),
+        high: parseFloat(c.high),
+        low: parseFloat(c.low),
+        close: parseFloat(c.close),
+        volume: parseFloat(c.volume),
+      };
+
+      // Validate individual candle data
+      if (isNaN(processed.open) || isNaN(processed.high) || isNaN(processed.low) || 
+          isNaN(processed.close) || isNaN(processed.volume)) {
+        throw new Error(`Invalid candle data for ${symbol}`);
+      }
+
+      return processed;
+    });
+
+    console.log(`Successfully fetched ${processedCandles.length} candles for ${symbol}`);
+    return processedCandles;
+
+  } catch (error) {
+    console.error(`Error fetching candles for ${symbol}:`, error.message);
+    throw error;
+  }
 }
 
 async function getIndicators(symbol, interval) {
-  const data = await getCandles(symbol, interval, 500);
-  const closes = data.map((c) => c.close);
-  const highs = data.map((c) => c.high);
-  const lows = data.map((c) => c.low);
-  const volumes = data.map((c) => c.volume);
-
-console.log(`closes`, closes);
-console.log(`highs`, highs);
-console.log(`lows`, lows);
-console.log(`volumes`, volumes);
-
-  return {
-    rsi: RSI.calculate({
-      period: RSI_PERIOD,
-      values: closes,
-    }),
+  try {
+    const data = await getCandles(symbol, interval, 200);
     
-    macd: MACD.calculate({
-      values: closes,
-      fastPeriod: MACD_FAST,
-      slowPeriod: MACD_SLOW,
-      signalPeriod: MACD_SIGNAL,
-      SimpleMAOscillator: false,
-      SimpleMASignal: false,
-    }),
-    bb: BollingerBands.calculate({
-      period: BB_PERIOD,
-      stdDev: BB_STD_DEV,
-      values: closes,
-    }),
-    emaFast: EMA.calculate({
-      period: EMA_FAST,
-      values: closes,
-    }),
-    emaSlow: EMA.calculate({
-      period: EMA_SLOW,
-      values: closes,
-    }),
-    emaTrendShort: EMA.calculate({
-      period: EMA_TREND_SHORT,
-      values: closes,
-    }),
-    emaTrendLong: EMA.calculate({
-      period: EMA_TREND_LONG,
-      values: closes,
-    }),
-    adx: ADX.calculate({
-      close: closes,
-      high: highs,
-      low: lows,
-      period: ADX_PERIOD,
-    }),
-    vwma: VWMA.calculate({
-      period: VWMA_PERIOD,
-      close: closes,
-      volume: volumes,
-    }),
-    latestClose: closes[closes.length - 1],
-  };
+    if (data.length < 50) {
+      throw new Error(`Insufficient data for ${symbol}: ${data.length} candles (minimum 50 required)`);
+    }
+
+    const closes = data.map((c) => c.close);
+    const highs = data.map((c) => c.high);
+    const lows = data.map((c) => c.low);
+    const volumes = data.map((c) => c.volume);
+
+    // Additional validation
+    if (closes.some(isNaN) || highs.some(isNaN) || lows.some(isNaN) || volumes.some(isNaN)) {
+      throw new Error(`Invalid price data detected for ${symbol}`);
+    }
+
+    console.log(`${symbol} - Data validation passed`);
+    console.log(`closes sample:`, closes.slice(-5));
+    console.log(`highs sample:`, highs.slice(-5));
+    console.log(`lows sample:`, lows.slice(-5));
+    console.log(`volumes sample:`, volumes.slice(-5));
+
+    const indicators = {};
+
+    // Calculate RSI with error handling
+    try {
+      if (closes.length >= RSI_PERIOD) {
+        indicators.rsi = RSI.calculate({
+          period: RSI_PERIOD,
+          values: closes,
+        });
+        if (!indicators.rsi || indicators.rsi.length === 0) {
+          throw new Error('RSI calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for RSI: need ${RSI_PERIOD}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`RSI calculation failed for ${symbol}:`, e.message);
+      throw new Error(`RSI calculation failed: ${e.message}`);
+    }
+
+    // Calculate MACD with error handling
+    try {
+      if (closes.length >= MACD_SLOW) {
+        indicators.macd = MACD.calculate({
+          values: closes,
+          fastPeriod: MACD_FAST,
+          slowPeriod: MACD_SLOW,
+          signalPeriod: MACD_SIGNAL,
+          SimpleMAOscillator: false,
+          SimpleMASignal: false,
+        });
+        if (!indicators.macd || indicators.macd.length === 0) {
+          throw new Error('MACD calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for MACD: need ${MACD_SLOW}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`MACD calculation failed for ${symbol}:`, e.message);
+      throw new Error(`MACD calculation failed: ${e.message}`);
+    }
+
+    // Calculate Bollinger Bands with error handling
+    try {
+      if (closes.length >= BB_PERIOD) {
+        indicators.bb = BollingerBands.calculate({
+          period: BB_PERIOD,
+          stdDev: BB_STD_DEV,
+          values: closes,
+        });
+        if (!indicators.bb || indicators.bb.length === 0) {
+          throw new Error('Bollinger Bands calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for BB: need ${BB_PERIOD}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`Bollinger Bands calculation failed for ${symbol}:`, e.message);
+      throw new Error(`BB calculation failed: ${e.message}`);
+    }
+
+    // Calculate EMA Fast with error handling
+    try {
+      if (closes.length >= EMA_FAST) {
+        indicators.emaFast = EMA.calculate({
+          period: EMA_FAST,
+          values: closes,
+        });
+        if (!indicators.emaFast || indicators.emaFast.length === 0) {
+          throw new Error('EMA Fast calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for EMA Fast: need ${EMA_FAST}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`EMA Fast calculation failed for ${symbol}:`, e.message);
+      throw new Error(`EMA Fast calculation failed: ${e.message}`);
+    }
+
+    // Calculate EMA Slow with error handling
+    try {
+      if (closes.length >= EMA_SLOW) {
+        indicators.emaSlow = EMA.calculate({
+          period: EMA_SLOW,
+          values: closes,
+        });
+        if (!indicators.emaSlow || indicators.emaSlow.length === 0) {
+          throw new Error('EMA Slow calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for EMA Slow: need ${EMA_SLOW}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`EMA Slow calculation failed for ${symbol}:`, e.message);
+      throw new Error(`EMA Slow calculation failed: ${e.message}`);
+    }
+
+    // Calculate EMA Trend Short with error handling
+    try {
+      if (closes.length >= EMA_TREND_SHORT) {
+        indicators.emaTrendShort = EMA.calculate({
+          period: EMA_TREND_SHORT,
+          values: closes,
+        });
+        if (!indicators.emaTrendShort || indicators.emaTrendShort.length === 0) {
+          throw new Error('EMA Trend Short calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for EMA Trend Short: need ${EMA_TREND_SHORT}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`EMA Trend Short calculation failed for ${symbol}:`, e.message);
+      throw new Error(`EMA Trend Short calculation failed: ${e.message}`);
+    }
+
+    // Calculate EMA Trend Long with error handling
+    try {
+      if (closes.length >= EMA_TREND_LONG) {
+        indicators.emaTrendLong = EMA.calculate({
+          period: EMA_TREND_LONG,
+          values: closes,
+        });
+        if (!indicators.emaTrendLong || indicators.emaTrendLong.length === 0) {
+          throw new Error('EMA Trend Long calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for EMA Trend Long: need ${EMA_TREND_LONG}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`EMA Trend Long calculation failed for ${symbol}:`, e.message);
+      throw new Error(`EMA Trend Long calculation failed: ${e.message}`);
+    }
+
+    // Calculate ADX with error handling
+    try {
+      if (closes.length >= ADX_PERIOD && highs.length >= ADX_PERIOD && lows.length >= ADX_PERIOD) {
+        indicators.adx = ADX.calculate({
+          close: closes,
+          high: highs,
+          low: lows,
+          period: ADX_PERIOD,
+        });
+        if (!indicators.adx || indicators.adx.length === 0) {
+          throw new Error('ADX calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for ADX: need ${ADX_PERIOD}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`ADX calculation failed for ${symbol}:`, e.message);
+      throw new Error(`ADX calculation failed: ${e.message}`);
+    }
+
+    // Calculate VWMA with error handling
+    try {
+      if (closes.length >= VWMA_PERIOD && volumes.length >= VWMA_PERIOD) {
+        indicators.vwma = VWMA.calculate({
+          period: VWMA_PERIOD,
+          close: closes,
+          volume: volumes,
+        });
+        if (!indicators.vwma || indicators.vwma.length === 0) {
+          throw new Error('VWMA calculation returned empty result');
+        }
+      } else {
+        throw new Error(`Not enough data for VWMA: need ${VWMA_PERIOD}, have ${closes.length}`);
+      }
+    } catch (e) {
+      console.error(`VWMA calculation failed for ${symbol}:`, e.message);
+      throw new Error(`VWMA calculation failed: ${e.message}`);
+    }
+
+    indicators.latestClose = closes[closes.length - 1];
+
+    console.log(`Successfully calculated all indicators for ${symbol}`);
+    return indicators;
+
+  } catch (error) {
+    console.error(`Error calculating indicators for ${symbol}:`, error.message);
+    throw error;
+  }
 }
 
 function getMarketCondition(indicators) {
@@ -206,9 +369,7 @@ function decideTradeDirection(indicators) {
 }
 
 async function processSymbol(symbol, interval, maxSpendPerTrade) {
-  const indicators = await getIndicators(symbol, "3m");
-  console.log(`indicators`,indicators);
-  
+  const indicators = await getIndicators(symbol, '3m');
   const marketCondition = getMarketCondition(indicators);
 
   if (marketCondition === "sideways") {
