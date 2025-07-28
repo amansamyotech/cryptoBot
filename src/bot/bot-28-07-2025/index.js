@@ -968,7 +968,7 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   return { stopLossPrice, takeProfitPrice };
 }
 
-async function getCandles(symbol, interval, limit = 100) {
+async function getCandles(symbol, interval, limit = 500) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
   return candles.map((c) => ({
@@ -1270,12 +1270,12 @@ function getMarketCondition(indicators) {
 async function trainLSTM(symbol, interval) {
   try {
     console.log(`Starting training for ${symbol}`);
-    const candles = await getCandles(symbol, interval, 100);
+    const candles = await getCandles(symbol, interval, 500);
     if (candles.length < 50) {
       console.warn(`Insufficient candles for ${symbol}: ${candles.length}`);
       return null;
     }
-    const indicators = await getIndicators(symbol, interval, 100);
+    const indicators = await getIndicators(symbol, interval, 500);
     if (!indicators || !indicators.candles) {
       console.warn(`Invalid indicators for ${symbol}`);
       return null;
