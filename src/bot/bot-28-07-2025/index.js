@@ -41,24 +41,6 @@ const SHORT_THRESHOLD = -3;
 // 📊 Scoring Thresholds
 
 
-function calculateVWMA(prices, volumes, period) {
-  const result = [];
-  
-  for (let i = period - 1; i < prices.length; i++) {
-    let weightedSum = 0;
-    let volumeSum = 0;
-    
-    for (let j = 0; j < period; j++) {
-      const index = i - period + 1 + j;
-      weightedSum += prices[index] * volumes[index];
-      volumeSum += volumes[index];
-    }
-    
-    result.push(volumeSum > 0 ? weightedSum / volumeSum : prices[i]);
-  }
-  
-  return result;
-}
 async function getUsdtBalance() {
   try {
     const account = await binance.futuresBalance();
@@ -75,7 +57,7 @@ async function getUsdtBalance() {
 // Set leverage before trading
 async function setLeverage(symbol) {
   try {
-    await binance.futuresLeverage(symbol, leverage);
+    await binance.futuresLeverage(symbol, 3);
     console.log(`Leverage set to ${leverage}x for ${symbol}`);
   } catch (err) {
     console.error(`Failed to set leverage for ${symbol}:`, err.body);
@@ -146,6 +128,27 @@ async function getCandles(symbol, interval, limit = 200) {
     throw error;
   }
 }
+
+
+function calculateVWMA(prices, volumes, period) {
+  const result = [];
+  
+  for (let i = period - 1; i < prices.length; i++) {
+    let weightedSum = 0;
+    let volumeSum = 0;
+    
+    for (let j = 0; j < period; j++) {
+      const index = i - period + 1 + j;
+      weightedSum += prices[index] * volumes[index];
+      volumeSum += volumes[index];
+    }
+    
+    result.push(volumeSum > 0 ? weightedSum / volumeSum : prices[i]);
+  }
+  
+  return result;
+}
+
 
 async function getIndicators(symbol, interval) {
   try {
@@ -351,6 +354,7 @@ async function getIndicators(symbol, interval) {
 }
 
 
+
 function getMarketCondition(indicators) {
   const latestRSI = indicators.rsi[indicators.rsi.length - 1];
   const latestADX = indicators.adx[indicators.adx.length - 1]?.adx;
@@ -431,7 +435,7 @@ async function placeBuyOrder(symbol, marginAmount) {
     
 
     // Calculate position size with leverage
-    const positionValue = marginAmount * leverage;
+    const positionValue = marginAmount * 3;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
     console.log(`quantity`,quantity);
     
@@ -478,7 +482,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       LongTimeCoinPrice: entryPrice,
       placeOrderId: buyOrder.orderId,
       marginUsed: marginAmount,
-      leverage: leverage,
+      leverage: 3,
       positionValue: positionValue,
     };
 
@@ -554,7 +558,7 @@ async function placeShortOrder(symbol, marginAmount) {
     
 
     // Calculate position size with leverage
-    const positionValue = marginAmount * leverage;
+    const positionValue = marginAmount * 3;
     console.log(`positionValue`,positionValue);
     
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
@@ -603,7 +607,7 @@ async function placeShortOrder(symbol, marginAmount) {
       ShortTimeCurrentPrice: entryPrice,
       placeOrderId: shortOrder.orderId,
       marginUsed: marginAmount,
-      leverage: leverage,
+      leverage: 3,
       positionValue: positionValue,
     };
 
