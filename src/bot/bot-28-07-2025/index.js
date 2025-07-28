@@ -20,17 +20,15 @@ const binance = new Binance().options({
 const symbols = [
   "1000PEPEUSDT",
   "1000BONKUSDT",
-  // "DOGEUSDT",
-  // "CKBUSDT",
-  // "1000FLOKIUSDT",
+  "DOGEUSDT",
+  "CKBUSDT",
+  "1000FLOKIUSDT",
 ];
 
 const interval = "3m";
 const leverage = 3; // Leverage
 const STOP_LOSS_ROI = -1; // -1% ROI for stop loss
 const TAKE_PROFIT_ROI = 2; // +2% ROI for take
-
-
 
 const MINIMUM_PROFIT_ROI = 2;
 const INITIAL_TAKE_PROFIT_ROI = 2;
@@ -363,7 +361,6 @@ async function getIndicators(symbol, interval) {
 
     indicators.latestClose = closes[closes.length - 1];
 
-    
     return indicators;
   } catch (error) {
     console.error(`Error calculating indicators for ${symbol}:`, error.message);
@@ -415,12 +412,13 @@ function decideTradeDirection(indicators) {
   else return "HOLD";
 }
 
-async function processSymbol(symbol, interval, maxSpendPerTrade) {
+async function processSymbol(symbol, maxSpendPerTrade) {
+  console.log(`maxSpendPerTrade`, maxSpendPerTrade);
+
   const indicators = await getIndicators(symbol, "3m");
   const marketCondition = getMarketCondition(indicators);
 
   if (marketCondition === "sideways") {
-    
     return;
   }
 
@@ -545,7 +543,6 @@ async function placeBuyOrder(symbol, marginAmount) {
     });
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
-    
   }
 }
 
@@ -558,16 +555,14 @@ async function placeShortOrder(symbol, marginAmount) {
     const entryPrice = parseFloat(price);
 
     // Calculate position size with leverage
-    const positionValue = marginAmount * leverage
-    console.log(`leverage`,leverage);
-    ;
-    console.log(`marginAmount`,marginAmount);
-    
-    console.log(`positionValue`,positionValue);
-    
+    const positionValue = marginAmount * leverage;
+    console.log(`leverage`, leverage);
+    console.log(`marginAmount`, marginAmount);
+
+    console.log(`positionValue`, positionValue);
+
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
-    console.log(`quantity`,quantity);
-    
+    console.log(`quantity`, quantity);
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
@@ -665,7 +660,6 @@ async function placeShortOrder(symbol, marginAmount) {
     });
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
-    
   }
 }
 
@@ -674,7 +668,6 @@ setInterval(async () => {
   const totalBalance = await getUsdtBalance();
   const usableBalance = totalBalance - 5.1; // Keep $5.1 reserve
   console.log(`usableBalance usableBalance usableBalance`, usableBalance);
-  console.log(`usableBalance usableBalance usableBalance`, totalBalance - 209);
 
   const maxSpendPerTrade = usableBalance / symbols.length;
   console.log(`maxSpendPerTrade`, maxSpendPerTrade);
