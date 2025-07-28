@@ -20,9 +20,9 @@ const binance = new Binance().options({
 const symbols = [
   "1000PEPEUSDT",
   "1000BONKUSDT",
-  "DOGEUSDT",
-  "CKBUSDT",
-  "1000FLOKIUSDT",
+  // "DOGEUSDT",
+  // "CKBUSDT",
+  // "1000FLOKIUSDT",
 ];
 
 const interval = "3m";
