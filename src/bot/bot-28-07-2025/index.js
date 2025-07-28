@@ -1027,7 +1027,7 @@ async function withRetry(fn, retries = 3, delay = 1000) {
     }
   }
 }
-async function getIndicators(symbol, interval, limit = 200) {
+async function getIndicators(symbol, interval, limit = 500) {
   try {
     const data = await getCandles(symbol, interval, limit);
     if (data.length < 50) {
@@ -1275,7 +1275,7 @@ async function trainLSTM(symbol, interval) {
       console.warn(`Insufficient candles for ${symbol}: ${candles.length}`);
       return null;
     }
-    const indicators = await getIndicators(symbol, interval, 100);
+    const indicators = await getIndicators(symbol, interval, 500);
     if (!indicators || !indicators.candles) {
       console.warn(`Invalid indicators for ${symbol}`);
       return null;
