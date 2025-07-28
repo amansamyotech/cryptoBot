@@ -1,4 +1,48 @@
+// 📦 Dependencies
+const Binance = require("node-binance-api");
+const technicalIndicators = require("technicalindicators");
+const axios = require("axios");
+const { sendTelegram } = require("../../helper/teleMassage.js");
 
+const API_ENDPOINT = "http://localhost:3000/api/buySell/";
+
+// 📈 Indicator Settings
+const RSI_PERIOD = 14;
+const MACD_FAST = 12;
+const MACD_SLOW = 26;
+const MACD_SIGNAL = 9;
+const BB_PERIOD = 20;
+const BB_STD_DEV = 2;
+const EMA_FAST = 9;
+const EMA_SLOW = 15;
+const EMA_TREND_SHORT = 20;
+const EMA_TREND_LONG = 50;
+const ADX_PERIOD = 14;
+const VWMA_PERIOD = 20;
+
+// 📊 Scoring Thresholds
+const LONG_THRESHOLD = 3;
+const SHORT_THRESHOLD = -3;
+
+// ⚙️ Utility Functions
+function calculateIndicators(data) {
+  const closes = data.map(c => c.close);
+  const highs = data.map(c => c.high);
+  const lows = data.map(c => c.low);
+  const volumes = data.map(c => c.volume);
+
+  return {
+    rsi: technicalIndicators.RSI.calculate({ period: RSI_PERIOD, values: closes }),
+    macd: technicalIndicators.MACD.calculate({ values: closes, fastPeriod: MACD_FAST, slowPeriod: MACD_SLOW, signalPeriod: MACD_SIGNAL, SimpleMAOscillator: false, SimpleMASignal: false }),
+    bb: technicalIndicators.BollingerBands.calculate({ period: BB_PERIOD, stdDev: BB_STD_DEV, values: closes }),
+    emaFast: technicalIndicators.EMA.calculate({ period: EMA_FAST, values: closes }),
+    emaSlow: technicalIndicators.EMA.calculate({ period: EMA_SLOW, values: closes }),
+    emaTrendShort: technicalIndicators.EMA.calculate({ period: EMA_TREND_SHORT, values: closes }),
+    emaTrendLong: technicalIndicators.EMA.calculate({ period: EMA_TREND_LONG, values: closes }),
+    adx: technicalIndicators.ADX.calculate({ close: closes, high: highs, low: lows, period: ADX_PERIOD }),
+    vwma: technicalIndicators.VWMA.calculate({ period: VWMA_PERIOD, close: closes, volume: volumes })
+  };
+}
 
 function getMarketCondition(indicators) {
   const latestRSI = indicators.rsi[indicators.rsi.length - 1];
