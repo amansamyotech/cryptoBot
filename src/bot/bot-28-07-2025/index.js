@@ -15,7 +15,7 @@ const symbols = [
   "CKBUSDT",
   "1000FLOKIUSDT",
 ];
-const interval = "1m";
+
 const leverage = 3;
 const MINIMUM_PROFIT_ROI = 2;
 const INITIAL_TAKE_PROFIT_ROI = 2;
@@ -89,7 +89,7 @@ async function getCandles(symbol, interval, limit = 100) {
 }
 
 async function getIndicators(symbol, interval) {
-  const data = await getCandles(symbol, interval, 100);
+  const data = await getCandles(symbol, '3m', 100);
   const closes = data.map((c) => c.close);
   const highs = data.map((c) => c.high);
   const lows = data.map((c) => c.low);
@@ -189,7 +189,7 @@ function decideTradeDirection(indicators) {
 }
 
 async function processSymbol(symbol, interval, maxSpendPerTrade) {
-  const indicators = await getIndicators(symbol, interval);
+  const indicators = await getIndicators(symbol, '3m');
   const marketCondition = getMarketCondition(indicators);
 
   if (marketCondition === "sideways") {
@@ -447,7 +447,6 @@ setInterval(async () => {
     }
   }
 }, 60 * 500); // Run every 1 minute
-
 
 console.log("🚀 Enhanced Trading Bot with Trailing Stop Started!");
 console.log(`📊 Minimum Profit ROI: ${MINIMUM_PROFIT_ROI}%`);
