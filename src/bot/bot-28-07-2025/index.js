@@ -88,7 +88,7 @@ async function getCandles(symbol, interval, limit = 100) {
   }));
 }
 
-async function getIndicators(symbol) {
+async function getIndicators(symbol, interval) {
   const data = await getCandles(symbol, interval, 100);
   const closes = data.map((c) => c.close);
   const highs = data.map((c) => c.high);
@@ -140,6 +140,7 @@ async function getIndicators(symbol) {
       close: closes,
       volume: volumes,
     }),
+    latestClose: closes[closes.length - 1], // Added for decision use
   };
 }
 
@@ -156,7 +157,7 @@ function decideTradeDirection(indicators) {
   const latestRSI = indicators.rsi[indicators.rsi.length - 1];
   const latestMACD = indicators.macd[indicators.macd.length - 1];
   const latestBB = indicators.bb[indicators.bb.length - 1];
-  const latestClose = indicators.bb[0].value;
+  const latestClose = indicators.latestClose;
   const emaFast = indicators.emaFast[indicators.emaFast.length - 1];
   const emaSlow = indicators.emaSlow[indicators.emaSlow.length - 1];
   const emaShort =
@@ -187,13 +188,17 @@ function decideTradeDirection(indicators) {
   else return "HOLD";
 }
 
-async function processSymbol(symbol, maxSpendPerTrade) {
-  const isSideBase = await getMarketCondition();
-  if (isSideBase === "sideways") {
+async function processSymbol(symbol, interval, maxSpendPerTrade) {
+  const indicators = await getIndicators(symbol, interval);
+  const marketCondition = getMarketCondition(indicators);
+
+  if (marketCondition === "sideways") {
     console.log(`Market is sideways for ${symbol}. Skipping trade.`);
+    return;
   }
-  if (isSideBase === "trending") {
-    const decision = await decideTradeDirection(symbol);
+
+  if (marketCondition === "trending") {
+    const decision = decideTradeDirection(indicators);
 
     if (decision === "LONG") {
       await placeBuyOrder(symbol, maxSpendPerTrade);
@@ -204,6 +209,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
     }
   }
 }
+
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     await setLeverage(symbol);
