@@ -52,6 +52,25 @@ async function getUsdtBalance() {
     return 0;
   }
 }
+
+function calculateVWMA(prices, volumes, period) {
+  const result = [];
+  
+  for (let i = period - 1; i < prices.length; i++) {
+    let weightedSum = 0;
+    let volumeSum = 0;
+    
+    for (let j = 0; j < period; j++) {
+      const index = i - period + 1 + j;
+      weightedSum += prices[index] * volumes[index];
+      volumeSum += volumes[index];
+    }
+    
+    result.push(volumeSum > 0 ? weightedSum / volumeSum : prices[i]);
+  }
+  
+  return result;
+}
 async function setLeverage(symbol) {
   try {
     await binance.futuresLeverage(symbol, leverage);
