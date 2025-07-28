@@ -1,8 +1,6 @@
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
 const axios = require("axios");
-const { sendTelegram } = require("../../helper/teleMassage.js");
-const { decideTradeDirection } = require("./decideTradeDirection.js");
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
@@ -12,11 +10,10 @@ const binance = new Binance().options({
 });
 const symbols = [
   "1000PEPEUSDT",
-  "1000SHIBUSDT",
   "1000BONKUSDT",
+  "DOGEUSDT",
+  "CKBUSDT",
   "1000FLOKIUSDT",
-  //   "1000SATSUSDT",
-  //   "DOGEUSDT",
 ];
 const interval = "1m";
 const leverage = 3;
@@ -24,8 +21,24 @@ const MINIMUM_PROFIT_ROI = 2;
 const INITIAL_TAKE_PROFIT_ROI = 2;
 const STOP_LOSS_ROI = -1;
 const TAKE_PROFIT_ROI = 2;
+// 📈 Indicator Settings
+const RSI_PERIOD = 14;
+const MACD_FAST = 12;
+const MACD_SLOW = 26;
+const MACD_SIGNAL = 9;
+const BB_PERIOD = 20;
+const BB_STD_DEV = 2;
+const EMA_FAST = 9;
+const EMA_SLOW = 15;
+const EMA_TREND_SHORT = 20;
+const EMA_TREND_LONG = 50;
+const ADX_PERIOD = 14;
+const VWMA_PERIOD = 20;
 
-let activePositions = new Map();
+// 📊 Scoring Thresholds
+const LONG_THRESHOLD = 3;
+const SHORT_THRESHOLD = -3;
+
 async function getUsdtBalance() {
   try {
     const account = await binance.futuresBalance();
@@ -63,148 +76,132 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   return { stopLossPrice, takeProfitPrice };
 }
 
-async function checkTrailingStop(position) {
-  try {
-    const { symbol, side, entryPrice, marginUsed, quantity, tradeId } =
-      position;
-    const currentPrice = parseFloat((await binance.futuresPrices())[symbol]);
-    const currentROI = calculateCurrentROI(
-      entryPrice,
-      currentPrice,
-      side,
-      marginUsed,
-      quantity
-    );
+async function getCandles(symbol, interval, limit = 100) {
+  const candles = await binance.futuresCandles(symbol, interval, { limit });
 
-    console.log(`${symbol} - Current ROI: ${currentROI.toFixed(2)}%`);
-
-    if (currentROI < MINIMUM_PROFIT_ROI) {
-      console.log(
-        `${symbol} - Below minimum profit threshold (${MINIMUM_PROFIT_ROI}%)`
-      );
-      return false;
-    }
-    const candles = await getCandleData(symbol, 5);
-    if (candles.length < 3) {
-      console.log(`${symbol} - Not enough candle data`);
-      return false;
-    }
-    const lastCandles = candles.slice(-3);
-    let shouldClose = false;
-
-    if (side === "LONG") {
-      const candle1Bearish = lastCandles[0].close < lastCandles[0].open;
-      const candle2Bearish = lastCandles[1].close < lastCandles[1].open;
-      const candle3StartingBearish = lastCandles[2].close < lastCandles[2].open;
-
-      shouldClose = candle1Bearish && candle2Bearish && candle3StartingBearish;
-
-      if (shouldClose) {
-        console.log(
-          `${symbol} LONG - Bearish reversal detected: 3 consecutive bearish candles`
-        );
-      }
-    } else {
-      const candle1Bullish = lastCandles[0].close > lastCandles[0].open;
-      const candle2Bullish = lastCandles[1].close > lastCandles[1].open;
-      const candle3StartingBullish = lastCandles[2].close > lastCandles[2].open;
-
-      shouldClose = candle1Bullish && candle2Bullish && candle3StartingBullish;
-
-      if (shouldClose) {
-        console.log(
-          `${symbol} SHORT - Bullish reversal detected: 3 consecutive bullish candles`
-        );
-      }
-    }
-
-    if (shouldClose) {
-      await closePositionWithProfit(position, currentPrice, currentROI);
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error(
-      `Error checking trailing stop for ${position.symbol}:`,
-      error
-    );
-    return false;
-  }
+  return candles.map((c) => ({
+    open: parseFloat(c.open),
+    high: parseFloat(c.high),
+    low: parseFloat(c.low),
+    close: parseFloat(c.close),
+    volume: parseFloat(c.volume),
+  }));
 }
 
-async function closePositionWithProfit(position, currentPrice, currentROI) {
-  try {
-    const { symbol, side, quantity, tradeId, stopLossOrderId, profitOrderId } =
-      position;
+async function getIndicators(symbol) {
+  const data = await getCandles(symbol, interval, 100);
+  const closes = data.map((c) => c.close);
+  const highs = data.map((c) => c.high);
+  const lows = data.map((c) => c.low);
+  const volumes = data.map((c) => c.volume);
 
-    console.log(
-      `🎯 Closing ${side} position for ${symbol} at ${currentPrice} with ${currentROI.toFixed(
-        2
-      )}% profit`
-    );
-
-    try {
-      if (stopLossOrderId) {
-        await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
-        console.log(`Cancelled stop loss order for ${symbol}`);
-      }
-      if (profitOrderId) {
-        await binance.futuresCancel(symbol, { orderId: profitOrderId });
-        console.log(`Cancelled take profit order for ${symbol}`);
-      }
-    } catch (cancelError) {
-      console.log(
-        `Note: Some orders may have already been filled or cancelled for ${symbol}`
-      );
-    }
-
-    let closeOrder;
-    if (side === "LONG") {
-      closeOrder = await binance.futuresMarketSell(symbol, quantity);
-    } else {
-      closeOrder = await binance.futuresMarketBuy(symbol, quantity);
-    }
-
-    console.log(
-      `✅ Position closed for ${symbol} with profit: ${currentROI.toFixed(2)}%`
-    );
-
-    sendTelegram(
-      `💰 PROFIT BOOKED: ${side} ${symbol} closed at ${currentPrice} with ${currentROI.toFixed(
-        2
-      )}% ROI`
-    );
-
-    await axios.put(`${API_ENDPOINT}${tradeId}`, {
-      data: {
-        status: "1",
-        closePrice: currentPrice,
-        closeOrderId: closeOrder.orderId,
-        finalROI: currentROI,
-      },
-    });
-
-    activePositions.delete(symbol);
-  } catch (error) {
-    console.error(`Error closing position for ${position.symbol}:`, error);
-    sendTelegram(
-      `❌ Error closing position for ${position.symbol}: ${error.message}`
-    );
-  }
+  return {
+    rsi: technicalIndicators.RSI.calculate({
+      period: RSI_PERIOD,
+      values: closes,
+    }),
+    macd: technicalIndicators.MACD.calculate({
+      values: closes,
+      fastPeriod: MACD_FAST,
+      slowPeriod: MACD_SLOW,
+      signalPeriod: MACD_SIGNAL,
+      SimpleMAOscillator: false,
+      SimpleMASignal: false,
+    }),
+    bb: technicalIndicators.BollingerBands.calculate({
+      period: BB_PERIOD,
+      stdDev: BB_STD_DEV,
+      values: closes,
+    }),
+    emaFast: technicalIndicators.EMA.calculate({
+      period: EMA_FAST,
+      values: closes,
+    }),
+    emaSlow: technicalIndicators.EMA.calculate({
+      period: EMA_SLOW,
+      values: closes,
+    }),
+    emaTrendShort: technicalIndicators.EMA.calculate({
+      period: EMA_TREND_SHORT,
+      values: closes,
+    }),
+    emaTrendLong: technicalIndicators.EMA.calculate({
+      period: EMA_TREND_LONG,
+      values: closes,
+    }),
+    adx: technicalIndicators.ADX.calculate({
+      close: closes,
+      high: highs,
+      low: lows,
+      period: ADX_PERIOD,
+    }),
+    vwma: technicalIndicators.VWMA.calculate({
+      period: VWMA_PERIOD,
+      close: closes,
+      volume: volumes,
+    }),
+  };
 }
+
+function getMarketCondition(indicators) {
+  const latestRSI = indicators.rsi[indicators.rsi.length - 1];
+  const latestADX = indicators.adx[indicators.adx.length - 1]?.adx;
+  if (!latestRSI || !latestADX) return "unknown";
+  if (latestADX < 20 || latestRSI > 70 || latestRSI < 30) return "sideways";
+  return "trending";
+}
+
+function decideTradeDirection(indicators) {
+  let score = 0;
+  const latestRSI = indicators.rsi[indicators.rsi.length - 1];
+  const latestMACD = indicators.macd[indicators.macd.length - 1];
+  const latestBB = indicators.bb[indicators.bb.length - 1];
+  const latestClose = indicators.bb[0].value;
+  const emaFast = indicators.emaFast[indicators.emaFast.length - 1];
+  const emaSlow = indicators.emaSlow[indicators.emaSlow.length - 1];
+  const emaShort =
+    indicators.emaTrendShort[indicators.emaTrendShort.length - 1];
+  const emaLong = indicators.emaTrendLong[indicators.emaTrendLong.length - 1];
+  const vwma = indicators.vwma[indicators.vwma.length - 1];
+
+  if (latestRSI > 50) score++;
+  else if (latestRSI < 50) score--;
+
+  if (latestMACD.MACD > latestMACD.signal) score++;
+  else score--;
+
+  if (latestClose < latestBB.lower) score++;
+  else if (latestClose > latestBB.upper) score--;
+
+  if (emaFast > emaSlow) score++;
+  else score--;
+
+  if (emaShort > emaLong) score++;
+  else score--;
+
+  if (latestClose > vwma) score++;
+  else score--;
+
+  if (score >= LONG_THRESHOLD) return "LONG";
+  else if (score <= SHORT_THRESHOLD) return "SHORT";
+  else return "HOLD";
+}
+
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await decideTradeDirection(symbol);
+  const isSideBase = await getMarketCondition();
+  if (isSideBase === "sideways") {
+    console.log(`Market is sideways for ${symbol}. Skipping trade.`);
+  }
+  if (isSideBase === "trending") {
+    const decision = await decideTradeDirection(symbol);
 
-  if (decision === "LONG") {
-    sendTelegram(`✨ LONG SIGNAL for ${symbol}`);
-    await placeBuyOrder(symbol, maxSpendPerTrade);
-  } else if (decision === "SHORT") {
-    sendTelegram(`✨ SHORT SIGNAL for ${symbol}`);
-    await placeShortOrder(symbol, maxSpendPerTrade);
-  } else {
-    sendTelegram(`No trade signal for ${symbol}`);
-    console.log(`No trade signal for ${symbol}`);
+    if (decision === "LONG") {
+      await placeBuyOrder(symbol, maxSpendPerTrade);
+    } else if (decision === "SHORT") {
+      await placeShortOrder(symbol, maxSpendPerTrade);
+    } else {
+      console.log(`No trade signal for ${symbol}`);
+    }
   }
 }
 async function placeBuyOrder(symbol, marginAmount) {
@@ -242,9 +239,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
     );
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
-    sendTelegram(
-      `🟢 LONG ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${leverage}x`
-    );
+
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
     const buyOrderDetails = {
@@ -306,21 +301,9 @@ async function placeBuyOrder(symbol, marginAmount) {
       data: details,
     });
 
-    activePositions.set(symbol, {
-      symbol,
-      side: "LONG",
-      entryPrice,
-      marginUsed: marginAmount,
-      quantity: parseFloat(qtyFixed),
-      tradeId,
-      stopLossOrderId: stopLossOrder.orderId,
-      createdAt: Date.now(),
-    });
-
     console.log(`✅ Added ${symbol} LONG position to trailing stop monitoring`);
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
-    sendTelegram(`❌ Error placing LONG order for ${symbol}: ${error.message}`);
   }
 }
 async function placeShortOrder(symbol, marginAmount) {
@@ -356,9 +339,7 @@ async function placeShortOrder(symbol, marginAmount) {
       `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
     );
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
-    sendTelegram(
-      `🔴 SHORT ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${leverage}x`
-    );
+
     console.log(`Shorted ${symbol} at ${entryPrice}`);
 
     const shortOrderDetails = {
@@ -419,47 +400,11 @@ async function placeShortOrder(symbol, marginAmount) {
       data: details,
     });
 
-    activePositions.set(symbol, {
-      symbol,
-      side: "SHORT",
-      entryPrice,
-      marginUsed: marginAmount,
-      quantity: parseFloat(qtyFixed),
-      tradeId,
-      stopLossOrderId: stopLossOrder.orderId,
-
-      createdAt: Date.now(),
-    });
-
     console.log(
       `✅ Added ${symbol} SHORT position to trailing stop monitoring`
     );
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
-    sendTelegram(
-      `❌ Error placing SHORT order for ${symbol}: ${error.message}`
-    );
-  }
-}
-
-async function monitorTrailingStops() {
-  if (activePositions.size === 0) {
-    return;
-  }
-
-  console.log(
-    `🔍 Monitoring ${activePositions.size} active positions for trailing stops...`
-  );
-
-  for (const [symbol, position] of activePositions) {
-    try {
-      const shouldClose = await checkTrailingStop(position);
-      if (shouldClose) {
-        console.log(`Position closed for ${symbol} via trailing stop`);
-      }
-    } catch (error) {
-      console.error(`Error monitoring trailing stop for ${symbol}:`, error);
-    }
   }
 }
 
