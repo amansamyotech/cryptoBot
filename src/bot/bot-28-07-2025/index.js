@@ -90,6 +90,8 @@ async function getCandles(symbol, interval, limit = 100) {
 
 async function getIndicators(symbol, interval) {
   const data = await getCandles(symbol, '3m', 100);
+  console.log(`data`,data);
+  
   const closes = data.map((c) => c.close);
   const highs = data.map((c) => c.high);
   const lows = data.map((c) => c.low);
