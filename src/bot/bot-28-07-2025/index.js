@@ -294,14 +294,10 @@ async function getIndicators(symbol, interval) {
       throw new Error(`ADX calculation failed: ${e.message}`);
     }
 
-    // Calculate VWMA with error handling
+    // Calculate VWMA with error handling (using custom function)
     try {
       if (closes.length >= VWMA_PERIOD && volumes.length >= VWMA_PERIOD) {
-        indicators.vwma = VWMA.calculate({
-          period: VWMA_PERIOD,
-          close: closes,
-          volume: volumes,
-        });
+        indicators.vwma = calculateVWMA(closes, volumes, VWMA_PERIOD);
         if (!indicators.vwma || indicators.vwma.length === 0) {
           throw new Error('VWMA calculation returned empty result');
         }
@@ -323,6 +319,7 @@ async function getIndicators(symbol, interval) {
     throw error;
   }
 }
+
 
 function getMarketCondition(indicators) {
   const latestRSI = indicators.rsi[indicators.rsi.length - 1];
