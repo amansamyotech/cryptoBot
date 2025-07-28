@@ -87,7 +87,7 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   return { stopLossPrice, takeProfitPrice };
 }
 
-async function getCandles(symbol, interval, limit = 100) {
+async function getCandles(symbol, interval, limit = 500) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
   return candles.map((c) => ({
@@ -100,7 +100,7 @@ async function getCandles(symbol, interval, limit = 100) {
 }
 
 async function getIndicators(symbol, interval) {
-  const data = await getCandles(symbol, interval, 100);
+  const data = await getCandles(symbol, interval, 500);
   const closes = data.map((c) => c.close);
   const highs = data.map((c) => c.high);
   const lows = data.map((c) => c.low);
