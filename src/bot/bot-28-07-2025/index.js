@@ -868,8 +868,7 @@
 // }, 30000);
 
 
-const tf = require("@tensorflow/tfjs");
-require("@tensorflow/tfjs-node");
+
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
 const {
@@ -897,14 +896,6 @@ const symbols = [
   "1000FLOKIUSDT",
 ];
 
-const fs = require("fs");
-const path = require("path");
-
-const modelsDir = path.join(__dirname, "models");
-if (!fs.existsSync(modelsDir)) {
-  fs.mkdirSync(modelsDir);
-  console.log("Created models directory:", modelsDir);
-}
 const interval = "3m";
 const leverage = 3; // Leverage
 const STOP_LOSS_ROI = -1; // -2% ROI for stop loss
@@ -968,7 +959,7 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   return { stopLossPrice, takeProfitPrice };
 }
 
-async function getCandles(symbol, interval, limit = 500) {
+async function getCandles(symbol, interval, limit = 100) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
   return candles.map((c) => ({
@@ -999,37 +990,10 @@ function calculateVWMA(prices, volumes, period) {
   return result;
 }
 
-
-async function modelExists(symbol) {
-  const modelPath = path.join(modelsDir, symbol);
-  return fs.existsSync(modelPath);
-}
-
-async function verifySymbol(symbol) {
+async function getIndicators(symbol, interval) {
   try {
-    const exchangeInfo = await binance.futuresExchangeInfo();
-    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    return !!symbolInfo;
-  } catch (error) {
-    console.error(`Error verifying symbol ${symbol}:`, error.message);
-    return false;
-  }
-}
+    const data = await getCandles(symbol, interval, 200);
 
-async function withRetry(fn, retries = 3, delay = 1000) {
-  for (let i = 0; i < retries; i++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (i === retries - 1) throw error;
-      console.warn(`Retry ${i + 1}/${retries} after error:`, error.message);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-}
-async function getIndicators(symbol, interval, limit = 500) {
-  try {
-    const data = await getCandles(symbol, interval, limit);
     if (data.length < 50) {
       throw new Error(
         `Insufficient data for ${symbol}: ${data.length} candles (minimum 50 required)`
@@ -1041,6 +1005,7 @@ async function getIndicators(symbol, interval, limit = 500) {
     const lows = data.map((c) => c.low);
     const volumes = data.map((c) => c.volume);
 
+    // Additional validation
     if (
       closes.some(isNaN) ||
       highs.some(isNaN) ||
@@ -1052,10 +1017,13 @@ async function getIndicators(symbol, interval, limit = 500) {
 
     const indicators = {};
 
-    // RSI
+    // Calculate RSI with error handling
     try {
       if (closes.length >= RSI_PERIOD) {
-        indicators.rsi = RSI.calculate({ period: RSI_PERIOD, values: closes });
+        indicators.rsi = RSI.calculate({
+          period: RSI_PERIOD,
+          values: closes,
+        });
         if (!indicators.rsi || indicators.rsi.length === 0) {
           throw new Error("RSI calculation returned empty result");
         }
@@ -1069,7 +1037,7 @@ async function getIndicators(symbol, interval, limit = 500) {
       throw new Error(`RSI calculation failed: ${e.message}`);
     }
 
-    // MACD
+    // Calculate MACD with error handling
     try {
       if (closes.length >= MACD_SLOW) {
         indicators.macd = MACD.calculate({
@@ -1093,7 +1061,7 @@ async function getIndicators(symbol, interval, limit = 500) {
       throw new Error(`MACD calculation failed: ${e.message}`);
     }
 
-    // Bollinger Bands
+    // Calculate Bollinger Bands with error handling
     try {
       if (closes.length >= BB_PERIOD) {
         indicators.bb = BollingerBands.calculate({
@@ -1117,7 +1085,7 @@ async function getIndicators(symbol, interval, limit = 500) {
       throw new Error(`BB calculation failed: ${e.message}`);
     }
 
-    // EMA Fast
+    // Calculate EMA Fast with error handling
     try {
       if (closes.length >= EMA_FAST) {
         indicators.emaFast = EMA.calculate({
@@ -1137,7 +1105,7 @@ async function getIndicators(symbol, interval, limit = 500) {
       throw new Error(`EMA Fast calculation failed: ${e.message}`);
     }
 
-    // EMA Slow
+    // Calculate EMA Slow with error handling
     try {
       if (closes.length >= EMA_SLOW) {
         indicators.emaSlow = EMA.calculate({
@@ -1157,7 +1125,7 @@ async function getIndicators(symbol, interval, limit = 500) {
       throw new Error(`EMA Slow calculation failed: ${e.message}`);
     }
 
-    // EMA Trend Short
+    // Calculate EMA Trend Short with error handling
     try {
       if (closes.length >= EMA_TREND_SHORT) {
         indicators.emaTrendShort = EMA.calculate({
@@ -1183,7 +1151,7 @@ async function getIndicators(symbol, interval, limit = 500) {
       throw new Error(`EMA Trend Short calculation failed: ${e.message}`);
     }
 
-    // EMA Trend Long
+    // Calculate EMA Trend Long with error handling
     try {
       if (closes.length >= EMA_TREND_LONG) {
         indicators.emaTrendLong = EMA.calculate({
@@ -1206,7 +1174,7 @@ async function getIndicators(symbol, interval, limit = 500) {
       throw new Error(`EMA Trend Long calculation failed: ${e.message}`);
     }
 
-    // ADX
+    // Calculate ADX with error handling
     try {
       if (
         closes.length >= ADX_PERIOD &&
@@ -1232,7 +1200,7 @@ async function getIndicators(symbol, interval, limit = 500) {
       throw new Error(`ADX calculation failed: ${e.message}`);
     }
 
-    // VWMA
+    // Calculate VWMA with error handling (using custom function)
     try {
       if (closes.length >= VWMA_PERIOD && volumes.length >= VWMA_PERIOD) {
         indicators.vwma = calculateVWMA(closes, volumes, VWMA_PERIOD);
@@ -1250,7 +1218,6 @@ async function getIndicators(symbol, interval, limit = 500) {
     }
 
     indicators.latestClose = closes[closes.length - 1];
-    indicators.candles = data; // Store candles for feature calculations
 
     return indicators;
   } catch (error) {
@@ -1265,140 +1232,6 @@ function getMarketCondition(indicators) {
   if (!latestRSI || !latestADX) return "unknown";
   if (latestADX < 20 || latestRSI > 70 || latestRSI < 30) return "sideways";
   return "trending";
-}
-
-async function trainLSTM(symbol, interval) {
-  try {
-    console.log(`Starting training for ${symbol}`);
-    const candles = await getCandles(symbol, interval, 500);
-    if (candles.length < 50) {
-      console.warn(`Insufficient candles for ${symbol}: ${candles.length}`);
-      return null;
-    }
-    const indicators = await getIndicators(symbol, interval, 500);
-    if (!indicators || !indicators.candles) {
-      console.warn(`Invalid indicators for ${symbol}`);
-      return null;
-    }
-
-    const sequenceLength = 10;
-    const features = [];
-    const labels = [];
-
-    for (let i = sequenceLength; i < candles.length - 1; i++) {
-      const sequence = [];
-      for (let j = i - sequenceLength; j < i; j++) {
-        if (!indicators.rsi[j] || !indicators.macd[j] || !indicators.bb[j]) {
-          console.warn(`Missing indicator data at index ${j} for ${symbol}`);
-          continue;
-        }
-        sequence.push([
-          parseFloat(indicators.rsi[j] / 100),
-          parseFloat(indicators.macd[j]?.MACD / 100),
-          parseFloat(indicators.macd[j]?.signal / 100),
-          parseFloat((indicators.bb[j].upper - indicators.bb[j].lower) / indicators.bb[j].middle),
-          parseFloat(indicators.emaFast[j] / candles[j].close),
-          parseFloat(indicators.emaSlow[j] / candles[j].close),
-          parseFloat(indicators.emaTrendShort[j] / candles[j].close),
-          parseFloat(indicators.emaTrendLong[j] / candles[j].close),
-          parseFloat(indicators.adx[j]?.adx / 100),
-          parseFloat(indicators.vwma[j] / candles[j].close),
-          j > 0 ? parseFloat((candles[j].close - candles[j - 1].close) / candles[j - 1].close) : 0,
-          j > 0 ? parseFloat((candles[j].volume - candles[j - 1].volume) / candles[j - 1].volume) : 0,
-        ]);
-      }
-      if (sequence.length === sequenceLength) {
-        features.push(sequence);
-        const nextClose = candles[i + 1].close;
-        labels.push(
-          nextClose > candles[i].close ? 1 : nextClose < candles[i].close ? -1 : 0
-        );
-      }
-    }
-
-    if (features.length === 0 || labels.length === 0) {
-      console.warn(`No valid features or labels for ${symbol}`);
-      return null;
-    }
-
-    const xs = tf.tensor3d(features, [features.length, sequenceLength, 12], "float32");
-    const ys = tf.tensor1d(labels, "float32");
-
-    const model = tf.sequential();
-    model.add(
-  tf.layers.lstm({
-    units: 32, // Reduced from 50
-    inputShape: [sequenceLength, 12],
-    returnSequences: false,
-  })
-);
-    model.add(tf.layers.dense({ units: 3, activation: "softmax" }));
-
-    model.compile({
-      optimizer: "adam",
-      loss: "sparseCategoricalCrossentropy",
-      metrics: ["accuracy"],
-    });
-
-    await model.fit(xs, ys, {
-      epochs: 50,
-      batchSize: 32,
-      validationSplit: 0.2,
-      callbacks: {
-        onEpochEnd: (epoch, logs) =>
-          console.log(`Epoch ${epoch}: Accuracy = ${logs.acc.toFixed(4)}`),
-      },
-    });
-
-    await model.save(`file://${modelsDir}/${symbol}`);
-    console.log(`Model successfully saved for ${symbol}`);
-    xs.dispose();
-    ys.dispose();
-    return model;
-  } catch (error) {
-    console.error(`Failed to train/save model for ${symbol}:`, error.message);
-    return null;
-  }
-}
-
-async function predictMarketDirection(symbol, interval, model) {
-  const indicators = await getIndicators(symbol, interval, 11); // 10 candles + 1 for latest
-  const candles = indicators.candles;
-  const sequence = [];
-
-  for (let i = candles.length - 10; i < candles.length; i++) {
-    sequence.push([
-      indicators.rsi[i] / 100,
-      indicators.macd[i]?.MACD / 100,
-      indicators.macd[i]?.signal / 100,
-      (indicators.bb[i].upper - indicators.bb[i].lower) /
-        indicators.bb[i].middle,
-      indicators.emaFast[i] / candles[i].close,
-      indicators.emaSlow[i] / candles[i].close,
-      indicators.emaTrendShort[i] / candles[i].close,
-      indicators.emaTrendLong[i] / candles[i].close,
-      indicators.adx[i]?.adx / 100,
-      indicators.vwma[i] / candles[i].close,
-      i > 0
-        ? (candles[i].close - candles[i - 1].close) / candles[i - 1].close
-        : 0,
-      i > 0
-        ? (candles[i].volume - candles[i - 1].volume) / candles[i - 1].volume
-        : 0,
-    ]);
-  }
-
-  const input = tf.tensor3d([sequence], [1, 10, 12]);
-  const prediction = model.predict(input);
-  const result = await prediction.argMax(-1).data();
-  const probabilities = await prediction.data();
-  console.log(`Prediction probabilities for ${symbol}:`, probabilities);
-  input.dispose();
-  prediction.dispose();
-
-  // Only trade if confidence > 0.7
-  if (probabilities[result[0]] < 0.7) return "HOLD";
-  return result[0] === 1 ? "LONG" : result[0] === -1 ? "SHORT" : "HOLD";
 }
 
 function decideTradeDirection(indicators) {
@@ -1438,29 +1271,16 @@ function decideTradeDirection(indicators) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  try {
-    const indicators = await getIndicators(symbol, "3m");
-    const marketCondition = getMarketCondition(indicators);
+  const indicators = await getIndicators(symbol, "3m");
+  const marketCondition = getMarketCondition(indicators);
 
-    if (marketCondition === "sideways") {
-      console.log(`Sideways market for ${symbol}, skipping trade.`);
-      return;
-    }
+  if (marketCondition === "sideways") {
+    return;
+  }
 
-    let model;
-    if (await modelExists(symbol)) {
-      model = await tf.loadLayersModel(`file://${modelsDir}/${symbol}`);
-      console.log(`Model loaded for ${symbol}`);
-    } else {
-      console.log(`Training new model for ${symbol}`);
-      model = await trainLSTM(symbol, "3m");
-      if (!model) {
-        console.error(`Failed to train model for ${symbol}, skipping trade.`);
-        return;
-      }
-    }
+  if (marketCondition === "trending") {
+    const decision = decideTradeDirection(indicators);
 
-    const decision = await predictMarketDirection(symbol, "3m", model);
     if (decision === "LONG") {
       await placeBuyOrder(symbol, maxSpendPerTrade);
     } else if (decision === "SHORT") {
@@ -1468,8 +1288,6 @@ async function processSymbol(symbol, maxSpendPerTrade) {
     } else {
       console.log(`No trade signal for ${symbol}`);
     }
-  } catch (error) {
-    console.error(`Error processing ${symbol}:`, error.message);
   }
 }
 
@@ -1701,28 +1519,8 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 
-
-async function initializeModels() {
-  for (const sym of symbols) {
-    const isValid = await verifySymbol(sym);
-    if (!isValid) {
-      console.warn(`Symbol ${sym} is not valid on Binance Futures, skipping.`);
-      continue;
-    }
-    console.log(`Training LSTM model for ${sym}`);
-    const model = await trainLSTM(sym, "3m");
-    if (model) {
-      console.log(`Model training completed for ${sym}`);
-    } else {
-      console.warn(`Model training failed for ${sym}`);
-    }
-  }
-  console.log("All models initialized.");
-}
 // 🔁 Main Loop
 setInterval(async () => {
-  await initializeModels(); 
-  console.log("Starting main trading loop...");
   const totalBalance = await getUsdtBalance();
   const usableBalance = totalBalance - 5.1; // Keep $5.1 reserve
   console.log(`usableBalance usableBalance usableBalance`, usableBalance);
@@ -1855,4 +1653,3 @@ setInterval(async () => {
     await checkOrders(sym);
   }
 }, 30000);
-
