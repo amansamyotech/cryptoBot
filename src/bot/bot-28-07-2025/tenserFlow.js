@@ -27,6 +27,14 @@ const symbols = [
   "1000FLOKIUSDT",
 ];
 
+const fs = require("fs");
+const path = require("path");
+
+const modelsDir = path.join(__dirname, "models");
+if (!fs.existsSync(modelsDir)) {
+  fs.mkdirSync(modelsDir);
+  console.log("Created models directory:", modelsDir);
+}
 const interval = "3m";
 const leverage = 3; // Leverage
 const STOP_LOSS_ROI = -1; // -2% ROI for stop loss
@@ -362,72 +370,80 @@ function getMarketCondition(indicators) {
 }
 
 async function trainLSTM(symbol, interval) {
-  const candles = await getCandles(symbol, interval, 2000);
-  const indicators = await getIndicators(symbol, interval, 2000);
-
-  const sequenceLength = 10; // Use 10 candles per sequence
-  const features = [];
-  const labels = [];
-
-  for (let i = sequenceLength; i < candles.length - 1; i++) {
-    const sequence = [];
-    for (let j = i - sequenceLength; j < i; j++) {
-      sequence.push([
-        indicators.rsi[j] / 100,
-        indicators.macd[j]?.MACD / 100,
-        indicators.macd[j]?.signal / 100,
-        (indicators.bb[j].upper - indicators.bb[j].lower) /
-          indicators.bb[j].middle,
-        indicators.emaFast[j] / candles[j].close,
-        indicators.emaSlow[j] / candles[j].close,
-        indicators.emaTrendShort[j] / candles[j].close,
-        indicators.emaTrendLong[j] / candles[j].close,
-        indicators.adx[j]?.adx / 100,
-        indicators.vwma[j] / candles[j].close,
-        (candles[j].close - candles[j - 1].close) / candles[j - 1].close,
-        (candles[j].volume - candles[j - 1].volume) / candles[j - 1].volume,
-      ]);
+  try {
+    console.log(`Starting training for ${symbol}`);
+    const candles = await getCandles(symbol, interval, 500); // Reduced for testing
+    if (candles.length < 500) {
+      console.warn(`Insufficient candles for ${symbol}: ${candles.length}`);
+      return null;
     }
-    features.push(sequence);
-    const nextClose = candles[i + 1].close;
-    labels.push(
-      nextClose > candles[i].close ? 1 : nextClose < candles[i].close ? -1 : 0
+    const indicators = await getIndicators(symbol, interval, 500);
+    const sequenceLength = 10; // Use 10 candles per sequence
+    const features = [];
+    const labels = [];
+
+    for (let i = sequenceLength; i < candles.length - 1; i++) {
+      const sequence = [];
+      for (let j = i - sequenceLength; j < i; j++) {
+        sequence.push([
+          indicators.rsi[j] / 100,
+          indicators.macd[j]?.MACD / 100,
+          indicators.macd[j]?.signal / 100,
+          (indicators.bb[j].upper - indicators.bb[j].lower) /
+            indicators.bb[j].middle,
+          indicators.emaFast[j] / candles[j].close,
+          indicators.emaSlow[j] / candles[j].close,
+          indicators.emaTrendShort[j] / candles[j].close,
+          indicators.emaTrendLong[j] / candles[j].close,
+          indicators.adx[j]?.adx / 100,
+          indicators.vwma[j] / candles[j].close,
+          (candles[j].close - candles[j - 1].close) / candles[j - 1].close,
+          (candles[j].volume - candles[j - 1].volume) / candles[j - 1].volume,
+        ]);
+      }
+      features.push(sequence);
+      const nextClose = candles[i + 1].close;
+      labels.push(
+        nextClose > candles[i].close ? 1 : nextClose < candles[i].close ? -1 : 0
+      );
+    }
+
+    const xs = tf.tensor3d(features);
+    const ys = tf.tensor1d(labels, "int32");
+
+    const model = tf.sequential();
+    model.add(
+      tf.layers.lstm({
+        units: 50,
+        inputShape: [sequenceLength, 12],
+        returnSequences: false,
+      })
     );
+    model.add(tf.layers.dense({ units: 3, activation: "softmax" }));
+
+    model.compile({
+      optimizer: "adam",
+      loss: "sparseCategoricalCrossentropy",
+      metrics: ["accuracy"],
+    });
+
+    await model.fit(xs, ys, {
+      epochs: 50,
+      batchSize: 32,
+      validationSplit: 0.2,
+      callbacks: {
+        onEpochEnd: (epoch, logs) =>
+          console.log(`Epoch ${epoch}: Accuracy = ${logs.acc.toFixed(4)}`),
+      },
+    });
+
+    await model.save(`file://./models/${symbol}`);
+    console.log(`Model successfully saved for ${symbol}`);
+    return model;
+  } catch (error) {
+    console.error(`Failed to train/save model for ${symbol}:`, error.message);
+    return null;
   }
-
-  const xs = tf.tensor3d(features);
-  const ys = tf.tensor1d(labels, "int32");
-
-  const model = tf.sequential();
-  model.add(
-    tf.layers.lstm({
-      units: 50,
-      inputShape: [sequenceLength, 12],
-      returnSequences: false,
-    })
-  );
-  model.add(tf.layers.dense({ units: 3, activation: "softmax" }));
-
-  model.compile({
-    optimizer: "adam",
-    loss: "sparseCategoricalCrossentropy",
-    metrics: ["accuracy"],
-  });
-
-  await model.fit(xs, ys, {
-    epochs: 50,
-    batchSize: 32,
-    validationSplit: 0.2,
-    callbacks: {
-      onEpochEnd: (epoch, logs) =>
-        console.log(`Epoch ${epoch}: Accuracy = ${logs.acc.toFixed(4)}`),
-    },
-  });
-
-  await model.save(`file://./models/${symbol}`);
-  xs.dispose();
-  ys.dispose();
-  return model;
 }
 
 async function predictMarketDirection(symbol, interval, model) {
@@ -516,9 +532,20 @@ async function processSymbol(symbol, maxSpendPerTrade) {
       return;
     }
 
-    const model = await tf.loadLayersModel(`file://./models/${symbol}`);
-    const decision = await predictMarketDirection(symbol, "3m", model);
+    let model;
+    if (await modelExists(symbol)) {
+      model = await tf.loadLayersModel(`file://${modelsDir}/${symbol}`);
+      console.log(`Model loaded for ${symbol}`);
+    } else {
+      console.log(`Training new model for ${symbol}`);
+      model = await trainLSTM(symbol, "3m");
+      if (!model) {
+        console.error(`Failed to train model for ${symbol}, skipping trade.`);
+        return;
+      }
+    }
 
+    const decision = await predictMarketDirection(symbol, "3m", model);
     if (decision === "LONG") {
       await placeBuyOrder(symbol, maxSpendPerTrade);
     } else if (decision === "SHORT") {
@@ -761,6 +788,8 @@ async function placeShortOrder(symbol, marginAmount) {
 
 // 🔁 Main Loop
 setInterval(async () => {
+  await initializeModels(); 
+  console.log("Starting main trading loop...");
   const totalBalance = await getUsdtBalance();
   const usableBalance = totalBalance - 5.1; // Keep $5.1 reserve
   console.log(`usableBalance usableBalance usableBalance`, usableBalance);
@@ -894,10 +923,3 @@ setInterval(async () => {
   }
 }, 30000);
 
-async function initializeModels() {
-  for (const sym of symbols) {
-    console.log(`Training LSTM model for ${sym}`);
-    await trainLSTM(sym, "3m");
-  }
-}
-initializeModels();
