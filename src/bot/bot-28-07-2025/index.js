@@ -424,11 +424,17 @@ async function placeBuyOrder(symbol, marginAmount) {
     await setLeverage(symbol);
 
     const price = (await binance.futuresPrices())[symbol];
+    console.log(`price`,price);
+    
     const entryPrice = parseFloat(price);
+    console.log(`entryPrice`,entryPrice);
+    
 
     // Calculate position size with leverage
     const positionValue = marginAmount * leverage;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
+    console.log(`quantity`,quantity);
+    
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
