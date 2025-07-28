@@ -541,15 +541,25 @@ async function placeBuyOrder(symbol, marginAmount) {
 
 // 📉 Place Short Order + Stop Loss (SHORT Position)
 async function placeShortOrder(symbol, marginAmount) {
+  console.log(`symbol`,symbol);
+  console.log('`marginAmount`',marginAmount);
+  
+  
   try {
     await setLeverage(symbol);
 
     const price = (await binance.futuresPrices())[symbol];
     const entryPrice = parseFloat(price);
+    console.log(`entryPrice`,entryPrice);
+    
 
     // Calculate position size with leverage
     const positionValue = marginAmount * leverage;
+    console.log(`positionValue`,positionValue);
+    
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
+    console.log(`quantity`,quantity);
+    
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
