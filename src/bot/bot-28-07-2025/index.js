@@ -1,13 +1,23 @@
 const Binance = require("node-binance-api");
-const technicalIndicators = require("technicalindicators");
+const {
+  RSI,
+  MACD,
+  EMA,
+  ADX,
+  BollingerBands,
+  VWMA,
+} = require("technicalindicators");
 const axios = require("axios");
+
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
+
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
   APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
   test: false,
 });
+
 const symbols = [
   "1000PEPEUSDT",
   "1000BONKUSDT",
@@ -21,7 +31,7 @@ const MINIMUM_PROFIT_ROI = 2;
 const INITIAL_TAKE_PROFIT_ROI = 2;
 const STOP_LOSS_ROI = -1;
 const TAKE_PROFIT_ROI = 2;
-// 📈 Indicator Settings
+
 const RSI_PERIOD = 14;
 const MACD_FAST = 12;
 const MACD_SLOW = 26;
@@ -35,7 +45,6 @@ const EMA_TREND_LONG = 50;
 const ADX_PERIOD = 14;
 const VWMA_PERIOD = 20;
 
-// 📊 Scoring Thresholds
 const LONG_THRESHOLD = 3;
 const SHORT_THRESHOLD = -3;
 
@@ -51,6 +60,7 @@ async function getUsdtBalance() {
     return 0;
   }
 }
+
 async function setLeverage(symbol) {
   try {
     await binance.futuresLeverage(symbol, leverage);
@@ -59,6 +69,7 @@ async function setLeverage(symbol) {
     console.error(`Failed to set leverage for ${symbol}:`, err.body);
   }
 }
+
 function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100;
   const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100;
@@ -89,20 +100,18 @@ async function getCandles(symbol, interval, limit = 100) {
 }
 
 async function getIndicators(symbol, interval) {
-  const data = await getCandles(symbol, '3m', 100);
-  console.log(`data`,data);
-  
+  const data = await getCandles(symbol, interval, 100);
   const closes = data.map((c) => c.close);
   const highs = data.map((c) => c.high);
   const lows = data.map((c) => c.low);
   const volumes = data.map((c) => c.volume);
 
   return {
-    rsi: technicalIndicators.RSI.calculate({
+    rsi: RSI.calculate({
       period: RSI_PERIOD,
       values: closes,
     }),
-    macd: technicalIndicators.MACD.calculate({
+    macd: MACD.calculate({
       values: closes,
       fastPeriod: MACD_FAST,
       slowPeriod: MACD_SLOW,
@@ -110,39 +119,39 @@ async function getIndicators(symbol, interval) {
       SimpleMAOscillator: false,
       SimpleMASignal: false,
     }),
-    bb: technicalIndicators.BollingerBands.calculate({
+    bb: BollingerBands.calculate({
       period: BB_PERIOD,
       stdDev: BB_STD_DEV,
       values: closes,
     }),
-    emaFast: technicalIndicators.EMA.calculate({
+    emaFast: EMA.calculate({
       period: EMA_FAST,
       values: closes,
     }),
-    emaSlow: technicalIndicators.EMA.calculate({
+    emaSlow: EMA.calculate({
       period: EMA_SLOW,
       values: closes,
     }),
-    emaTrendShort: technicalIndicators.EMA.calculate({
+    emaTrendShort: EMA.calculate({
       period: EMA_TREND_SHORT,
       values: closes,
     }),
-    emaTrendLong: technicalIndicators.EMA.calculate({
+    emaTrendLong: EMA.calculate({
       period: EMA_TREND_LONG,
       values: closes,
     }),
-    adx: technicalIndicators.ADX.calculate({
+    adx: ADX.calculate({
       close: closes,
       high: highs,
       low: lows,
       period: ADX_PERIOD,
     }),
-    vwma: technicalIndicators.VWMA.calculate({
+    vwma: VWMA.calculate({
       period: VWMA_PERIOD,
       close: closes,
       volume: volumes,
     }),
-    latestClose: closes[closes.length - 1], // Added for decision use
+    latestClose: closes[closes.length - 1],
   };
 }
 
@@ -162,8 +171,7 @@ function decideTradeDirection(indicators) {
   const latestClose = indicators.latestClose;
   const emaFast = indicators.emaFast[indicators.emaFast.length - 1];
   const emaSlow = indicators.emaSlow[indicators.emaSlow.length - 1];
-  const emaShort =
-    indicators.emaTrendShort[indicators.emaTrendShort.length - 1];
+  const emaShort = indicators.emaTrendShort[indicators.emaTrendShort.length - 1];
   const emaLong = indicators.emaTrendLong[indicators.emaTrendLong.length - 1];
   const vwma = indicators.vwma[indicators.vwma.length - 1];
 
