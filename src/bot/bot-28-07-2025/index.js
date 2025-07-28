@@ -1,6 +1,13 @@
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
-const { RSI, MACD, BollingerBands, EMA, ADX, VWMA } = require('technicalindicators');
+const {
+  RSI,
+  MACD,
+  BollingerBands,
+  EMA,
+  ADX,
+  VWMA,
+} = require("technicalindicators");
 
 const axios = require("axios");
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
@@ -18,11 +25,15 @@ const symbols = [
   "1000FLOKIUSDT",
 ];
 
-const leverage = 3;
+const interval = "3m";
+const leverage = 3; // Leverage
+const STOP_LOSS_ROI = -1; // -1% ROI for stop loss
+const TAKE_PROFIT_ROI = 2; // +2% ROI for take
+
+
+
 const MINIMUM_PROFIT_ROI = 2;
 const INITIAL_TAKE_PROFIT_ROI = 2;
-const STOP_LOSS_ROI = -1;
-const TAKE_PROFIT_ROI = 2;
 // 📈 Indicator Settings
 const RSI_PERIOD = 14;
 const MACD_FAST = 12;
@@ -40,7 +51,6 @@ const LONG_THRESHOLD = 3;
 const SHORT_THRESHOLD = -3;
 // 📊 Scoring Thresholds
 
-
 async function getUsdtBalance() {
   try {
     const account = await binance.futuresBalance();
@@ -53,17 +63,15 @@ async function getUsdtBalance() {
     return 0;
   }
 }
-
 // Set leverage before trading
 async function setLeverage(symbol) {
   try {
-    await binance.futuresLeverage(symbol, 3);
+    await binance.futuresLeverage(symbol, leverage);
     console.log(`Leverage set to ${leverage}x for ${symbol}`);
   } catch (err) {
     console.error(`Failed to set leverage for ${symbol}:`, err.body);
   }
 }
-
 // 📊 Calculate ROI-based prices for stop loss and take profit
 function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   // For futures trading, ROI = PnL / Margin Used × 100
@@ -89,73 +97,45 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   return { stopLossPrice, takeProfitPrice };
 }
 
-async function getCandles(symbol, interval, limit = 200) {
-  try {
-    console.log(`Fetching candles for ${symbol}...`);
-    const candles = await binance.futuresCandles(symbol, interval, { limit });
-    
-    if (!candles || candles.length === 0) {
-      throw new Error(`No candle data received for ${symbol}`);
-    }
+async function getCandles(symbol, interval, limit = 100) {
+  const candles = await binance.futuresCandles(symbol, interval, { limit });
 
-    if (candles.length < 50) {
-      throw new Error(`Insufficient candle data for ${symbol}: only ${candles.length} candles received`);
-    }
-
-    const processedCandles = candles.map((c) => {
-      const processed = {
-        open: parseFloat(c.open),
-        high: parseFloat(c.high),
-        low: parseFloat(c.low),
-        close: parseFloat(c.close),
-        volume: parseFloat(c.volume),
-      };
-
-      // Validate individual candle data
-      if (isNaN(processed.open) || isNaN(processed.high) || isNaN(processed.low) || 
-          isNaN(processed.close) || isNaN(processed.volume)) {
-        throw new Error(`Invalid candle data for ${symbol}`);
-      }
-
-      return processed;
-    });
-
-    console.log(`Successfully fetched ${processedCandles.length} candles for ${symbol}`);
-    return processedCandles;
-
-  } catch (error) {
-    console.error(`Error fetching candles for ${symbol}:`, error.message);
-    throw error;
-  }
+  return candles.map((c) => ({
+    open: parseFloat(c.open),
+    high: parseFloat(c.high),
+    low: parseFloat(c.low),
+    close: parseFloat(c.close),
+    volume: parseFloat(c.volume),
+  }));
 }
-
 
 function calculateVWMA(prices, volumes, period) {
   const result = [];
-  
+
   for (let i = period - 1; i < prices.length; i++) {
     let weightedSum = 0;
     let volumeSum = 0;
-    
+
     for (let j = 0; j < period; j++) {
       const index = i - period + 1 + j;
       weightedSum += prices[index] * volumes[index];
       volumeSum += volumes[index];
     }
-    
+
     result.push(volumeSum > 0 ? weightedSum / volumeSum : prices[i]);
   }
-  
+
   return result;
 }
-
 
 async function getIndicators(symbol, interval) {
   try {
     const data = await getCandles(symbol, interval, 200);
-    
+
     if (data.length < 50) {
-      throw new Error(`Insufficient data for ${symbol}: ${data.length} candles (minimum 50 required)`);
+      throw new Error(
+        `Insufficient data for ${symbol}: ${data.length} candles (minimum 50 required)`
+      );
     }
 
     const closes = data.map((c) => c.close);
@@ -164,7 +144,12 @@ async function getIndicators(symbol, interval) {
     const volumes = data.map((c) => c.volume);
 
     // Additional validation
-    if (closes.some(isNaN) || highs.some(isNaN) || lows.some(isNaN) || volumes.some(isNaN)) {
+    if (
+      closes.some(isNaN) ||
+      highs.some(isNaN) ||
+      lows.some(isNaN) ||
+      volumes.some(isNaN)
+    ) {
       throw new Error(`Invalid price data detected for ${symbol}`);
     }
 
@@ -184,10 +169,12 @@ async function getIndicators(symbol, interval) {
           values: closes,
         });
         if (!indicators.rsi || indicators.rsi.length === 0) {
-          throw new Error('RSI calculation returned empty result');
+          throw new Error("RSI calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for RSI: need ${RSI_PERIOD}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for RSI: need ${RSI_PERIOD}, have ${closes.length}`
+        );
       }
     } catch (e) {
       console.error(`RSI calculation failed for ${symbol}:`, e.message);
@@ -206,10 +193,12 @@ async function getIndicators(symbol, interval) {
           SimpleMASignal: false,
         });
         if (!indicators.macd || indicators.macd.length === 0) {
-          throw new Error('MACD calculation returned empty result');
+          throw new Error("MACD calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for MACD: need ${MACD_SLOW}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for MACD: need ${MACD_SLOW}, have ${closes.length}`
+        );
       }
     } catch (e) {
       console.error(`MACD calculation failed for ${symbol}:`, e.message);
@@ -225,13 +214,18 @@ async function getIndicators(symbol, interval) {
           values: closes,
         });
         if (!indicators.bb || indicators.bb.length === 0) {
-          throw new Error('Bollinger Bands calculation returned empty result');
+          throw new Error("Bollinger Bands calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for BB: need ${BB_PERIOD}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for BB: need ${BB_PERIOD}, have ${closes.length}`
+        );
       }
     } catch (e) {
-      console.error(`Bollinger Bands calculation failed for ${symbol}:`, e.message);
+      console.error(
+        `Bollinger Bands calculation failed for ${symbol}:`,
+        e.message
+      );
       throw new Error(`BB calculation failed: ${e.message}`);
     }
 
@@ -243,10 +237,12 @@ async function getIndicators(symbol, interval) {
           values: closes,
         });
         if (!indicators.emaFast || indicators.emaFast.length === 0) {
-          throw new Error('EMA Fast calculation returned empty result');
+          throw new Error("EMA Fast calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for EMA Fast: need ${EMA_FAST}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for EMA Fast: need ${EMA_FAST}, have ${closes.length}`
+        );
       }
     } catch (e) {
       console.error(`EMA Fast calculation failed for ${symbol}:`, e.message);
@@ -261,10 +257,12 @@ async function getIndicators(symbol, interval) {
           values: closes,
         });
         if (!indicators.emaSlow || indicators.emaSlow.length === 0) {
-          throw new Error('EMA Slow calculation returned empty result');
+          throw new Error("EMA Slow calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for EMA Slow: need ${EMA_SLOW}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for EMA Slow: need ${EMA_SLOW}, have ${closes.length}`
+        );
       }
     } catch (e) {
       console.error(`EMA Slow calculation failed for ${symbol}:`, e.message);
@@ -278,14 +276,22 @@ async function getIndicators(symbol, interval) {
           period: EMA_TREND_SHORT,
           values: closes,
         });
-        if (!indicators.emaTrendShort || indicators.emaTrendShort.length === 0) {
-          throw new Error('EMA Trend Short calculation returned empty result');
+        if (
+          !indicators.emaTrendShort ||
+          indicators.emaTrendShort.length === 0
+        ) {
+          throw new Error("EMA Trend Short calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for EMA Trend Short: need ${EMA_TREND_SHORT}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for EMA Trend Short: need ${EMA_TREND_SHORT}, have ${closes.length}`
+        );
       }
     } catch (e) {
-      console.error(`EMA Trend Short calculation failed for ${symbol}:`, e.message);
+      console.error(
+        `EMA Trend Short calculation failed for ${symbol}:`,
+        e.message
+      );
       throw new Error(`EMA Trend Short calculation failed: ${e.message}`);
     }
 
@@ -297,19 +303,28 @@ async function getIndicators(symbol, interval) {
           values: closes,
         });
         if (!indicators.emaTrendLong || indicators.emaTrendLong.length === 0) {
-          throw new Error('EMA Trend Long calculation returned empty result');
+          throw new Error("EMA Trend Long calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for EMA Trend Long: need ${EMA_TREND_LONG}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for EMA Trend Long: need ${EMA_TREND_LONG}, have ${closes.length}`
+        );
       }
     } catch (e) {
-      console.error(`EMA Trend Long calculation failed for ${symbol}:`, e.message);
+      console.error(
+        `EMA Trend Long calculation failed for ${symbol}:`,
+        e.message
+      );
       throw new Error(`EMA Trend Long calculation failed: ${e.message}`);
     }
 
     // Calculate ADX with error handling
     try {
-      if (closes.length >= ADX_PERIOD && highs.length >= ADX_PERIOD && lows.length >= ADX_PERIOD) {
+      if (
+        closes.length >= ADX_PERIOD &&
+        highs.length >= ADX_PERIOD &&
+        lows.length >= ADX_PERIOD
+      ) {
         indicators.adx = ADX.calculate({
           close: closes,
           high: highs,
@@ -317,10 +332,12 @@ async function getIndicators(symbol, interval) {
           period: ADX_PERIOD,
         });
         if (!indicators.adx || indicators.adx.length === 0) {
-          throw new Error('ADX calculation returned empty result');
+          throw new Error("ADX calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for ADX: need ${ADX_PERIOD}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for ADX: need ${ADX_PERIOD}, have ${closes.length}`
+        );
       }
     } catch (e) {
       console.error(`ADX calculation failed for ${symbol}:`, e.message);
@@ -332,10 +349,12 @@ async function getIndicators(symbol, interval) {
       if (closes.length >= VWMA_PERIOD && volumes.length >= VWMA_PERIOD) {
         indicators.vwma = calculateVWMA(closes, volumes, VWMA_PERIOD);
         if (!indicators.vwma || indicators.vwma.length === 0) {
-          throw new Error('VWMA calculation returned empty result');
+          throw new Error("VWMA calculation returned empty result");
         }
       } else {
-        throw new Error(`Not enough data for VWMA: need ${VWMA_PERIOD}, have ${closes.length}`);
+        throw new Error(
+          `Not enough data for VWMA: need ${VWMA_PERIOD}, have ${closes.length}`
+        );
       }
     } catch (e) {
       console.error(`VWMA calculation failed for ${symbol}:`, e.message);
@@ -346,14 +365,11 @@ async function getIndicators(symbol, interval) {
 
     console.log(`Successfully calculated all indicators for ${symbol}`);
     return indicators;
-
   } catch (error) {
     console.error(`Error calculating indicators for ${symbol}:`, error.message);
     throw error;
   }
 }
-
-
 
 function getMarketCondition(indicators) {
   const latestRSI = indicators.rsi[indicators.rsi.length - 1];
@@ -400,7 +416,7 @@ function decideTradeDirection(indicators) {
 }
 
 async function processSymbol(symbol, interval, maxSpendPerTrade) {
-  const indicators = await getIndicators(symbol, '3m');
+  const indicators = await getIndicators(symbol, "3m");
   const marketCondition = getMarketCondition(indicators);
 
   if (marketCondition === "sideways") {
@@ -421,24 +437,17 @@ async function processSymbol(symbol, interval, maxSpendPerTrade) {
   }
 }
 
-
 // 💰 Place Buy Order + Stop Loss (LONG Position)
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     await setLeverage(symbol);
 
     const price = (await binance.futuresPrices())[symbol];
-    console.log(`price`,price);
-    
     const entryPrice = parseFloat(price);
-    console.log(`entryPrice`,entryPrice);
-    
 
     // Calculate position size with leverage
-    const positionValue = marginAmount * 3;
+    const positionValue = marginAmount * leverage;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
-    console.log(`quantity`,quantity);
-    
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
@@ -470,9 +479,6 @@ async function placeBuyOrder(symbol, marginAmount) {
 
     // Place market buy order
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
-    sendTelegram(
-      `🟢 LONG ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${leverage}x`
-    );
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
     const buyOrderDetails = {
@@ -482,7 +488,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       LongTimeCoinPrice: entryPrice,
       placeOrderId: buyOrder.orderId,
       marginUsed: marginAmount,
-      leverage: 3,
+      leverage: leverage,
       positionValue: positionValue,
     };
 
@@ -539,31 +545,21 @@ async function placeBuyOrder(symbol, marginAmount) {
     });
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
-    sendTelegram(`❌ Error placing LONG order for ${symbol}: ${error.message}`);
+    
   }
 }
 
 // 📉 Place Short Order + Stop Loss (SHORT Position)
 async function placeShortOrder(symbol, marginAmount) {
-  console.log(`symbol`,symbol);
-  console.log('`marginAmount`',marginAmount);
-  
-  
   try {
     await setLeverage(symbol);
 
     const price = (await binance.futuresPrices())[symbol];
     const entryPrice = parseFloat(price);
-    console.log(`entryPrice`,entryPrice);
-    
 
     // Calculate position size with leverage
-    const positionValue = marginAmount * 3;
-    console.log(`positionValue`,positionValue);
-    
+    const positionValue = marginAmount * leverage;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
-    console.log(`quantity`,quantity);
-    
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
@@ -595,9 +591,6 @@ async function placeShortOrder(symbol, marginAmount) {
 
     // Place market sell order
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
-    sendTelegram(
-      `🔴 SHORT ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${leverage}x`
-    );
     console.log(`Shorted ${symbol} at ${entryPrice}`);
 
     const shortOrderDetails = {
@@ -607,7 +600,7 @@ async function placeShortOrder(symbol, marginAmount) {
       ShortTimeCurrentPrice: entryPrice,
       placeOrderId: shortOrder.orderId,
       marginUsed: marginAmount,
-      leverage: 3,
+      leverage: leverage,
       positionValue: positionValue,
     };
 
@@ -664,16 +657,14 @@ async function placeShortOrder(symbol, marginAmount) {
     });
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
-    sendTelegram(
-      `❌ Error placing SHORT order for ${symbol}: ${error.message}`
-    );
+    
   }
 }
 
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 5; // Keep $5.1 reserve
+  const usableBalance = totalBalance - 5.1; // Keep $5.1 reserve
   console.log(`usableBalance usableBalance usableBalance`, usableBalance);
   console.log(`usableBalance usableBalance usableBalance`, totalBalance - 209);
 
@@ -706,7 +697,7 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 10000); // Run every 1 minute
+}, 60 * 1000); // Run every 1 minute
 
 async function checkOrders(symbol) {
   try {
