@@ -106,11 +106,17 @@ async function getIndicators(symbol, interval) {
   const lows = data.map((c) => c.low);
   const volumes = data.map((c) => c.volume);
 
+console.log(`closes`, closes);
+console.log(`highs`, highs);
+console.log(`lows`, lows);
+console.log(`volumes`, volumes);
+
   return {
     rsi: RSI.calculate({
       period: RSI_PERIOD,
       values: closes,
     }),
+    
     macd: MACD.calculate({
       values: closes,
       fastPeriod: MACD_FAST,
@@ -171,7 +177,8 @@ function decideTradeDirection(indicators) {
   const latestClose = indicators.latestClose;
   const emaFast = indicators.emaFast[indicators.emaFast.length - 1];
   const emaSlow = indicators.emaSlow[indicators.emaSlow.length - 1];
-  const emaShort = indicators.emaTrendShort[indicators.emaTrendShort.length - 1];
+  const emaShort =
+    indicators.emaTrendShort[indicators.emaTrendShort.length - 1];
   const emaLong = indicators.emaTrendLong[indicators.emaTrendLong.length - 1];
   const vwma = indicators.vwma[indicators.vwma.length - 1];
 
@@ -199,7 +206,9 @@ function decideTradeDirection(indicators) {
 }
 
 async function processSymbol(symbol, interval, maxSpendPerTrade) {
-  const indicators = await getIndicators(symbol, '3m');
+  const indicators = await getIndicators(symbol, "3m");
+  console.log(`indicators`,indicators);
+  
   const marketCondition = getMarketCondition(indicators);
 
   if (marketCondition === "sideways") {
