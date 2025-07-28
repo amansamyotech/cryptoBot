@@ -40,18 +40,6 @@ const LONG_THRESHOLD = 3;
 const SHORT_THRESHOLD = -3;
 // 📊 Scoring Thresholds
 
-async function getUsdtBalance() {
-  try {
-    const account = await binance.futuresBalance();
-    const usdtBalance = parseFloat(
-      account.find((asset) => asset.asset === "USDT")?.balance || 0
-    );
-    return usdtBalance;
-  } catch (err) {
-    console.error("Error fetching balance:", err);
-    return 0;
-  }
-}
 
 function calculateVWMA(prices, volumes, period) {
   const result = [];
@@ -71,6 +59,20 @@ function calculateVWMA(prices, volumes, period) {
   
   return result;
 }
+async function getUsdtBalance() {
+  try {
+    const account = await binance.futuresBalance();
+    const usdtBalance = parseFloat(
+      account.find((asset) => asset.asset === "USDT")?.balance || 0
+    );
+    return usdtBalance;
+  } catch (err) {
+    console.error("Error fetching balance:", err);
+    return 0;
+  }
+}
+
+// Set leverage before trading
 async function setLeverage(symbol) {
   try {
     await binance.futuresLeverage(symbol, leverage);
@@ -79,16 +81,25 @@ async function setLeverage(symbol) {
     console.error(`Failed to set leverage for ${symbol}:`, err.body);
   }
 }
+
+// 📊 Calculate ROI-based prices for stop loss and take profit
 function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
-  const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100;
-  const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100;
+  // For futures trading, ROI = PnL / Margin Used × 100
+  // PnL = (Exit Price - Entry Price) × Quantity × (1 for LONG, -1 for SHORT)
+
+  const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100; // Negative value
+  const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100; // Positive value
 
   let stopLossPrice, takeProfitPrice;
 
   if (side === "LONG") {
+    // For LONG: PnL = (Exit Price - Entry Price) × Quantity
+    // Stop Loss: Exit Price = Entry Price + (PnL / Quantity)
     stopLossPrice = entryPrice + stopLossPnL / quantity;
     takeProfitPrice = entryPrice + takeProfitPnL / quantity;
   } else {
+    // For SHORT: PnL = (Entry Price - Exit Price) × Quantity
+    // Stop Loss: Exit Price = Entry Price - (PnL / Quantity)
     stopLossPrice = entryPrice - stopLossPnL / quantity;
     takeProfitPrice = entryPrice - takeProfitPnL / quantity;
   }
@@ -406,6 +417,8 @@ async function processSymbol(symbol, interval, maxSpendPerTrade) {
   }
 }
 
+
+// 💰 Place Buy Order + Stop Loss (LONG Position)
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     await setLeverage(symbol);
@@ -640,8 +653,12 @@ async function placeShortOrder(symbol, marginAmount) {
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6; // Keep $5.1 reserve
+  const usableBalance = totalBalance - 5; // Keep $5.1 reserve
+  console.log(`usableBalance usableBalance usableBalance`, usableBalance);
+  console.log(`usableBalance usableBalance usableBalance`, totalBalance - 209);
+
   const maxSpendPerTrade = usableBalance / symbols.length;
+  console.log(`maxSpendPerTrade`, maxSpendPerTrade);
 
   if (usableBalance <= 6) {
     console.log("Not enough balance to trade.");
@@ -669,13 +686,7 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 60 * 500); // Run every 1 minute
-
-console.log("🚀 Enhanced Trading Bot with Trailing Stop Started!");
-console.log(`📊 Minimum Profit ROI: ${MINIMUM_PROFIT_ROI}%`);
-console.log(`🎯 Initial Take Profit ROI: ${INITIAL_TAKE_PROFIT_ROI}%`);
-console.log(`📉 Stop Loss ROI: ${STOP_LOSS_ROI}%`);
-console.log(`📈 Leverage: ${leverage}x`);
+}, 60 * 1000); // Run every 1 minute
 
 async function checkOrders(symbol) {
   try {
@@ -696,7 +707,7 @@ async function checkOrders(symbol) {
 
     console.log(`objectId:`, objectId);
 
-    if (!stopLossOrderId) {
+    if (!stopLossOrderId || !takeProfitOrderId) {
       console.log(`No order IDs found for ${symbol}`);
       return;
     }
@@ -773,4 +784,4 @@ setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 20000);
+}, 30000);
