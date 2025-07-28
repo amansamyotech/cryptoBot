@@ -129,6 +129,34 @@ function calculateVWMA(prices, volumes, period) {
   return result;
 }
 
+
+async function modelExists(symbol) {
+  const modelPath = path.join(modelsDir, symbol);
+  return fs.existsSync(modelPath);
+}
+
+async function verifySymbol(symbol) {
+  try {
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    return !!symbolInfo;
+  } catch (error) {
+    console.error(`Error verifying symbol ${symbol}:`, error.message);
+    return false;
+  }
+}
+
+async function withRetry(fn, retries = 3, delay = 1000) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      console.warn(`Retry ${i + 1}/${retries} after error:`, error.message);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+}
 async function getIndicators(symbol, interval, limit = 200) {
   try {
     const data = await getCandles(symbol, interval, limit);
@@ -372,40 +400,55 @@ function getMarketCondition(indicators) {
 async function trainLSTM(symbol, interval) {
   try {
     console.log(`Starting training for ${symbol}`);
-    const candles = await getCandles(symbol, interval, 500); // Reduced for testing
-    if (candles.length < 500) {
+    const candles = await getCandles(symbol, interval, 100); // Reduced for testing
+    if (candles.length < 50) {
       console.warn(`Insufficient candles for ${symbol}: ${candles.length}`);
       return null;
     }
-    const indicators = await getIndicators(symbol, interval, 500);
-    const sequenceLength = 10; // Use 10 candles per sequence
+    const indicators = await getIndicators(symbol, interval, 100);
+    if (!indicators || !indicators.candles) {
+      console.warn(`Invalid indicators for ${symbol}`);
+      return null;
+    }
+
+    const sequenceLength = 10;
     const features = [];
     const labels = [];
 
     for (let i = sequenceLength; i < candles.length - 1; i++) {
       const sequence = [];
       for (let j = i - sequenceLength; j < i; j++) {
+        if (!indicators.rsi[j] || !indicators.macd[j] || !indicators.bb[j]) {
+          console.warn(`Missing indicator data at index ${j} for ${symbol}`);
+          continue;
+        }
         sequence.push([
           indicators.rsi[j] / 100,
           indicators.macd[j]?.MACD / 100,
           indicators.macd[j]?.signal / 100,
-          (indicators.bb[j].upper - indicators.bb[j].lower) /
-            indicators.bb[j].middle,
+          (indicators.bb[j].upper - indicators.bb[j].lower) / indicators.bb[j].middle,
           indicators.emaFast[j] / candles[j].close,
           indicators.emaSlow[j] / candles[j].close,
           indicators.emaTrendShort[j] / candles[j].close,
           indicators.emaTrendLong[j] / candles[j].close,
           indicators.adx[j]?.adx / 100,
           indicators.vwma[j] / candles[j].close,
-          (candles[j].close - candles[j - 1].close) / candles[j - 1].close,
-          (candles[j].volume - candles[j - 1].volume) / candles[j - 1].volume,
+          j > 0 ? (candles[j].close - candles[j - 1].close) / candles[j - 1].close : 0,
+          j > 0 ? (candles[j].volume - candles[j - 1].volume) / candles[j - 1].volume : 0,
         ]);
       }
-      features.push(sequence);
-      const nextClose = candles[i + 1].close;
-      labels.push(
-        nextClose > candles[i].close ? 1 : nextClose < candles[i].close ? -1 : 0
-      );
+      if (sequence.length === sequenceLength) {
+        features.push(sequence);
+        const nextClose = candles[i + 1].close;
+        labels.push(
+          nextClose > candles[i].close ? 1 : nextClose < candles[i].close ? -1 : 0
+        );
+      }
+    }
+
+    if (features.length === 0 || labels.length === 0) {
+      console.warn(`No valid features or labels for ${symbol}`);
+      return null;
     }
 
     const xs = tf.tensor3d(features);
@@ -437,8 +480,10 @@ async function trainLSTM(symbol, interval) {
       },
     });
 
-    await model.save(`file://./models/${symbol}`);
+    await model.save(`file://${modelsDir}/${symbol}`);
     console.log(`Model successfully saved for ${symbol}`);
+    xs.dispose();
+    ys.dispose();
     return model;
   } catch (error) {
     console.error(`Failed to train/save model for ${symbol}:`, error.message);
@@ -786,6 +831,24 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 
+
+async function initializeModels() {
+  for (const sym of symbols) {
+    const isValid = await verifySymbol(sym);
+    if (!isValid) {
+      console.warn(`Symbol ${sym} is not valid on Binance Futures, skipping.`);
+      continue;
+    }
+    console.log(`Training LSTM model for ${sym}`);
+    const model = await trainLSTM(sym, "3m");
+    if (model) {
+      console.log(`Model training completed for ${sym}`);
+    } else {
+      console.warn(`Model training failed for ${sym}`);
+    }
+  }
+  console.log("All models initialized.");
+}
 // 🔁 Main Loop
 setInterval(async () => {
   await initializeModels(); 
