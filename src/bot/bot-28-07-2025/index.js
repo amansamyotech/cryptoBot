@@ -448,9 +448,6 @@ setInterval(async () => {
   }
 }, 60 * 500); // Run every 1 minute
 
-setInterval(async () => {
-  await monitorTrailingStops();
-}, 30 * 1000); // Run every 30 seconds
 
 console.log("🚀 Enhanced Trading Bot with Trailing Stop Started!");
 console.log(`📊 Minimum Profit ROI: ${MINIMUM_PROFIT_ROI}%`);
