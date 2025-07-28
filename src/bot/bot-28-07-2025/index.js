@@ -1270,12 +1270,12 @@ function getMarketCondition(indicators) {
 async function trainLSTM(symbol, interval) {
   try {
     console.log(`Starting training for ${symbol}`);
-    const candles = await getCandles(symbol, interval, 100); // Reduced for testing
+    const candles = await getCandles(symbol, interval, 100);
     if (candles.length < 50) {
       console.warn(`Insufficient candles for ${symbol}: ${candles.length}`);
       return null;
     }
-    const indicators = await getIndicators(symbol, interval, 500);
+    const indicators = await getIndicators(symbol, interval, 100);
     if (!indicators || !indicators.candles) {
       console.warn(`Invalid indicators for ${symbol}`);
       return null;
@@ -1293,18 +1293,18 @@ async function trainLSTM(symbol, interval) {
           continue;
         }
         sequence.push([
-          indicators.rsi[j] / 100,
-          indicators.macd[j]?.MACD / 100,
-          indicators.macd[j]?.signal / 100,
-          (indicators.bb[j].upper - indicators.bb[j].lower) / indicators.bb[j].middle,
-          indicators.emaFast[j] / candles[j].close,
-          indicators.emaSlow[j] / candles[j].close,
-          indicators.emaTrendShort[j] / candles[j].close,
-          indicators.emaTrendLong[j] / candles[j].close,
-          indicators.adx[j]?.adx / 100,
-          indicators.vwma[j] / candles[j].close,
-          j > 0 ? (candles[j].close - candles[j - 1].close) / candles[j - 1].close : 0,
-          j > 0 ? (candles[j].volume - candles[j - 1].volume) / candles[j - 1].volume : 0,
+          parseFloat(indicators.rsi[j] / 100),
+          parseFloat(indicators.macd[j]?.MACD / 100),
+          parseFloat(indicators.macd[j]?.signal / 100),
+          parseFloat((indicators.bb[j].upper - indicators.bb[j].lower) / indicators.bb[j].middle),
+          parseFloat(indicators.emaFast[j] / candles[j].close),
+          parseFloat(indicators.emaSlow[j] / candles[j].close),
+          parseFloat(indicators.emaTrendShort[j] / candles[j].close),
+          parseFloat(indicators.emaTrendLong[j] / candles[j].close),
+          parseFloat(indicators.adx[j]?.adx / 100),
+          parseFloat(indicators.vwma[j] / candles[j].close),
+          j > 0 ? parseFloat((candles[j].close - candles[j - 1].close) / candles[j - 1].close) : 0,
+          j > 0 ? parseFloat((candles[j].volume - candles[j - 1].volume) / candles[j - 1].volume) : 0,
         ]);
       }
       if (sequence.length === sequenceLength) {
@@ -1321,17 +1321,17 @@ async function trainLSTM(symbol, interval) {
       return null;
     }
 
-    const xs = tf.tensor3d(features);
-    const ys = tf.tensor1d(labels, "int32");
+    const xs = tf.tensor3d(features, [features.length, sequenceLength, 12], "float32");
+    const ys = tf.tensor1d(labels, "float32");
 
     const model = tf.sequential();
     model.add(
-      tf.layers.lstm({
-        units: 50,
-        inputShape: [sequenceLength, 12],
-        returnSequences: false,
-      })
-    );
+  tf.layers.lstm({
+    units: 32, // Reduced from 50
+    inputShape: [sequenceLength, 12],
+    returnSequences: false,
+  })
+);
     model.add(tf.layers.dense({ units: 3, activation: "softmax" }));
 
     model.compile({
