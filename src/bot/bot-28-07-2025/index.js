@@ -1656,6 +1656,20 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 
+
+async function initializeModels() {
+  for (const sym of symbols) {
+    console.log(`Training LSTM model for ${sym}`);
+    const model = await trainLSTM(sym, "3m");
+    if (model) {
+      console.log(`Model training completed for ${sym}`);
+    } else {
+      console.warn(`Model training failed for ${sym}`);
+    }
+  }
+  console.log("All models initialized.");
+}
+
 // 🔁 Main Loop
 setInterval(async () => {
   await initializeModels(); 
