@@ -8,7 +8,6 @@ const binance = new Binance().options({
   test: false,
 });
 
-const EMA_PERIODS = [9, 15];
 const TIMEFRAME_MAIN = "5m";
 const TIMEFRAME_TREND = "15m";
 const EMA_ANGLE_THRESHOLD = 30;
@@ -66,13 +65,22 @@ async function getCandles(symbol, interval, limit = 50) {
   });
 }
 
-function calculateEMA(period, candles) {
-  const k = 2 / (period + 1);
-  let ema = candles[0].close;
-  for (let i = 1; i < candles.length; i++) {
-    ema = candles[i].close * k + ema * (1 - k);
-  }
-  return ema;
+function calculateEMAseries(period, closes) {
+  return technicalIndicators.EMA.calculate({
+    period,
+    values: closes,
+  });
+}
+
+function getEMAAngleFromSeries(emaSeries, lookback = 5) {
+  if (emaSeries.length < lookback + 1) return 0;
+
+  const recent = emaSeries[emaSeries.length - 1];
+  const past = emaSeries[emaSeries.length - 1 - lookback];
+  const delta = recent - past;
+
+  const angleRad = Math.atan(delta / lookback);
+  return angleRad * (180 / Math.PI);
 }
 
 function detectCandleType(candle) {
@@ -84,12 +92,6 @@ function detectCandleType(candle) {
   if (range > 1.5 * body && body / range > 0.7) return "bigbar";
   if (body / range > 0.85) return "fullbody";
   return "none";
-}
-
-function getEMAangle(emaShort, emaLong, timeSpan = 5) {
-  const delta = emaShort - emaLong;
-  const angleRad = Math.atan(delta / timeSpan);
-  return angleRad * (180 / Math.PI);
 }
 
 function calculateRSI(candles, period = 14) {
@@ -107,17 +109,20 @@ function calculateRSI(candles, period = 14) {
 }
 
 function calculateMACD(candles, fast = 12, slow = 26, signal = 9) {
-  const fastEMA = calculateEMA(fast, candles);
-  const slowEMA = calculateEMA(slow, candles);
-  const macdLine = fastEMA - slowEMA;
-  const macdHistory = candles.map((c, i) => {
-    if (i < slow) return 0;
-    const fastE = calculateEMA(fast, candles.slice(i - fast + 1, i + 1));
-    const slowE = calculateEMA(slow, candles.slice(i - slow + 1, i + 1));
-    return fastE - slowE;
+  const closes = candles.map((c) => c.close);
+  const macd = technicalIndicators.MACD.calculate({
+    fastPeriod: fast,
+    slowPeriod: slow,
+    signalPeriod: signal,
+    SimpleMAOscillator: false,
+    SimpleMASignal: false,
+    values: closes,
   });
-  const signalLine = calculateEMA(signal, macdHistory.slice(-signal));
-  return { macdLine, signalLine };
+
+  if (!macd.length) return { macdLine: 0, signalLine: 0 };
+
+  const last = macd[macd.length - 1];
+  return { macdLine: last.MACD, signalLine: last.signal };
 }
 
 function checkVolumeSpike(candles, lookback = 10) {
@@ -135,9 +140,13 @@ async function decideTradeDirection(symbol) {
     const candles5m = await getCandles(symbol, TIMEFRAME_MAIN, 50);
     const candles15m = await getCandles(symbol, TIMEFRAME_TREND, 50);
 
-    const ema9 = calculateEMA(9, candles5m);
-    const ema15 = calculateEMA(15, candles5m);
-    const emaAngle = getEMAangle(ema9, ema15);
+    const closes5m = candles5m.map((c) => c.close);
+    const ema9Series = calculateEMAseries(9, closes5m);
+    const ema15Series = calculateEMAseries(15, closes5m);
+
+    const ema9 = ema9Series[ema9Series.length - 1];
+    const ema15 = ema15Series[ema15Series.length - 1];
+    const emaAngle = getEMAAngleFromSeries(ema9Series, 5);
 
     console.log(`📈 EMA(9): ${ema9.toFixed(6)} | EMA(15): ${ema15.toFixed(6)}`);
     console.log(`📐 EMA Angle: ${emaAngle.toFixed(2)}°`);
@@ -204,8 +213,7 @@ async function decideTradeDirection(symbol) {
 setInterval(async () => {
   for (const sym of symbols) {
     const result = await decideTradeDirection(sym);
-    console.log("Signal:", result);
+    console.log(`📢 Signal for ${sym}:`, result);
   }
-}, 5000);
-
+}, 10000);
 // module.exports = { decideTradeDirection };
