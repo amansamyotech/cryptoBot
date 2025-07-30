@@ -275,7 +275,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       ema15 > ema21,
       ema9Angle > EMA_ANGLE_THRESHOLD || ema15Angle > EMA_ANGLE_THRESHOLD,
         rsi1m > 45 && rsi1m < 80,
-      //   macdLine > signalLine,
+        macdLine > signalLine,
       //   histogram > 0,
       //   momentum > 0.1,
       //   volumeSpike || candleType !== "none",
@@ -289,7 +289,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       ema15 < ema21,
       ema9Angle < -EMA_ANGLE_THRESHOLD || ema15Angle < -EMA_ANGLE_THRESHOLD,
         rsi1m < 55 && rsi1m > 20,
-      //   macdLine < signalLine,
+        macdLine < signalLine,
       //   histogram < 0,
       //   momentum < -0.1,
       //   volumeSpike || candleType !== "none",
@@ -298,12 +298,12 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     const shortScore = shortConditions.filter(Boolean).length;
     // console.log(`🔴 SHORT Score: ${shortScore}/3`);
 
-    if (longScore == 4) {
+    if (longScore == 5) {
       //   console.log(`✅ Strong LONG signal (Score: ${longScore}/3)`);
       return "LONG";
     }
 
-    if (shortScore == 4) {
+    if (shortScore == 5) {
       //   console.log(`✅ Strong SHORT signal (Score: ${shortScore}/3)`);
       return "SHORT";
     }
