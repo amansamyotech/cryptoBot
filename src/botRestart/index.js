@@ -435,7 +435,7 @@ setInterval(async () => {
       if (status == false) {
         await trailStopLoss(sym);
       } else {
-        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+        console.log(`NOT OPEN TREAD FOR THAT SYMBOL: ${sym}`);
       }
     } catch (err) {
       console.error(`Error with ${sym}:`, err.message);
