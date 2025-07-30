@@ -476,8 +476,8 @@ async function backtest(symbols, startDate, endDate) {
   }
 }
 
-const startDate = "2025-06-01T00:00:00Z";
-const endDate = "2025-06-28T23:59:59Z";
+const startDate = "2025-05-01T00:00:00Z";
+const endDate = "2025-05-30T23:59:59Z";
 
 backtest(symbols, startDate, endDate).catch((err) => {
   console.error("❌ Backtest error:", err.message);
