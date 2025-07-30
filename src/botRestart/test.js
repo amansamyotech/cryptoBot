@@ -12,7 +12,7 @@ const TIMEFRAME_MAIN = "1m";
 const TIMEFRAME_TREND = "5m";
 const EMA_ANGLE_THRESHOLD = 15;
 const MIN_ANGLE_THRESHOLD = 9;
-const VOLATILITY_MULTIPLIER = 100;
+const VOLATILITY_MULTIPLIER = 1000;
 const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
