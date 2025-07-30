@@ -8,7 +8,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const TIMEFRAME_MAIN = "5m";
+const TIMEFRAME_MAIN = "1m";
 const TIMEFRAME_TREND = "15m";
 const EMA_ANGLE_THRESHOLD = 30;
 
