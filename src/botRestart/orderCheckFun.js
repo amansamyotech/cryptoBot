@@ -1,3 +1,16 @@
+const Binance = require("node-binance-api");
+const axios = require("axios");
+const API_ENDPOINT = "http://localhost:3000/api/buySell/";
+
+const binance = new Binance().options({
+  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
+  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
+  useServerTime: true,
+  test: false,
+});
+
+
+
 async function checkOrders(symbol) {
   try {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
