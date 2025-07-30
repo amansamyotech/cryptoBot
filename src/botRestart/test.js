@@ -227,20 +227,20 @@ async function backtest(symbols, startDate, endDate) {
         if (position.type === "LONG") {
           const profitPercent =
             ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 2) {
+          if (profitPercent >= 3) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (profitPercent <= -1) {
+          } else if (profitPercent <= -1.5) {
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
           }
         } else if (position.type === "SHORT") {
           const profitPercent =
             ((position.entryPrice - currentPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 2) {
+          if (profitPercent >= 3) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (profitPercent <= -1) {
+          } else if (profitPercent <= -1.5) {
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
           }
