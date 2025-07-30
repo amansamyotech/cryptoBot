@@ -25,37 +25,52 @@ const symbols = [
 async function getCandles(symbol, interval, limit = 50) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
-  // Check if response is valid
-  if (!Array.isArray(candles)) {
-    console.error(`❌ Invalid candle data for ${symbol} - ${interval}:`, candles);
+  // Log raw structure
+  console.log(`✅ First raw candle [${symbol}, ${interval}]:`, candles[0]);
+
+  if (!Array.isArray(candles) || !candles.length) {
+    console.error(`❌ Invalid candle data for ${symbol} - ${interval}`);
     return [];
   }
 
-  // Check first candle structure
-  console.log(`✅ Raw first candle for ${symbol} (${interval}):`, candles[0]);
-
   return candles.map((c, idx) => {
-    if (!Array.isArray(c) || c.length < 6) {
-      console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
+    // Support both array-based and object-based candle formats
+    const isObjectFormat = typeof c === "object" && !Array.isArray(c);
+
+    if (isObjectFormat) {
       return {
-        openTime: 0,
-        open: NaN,
-        high: NaN,
-        low: NaN,
-        close: NaN,
-        volume: NaN,
+        openTime: c.openTime,
+        open: parseFloat(c.open),
+        high: parseFloat(c.high),
+        low: parseFloat(c.low),
+        close: parseFloat(c.close),
+        volume: parseFloat(c.volume),
       };
     }
+
+    if (Array.isArray(c) && c.length >= 6) {
+      return {
+        openTime: c[0],
+        open: parseFloat(c[1]),
+        high: parseFloat(c[2]),
+        low: parseFloat(c[3]),
+        close: parseFloat(c[4]),
+        volume: parseFloat(c[5]),
+      };
+    }
+
+    console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
     return {
-      openTime: c[0],
-      open: parseFloat(c[1]),
-      high: parseFloat(c[2]),
-      low: parseFloat(c[3]),
-      close: parseFloat(c[4]),
-      volume: parseFloat(c[5]),
+      openTime: 0,
+      open: NaN,
+      high: NaN,
+      low: NaN,
+      close: NaN,
+      volume: NaN,
     };
   });
 }
+
 
 
 function calculateEMA(period, candles) {
