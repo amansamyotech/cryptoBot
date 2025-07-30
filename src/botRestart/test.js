@@ -23,68 +23,44 @@ const symbols = [
   "1000FLOKIUSDT",
 ];
 
-async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
-  try {
-    const candles = [];
-    let currentStartTime = startTime;
-    while (currentStartTime < endTime) {
-      const batch = await binance.futuresCandles(symbol, interval, {
-        startTime: currentStartTime,
-        endTime: Math.min(currentStartTime + limit * 60 * 1000, endTime),
+const getCandles = async (symbol, interval, startTime, endTime) => {
+  const allCandles = [];
+  const limit = 1000;
+  let fetchStart = startTime;
+
+  while (fetchStart < endTime) {
+    try {
+      const candles = await binance.futuresCandles(symbol, interval, {
+        startTime: fetchStart,
+        endTime,
         limit,
       });
 
-      if (!Array.isArray(batch) || !batch.length) {
-        console.error(`❌ No candle data for ${symbol} - ${interval}`);
-        break;
-      }
+      if (!candles.length) break;
 
-      candles.push(...batch);
-      currentStartTime = batch[batch.length - 1][0] + 60 * 1000;
+      allCandles.push(...candles);
+
+      const lastCandleTime = candles[candles.length - 1][0];
+
+      // Binance API returns candles that may overlap slightly; avoid infinite loops
+      fetchStart = lastCandleTime + 1;
+
+      console.log(
+        `📥 Fetched ${candles.length} candles for ${symbol} — ${new Date(
+          candles[0][0]
+        )} to ${new Date(lastCandleTime)}`
+      );
+
+      // Sleep to avoid API bans (optional)
+      await new Promise((r) => setTimeout(r, 300));
+    } catch (err) {
+      console.error(`❌ Error fetching candles for ${symbol}:`, err.message);
+      break;
     }
-
-    return candles
-      .map((c, idx) => {
-        const isObjectFormat = typeof c === "object" && !Array.isArray(c);
-
-        if (isObjectFormat) {
-          return {
-            openTime: c.openTime,
-            open: parseFloat(c.open),
-            high: parseFloat(c.high),
-            low: parseFloat(c.low),
-            close: parseFloat(c.close),
-            volume: parseFloat(c.volume),
-          };
-        }
-
-        if (Array.isArray(c) && c.length >= 6) {
-          return {
-            openTime: c[0],
-            open: parseFloat(c[1]),
-            high: parseFloat(c[2]),
-            low: parseFloat(c[3]),
-            close: parseFloat(c[4]),
-            volume: parseFloat(c[5]),
-          };
-        }
-
-        console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
-        return {
-          openTime: 0,
-          open: NaN,
-          high: NaN,
-          low: NaN,
-          close: NaN,
-          volume: NaN,
-        };
-      })
-      .filter((c) => !isNaN(c.close));
-  } catch (err) {
-    console.error(`❌ Error fetching candles for ${symbol}:`, err.message);
-    return [];
   }
-}
+
+  return allCandles;
+};
 
 function calculateEMAseries(period, closes) {
   return technicalIndicators.EMA.calculate({
@@ -325,18 +301,13 @@ async function backtest(symbols, startDate, endDate) {
   for (const symbol of symbols) {
     console.log(`\n📊 Backtesting ${symbol}...`);
 
-    const candles1m = await getCandles(
-      symbol,
-      TIMEFRAME_MAIN,
-      startTime,
-      endTime
-    );
-    const candles5m = await getCandles(
-      symbol,
-      TIMEFRAME_TREND,
-      startTime,
-      endTime
-    );
+    const candles1m = await getCandles(symbol, "1m", startTime, endTime);
+console.log(`✅ Total candles: ${candles1m.length}`);
+console.log(`📅 Range: ${new Date(candles1m[0][0])} — ${new Date(candles1m.at(-1)[0])}`);
+
+    const candles5m = await getCandles(symbol, "5m", startTime, endTime);
+    console.log(`✅ Total candles: ${candles5m.length}`);
+    console.log(`📅 Range: ${new Date(candles5m[0][0])} — ${new Date(candles5m.at(-1)[0])}`);
 
     if (candles1m.length < 50 || candles5m.length < 20) {
       console.log(`⚠️ Insufficient data for ${symbol}. Skipping...`);
