@@ -302,6 +302,41 @@ console.log(
   `📊 Settings: EMA Angle Threshold: ${EMA_ANGLE_THRESHOLD}°, Min Angle: ${MIN_ANGLE_THRESHOLD}°`
 );
 
+function predictNextCandle(candles) {
+  const closes = candles.map((c) => c.close);
+  const ema9Series = calculateEMAseries(9, closes);
+  const ema15Series = calculateEMAseries(15, closes);
+
+  const momentum = calculateMomentum(candles, 5);
+  const rsi = calculateRSI(candles, 7);
+  const { macdLine, signalLine, histogram } = calculateMACD(candles);
+
+  const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
+  const ema15Angle = getEMAAngleFromSeries(ema15Series, 3);
+
+  const bullish =
+    ema9Series.at(-1) > ema15Series.at(-1) &&
+    ema9Angle > 0 &&
+    ema15Angle > 0 &&
+    macdLine > signalLine &&
+    histogram > 0 &&
+    momentum > 0 &&
+    rsi > 50;
+
+  const bearish =
+    ema9Series.at(-1) < ema15Series.at(-1) &&
+    ema9Angle < 0 &&
+    ema15Angle < 0 &&
+    macdLine < signalLine &&
+    histogram < 0 &&
+    momentum < 0 &&
+    rsi < 50;
+
+  if (bullish) return "Probable GREEN Candle";
+  if (bearish) return "Probable RED Candle";
+  return "Uncertain / Doji Likely";
+}
+
 setInterval(async () => {
   console.log("\n" + "=".repeat(60));
   console.log(`📅 ${new Date().toLocaleString()} - Market Scan`);
@@ -309,6 +344,9 @@ setInterval(async () => {
 
   for (const sym of symbols) {
     const result = await decideTradeDirection(sym);
+    const prediction = predictNextCandle(candles1m);
+    console.log(`🧠 Next Candle Prediction: ${prediction}`);
+
     const emoji =
       result === "LONG"
         ? "🟢"
