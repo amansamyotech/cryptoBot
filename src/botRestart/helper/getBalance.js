@@ -7,7 +7,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-export async function getUsdtBalance() {
+ async function getUsdtBalance() {
   try {
     const account = await binance.futuresBalance();
     const usdtBalance = parseFloat(
@@ -19,3 +19,6 @@ export async function getUsdtBalance() {
     return 0;
   }
 }
+
+
+module.exports = { getUsdtBalance };

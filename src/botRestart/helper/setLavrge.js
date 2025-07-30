@@ -28,7 +28,7 @@ const TAKE_PROFIT_ROI = 2;
 
 
 
-export async function setLeverage(symbol) {
+ async function setLeverage(symbol) {
   try {
     await binance.futuresLeverage(symbol, leverage);
     console.log(`Leverage set to ${leverage}x for ${symbol}`);
@@ -36,3 +36,5 @@ export async function setLeverage(symbol) {
     console.error(`Failed to set leverage for ${symbol}:`, err.body);
   }
 }
+
+module.exports = { setLeverage };

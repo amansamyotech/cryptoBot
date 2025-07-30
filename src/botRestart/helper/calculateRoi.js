@@ -7,7 +7,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-export function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
+function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100;
   const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100;
 
@@ -23,3 +23,6 @@ export function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
 
   return { stopLossPrice, takeProfitPrice };
 }
+
+
+module.exports = { calculateROIPrices };

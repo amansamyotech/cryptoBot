@@ -1,4 +1,4 @@
-export async function checkOrders(symbol) {
+async function checkOrders(symbol) {
   try {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
     console.log(`response.data?.data`, response.data?.data);
@@ -37,3 +37,5 @@ export async function checkOrders(symbol) {
     console.error("Error checking stop loss order status:", error);
   }
 }
+
+module.exports = { checkOrders };
