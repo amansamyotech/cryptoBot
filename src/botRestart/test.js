@@ -229,7 +229,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     );
 
     const volatility = calculateVolatility(pastCandles1m, 20);
-    console.log(`🌊 Market Volatility: ${volatility.toFixed(2)}%`);
+    // console.log(`🌊 Market Volatility: ${volatility.toFixed(2)}%`);
     if (volatility < 0.1) {
       console.log(`⚠️ Market too flat (volatility < 0.1%). Decision: HOLD`);
       return "HOLD";
@@ -247,28 +247,28 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
 
     const lastCandle = pastCandles1m[pastCandles1m.length - 1];
     const candleType = detectCandleType(lastCandle);
-    console.log(`🕯️ Last Candle Type: ${candleType}`);
+    // console.log(`🕯️ Last Candle Type: ${candleType}`);
 
     const rsi1m = calculateRSI(pastCandles1m, 7);
     const rsi5m = calculateRSI(pastCandles5m, 14);
-    console.log(
-      `💪 RSI (1m): ${rsi1m.toFixed(2)} | RSI (5m): ${rsi5m.toFixed(2)}`
-    );
+    // console.log(
+    //   `💪 RSI (1m): ${rsi1m.toFixed(2)} | RSI (5m): ${rsi5m.toFixed(2)}`
+    // );
 
     const { macdLine, signalLine, histogram } = calculateMACD(pastCandles1m);
-    console.log(
-      `📊 MACD: ${macdLine.toFixed(6)} | Signal: ${signalLine.toFixed(
-        6
-      )} | Histogram: ${histogram.toFixed(6)}`
-    );
+    // console.log(
+    //   `📊 MACD: ${macdLine.toFixed(6)} | Signal: ${signalLine.toFixed(
+    //     6
+    //   )} | Histogram: ${histogram.toFixed(6)}`
+    // );
 
     const volumeSpike = checkVolumeSpike(pastCandles1m);
     const momentum = calculateMomentum(pastCandles1m, 5);
-    console.log(
-      `📢 Volume Spike: ${
-        volumeSpike ? "✅ YES" : "❌ NO"
-      } | Momentum: ${momentum.toFixed(2)}%`
-    );
+    // console.log(
+    //   `📢 Volume Spike: ${
+    //     volumeSpike ? "✅ YES" : "❌ NO"
+    //   } | Momentum: ${momentum.toFixed(2)}%`
+    // );
 
     const longConditions = [
       ema9 > ema15,
@@ -437,6 +437,7 @@ async function backtest(symbols, startDate, endDate) {
       results.profit += netProfit * 100;
       if (netProfit > 0) results.wins++;
       else results.losses++;
+      console.log(`profit---->>>>`, (netProfit * 100).toFixed(2));
 
       results.trades.push({
         timestamp: new Date(position.entryTime).toLocaleString(),
