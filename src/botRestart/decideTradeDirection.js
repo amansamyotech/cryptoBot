@@ -13,6 +13,15 @@ const TIMEFRAME_MAIN = "5m";
 const TIMEFRAME_TREND = "15m";
 const EMA_ANGLE_THRESHOLD = 30;
 
+const symbols = [
+  "1000PEPEUSDT",
+  "1000BONKUSDT",
+  "DOGEUSDT",
+  "CKBUSDT",
+  "1000FLOKIUSDT",
+];
+
+
 async function getCandles(symbol, interval, limit = 50) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
@@ -132,10 +141,11 @@ async function decideTradeDirection(symbol) {
   }
 }
 
-// Example test
-(async () => {
-  const result = await decideTradeDirection("DOGEUSDT");
-  console.log("Signal:", result);
-})();
+setInterval(async () => {
+  for (const sym of symbols) {
+    const result = await decideTradeDirection(sym);
+    console.log("Signal:", result);
+  }
+}, 5000);
 
 // module.exports = { decideTradeDirection };
