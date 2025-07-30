@@ -1,5 +1,12 @@
-const technicalIndicators = require("technicalindicators");
 const Binance = require("node-binance-api");
+const axios = require("axios");
+const { decideTradeDirection } = require("./decideTradeDirection.js");
+const { checkOrders } = require("./orderCheckFun.js");
+const { getUsdtBalance } = require("./helper/getBalance.js");
+const { calculateROIPrices } = require("./helper/calculateRoi.js");
+const { setLeverage } = require("./helper/setLavrge.js");
+
+const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
@@ -8,14 +15,6 @@ const binance = new Binance().options({
   test: false,
 });
 
-const TIMEFRAME_MAIN = "1m";
-const TIMEFRAME_TREND = "5m";
-const EMA_ANGLE_THRESHOLD = 15;
-const MIN_ANGLE_THRESHOLD = 9;
-const VOLATILITY_MULTIPLIER = 10000;
-const TAKER_FEE = 0.04 / 100;
-const INITIAL_STOP_LOSS_PERCENT = 0.01; // 1% initial stop loss
-
 const symbols = [
   "1000PEPEUSDT",
   "1000BONKUSDT",
@@ -23,513 +22,417 @@ const symbols = [
   "CKBUSDT",
   "1000FLOKIUSDT",
 ];
+const interval = "1m";
+const leverage = 3;
+const STOP_LOSS_ROI = -1;
+const TAKE_PROFIT_ROI = 2;
 
-async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
+async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
-    const candles = [];
-    let currentStartTime = startTime;
-    while (currentStartTime < endTime) {
-      const batch = await binance.futuresCandles(symbol, interval, {
-        startTime: currentStartTime,
-        endTime: Math.min(currentStartTime + limit * 60 * 1000, endTime),
-        limit,
-      });
+    const {
+      stopLossOrderId,
+      objectId,
+      LongTimeCoinPrice: { $numberDecimal: longTimePrice },
+      quantity,
+      stopLossPrice: oldStopLoss,
+    } = tradeDetails;
 
-      if (!Array.isArray(batch) || !batch.length) {
-        console.error(`❌ No candle data for ${symbol} - ${interval}`);
-        break;
-      }
+    const entryPrice = parseFloat(longTimePrice);
+    const oldStop = parseFloat(oldStopLoss);
+    const roi = ((currentPrice - entryPrice) / entryPrice) * 100;
 
-      candles.push(...batch);
-      currentStartTime = batch[batch.length - 1][0] + 60 * 1000;
-    }
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
+    const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    return candles
-      .map((c, idx) => {
-        const isObjectFormat = typeof c === "object" && !Array.isArray(c);
-
-        if (isObjectFormat) {
-          return {
-            openTime: c.openTime,
-            open: parseFloat(c.open),
-            high: parseFloat(c.high),
-            low: parseFloat(c.low),
-            close: parseFloat(c.close),
-            volume: parseFloat(c.volume),
-          };
-        }
-
-        if (Array.isArray(c) && c.length >= 6) {
-          return {
-            openTime: c[0],
-            open: parseFloat(c[1]),
-            high: parseFloat(c[2]),
-            low: parseFloat(c[3]),
-            close: parseFloat(c[4]),
-            volume: parseFloat(c[5]),
-          };
-        }
-
-        console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
-        return {
-          openTime: 0,
-          open: NaN,
-          high: NaN,
-          low: NaN,
-          close: NaN,
-          volume: NaN,
-        };
-      })
-      .filter((c) => !isNaN(c.close));
-  } catch (err) {
-    console.error(`❌ Error fetching candles for ${symbol}:`, err.message);
-    return [];
-  }
-}
-
-function calculateEMAseries(period, closes) {
-  return technicalIndicators.EMA.calculate({
-    period,
-    values: closes,
-  });
-}
-
-function getEMAAngleFromSeries(emaSeries, lookback = 3) {
-  if (emaSeries.length < lookback + 1) return 0;
-
-  const recent = emaSeries[emaSeries.length - 1];
-  const past = emaSeries[emaSeries.length - 1 - lookback];
-  const percentChange = ((recent - past) / past) * 100;
-  const delta = percentChange * VOLATILITY_MULTIPLIER;
-  const angleRad = Math.atan(delta / lookback);
-
-  return angleRad * (180 / Math.PI);
-}
-
-function calculateVolatility(candles, period = 10) {
-  const returns = [];
-  for (let i = 1; i < Math.min(candles.length, period + 1); i++) {
-    const ret =
-      (candles[i].close - candles[i - 1].close) / candles[i - 1].close;
-    returns.push(ret);
-  }
-
-  const mean = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
-  const variance =
-    returns.reduce((sum, ret) => sum + Math.pow(ret - mean, 2), 0) /
-    returns.length;
-
-  return Math.sqrt(variance) * 100;
-}
-
-function detectCandleType(candle) {
-  const body = Math.abs(candle.close - candle.open);
-  const upperWick = candle.high - Math.max(candle.close, candle.open);
-  const lowerWick = Math.min(candle.close, candle.open) - candle.low;
-  const range = candle.high - candle.low;
-
-  if (lowerWick > 1.5 * body || upperWick > 1.5 * body) return "pinbar";
-  if (range > 1.2 * body && body / range > 0.6) return "bigbar";
-  if (body / range > 0.8) return "fullbody";
-
-  return "none";
-}
-
-function calculateRSI(candles, period = 7) {
-  if (candles.length < period + 1) return 50;
-
-  let gains = 0,
-    losses = 0;
-  for (let i = 1; i <= period; i++) {
-    const change = candles[i].close - candles[i - 1].close;
-    if (change >= 0) gains += change;
-    else losses -= change;
-  }
-
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
-  const rs = avgGain / (avgLoss || 1);
-
-  return 100 - 100 / (1 + rs);
-}
-
-function calculateMACD(candles, fast = 8, slow = 21, signal = 5) {
-  const closes = candles.map((c) => c.close);
-  const macd = technicalIndicators.MACD.calculate({
-    fastPeriod: fast,
-    slowPeriod: slow,
-    signalPeriod: signal,
-    SimpleMAOscillator: false,
-    SimpleMASignal: false,
-    values: closes,
-  });
-
-  if (!macd.length) return { macdLine: 0, signalLine: 0, histogram: 0 };
-
-  const last = macd[macd.length - 1];
-  return {
-    macdLine: last.MACD || 0,
-    signalLine: last.signal || 0,
-    histogram: (last.MACD || 0) - (last.signal || 0),
-  };
-}
-
-function checkVolumeSpike(candles, lookback = 5) {
-  if (candles.length < lookback + 1) return false;
-
-  const avgVol =
-    candles.slice(-lookback - 1, -1).reduce((sum, c) => sum + c.volume, 0) /
-    lookback;
-  const lastVol = candles[candles.length - 1].volume;
-
-  return lastVol > avgVol * 1.15;
-}
-
-function calculateMomentum(candles, period = 5) {
-  if (candles.length < period + 1) return 0;
-
-  const current = candles[candles.length - 1].close;
-  const past = candles[candles.length - 1 - period].close;
-
-  return ((current - past) / past) * 100;
-}
-
-function predictNextCandle(candles) {
-  const closes = candles.map((c) => c.close);
-  const ema9Series = calculateEMAseries(9, closes);
-  const ema15Series = calculateEMAseries(15, closes);
-
-  const momentum = calculateMomentum(candles, 5);
-  const rsi = calculateRSI(candles, 7);
-  const { macdLine, signalLine, histogram } = calculateMACD(candles);
-
-  const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
-  const ema15Angle = getEMAAngleFromSeries(ema15Series, 3);
-
-  const bullish =
-    ema9Series.at(-1) > ema15Series.at(-1) &&
-    ema9Angle > 0 &&
-    ema15Angle > 0 &&
-    macdLine > signalLine &&
-    histogram > 0 &&
-    momentum > 0 &&
-    rsi > 50;
-
-  const bearish =
-    ema9Series.at(-1) < ema15Series.at(-1) &&
-    ema9Angle < 0 &&
-    ema15Angle < 0 &&
-    macdLine < signalLine &&
-    histogram < 0 &&
-    momentum < 0 &&
-    rsi < 50;
-
-  if (bullish) return "Probable GREEN Candle";
-  if (bearish) return "Probable RED Candle";
-  return "Uncertain / Doji Likely";
-}
-
-async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
-  try {
-    console.log(`🔍 Analyzing ${symbol} at candle ${candleIndex}...`);
-
-    const pastCandles1m = candles1m.slice(0, candleIndex + 1);
-    const pastCandles5m = candles5m.slice(0, Math.floor(candleIndex / 5) + 1);
-
-    if (pastCandles1m.length < 50 || pastCandles5m.length < 20) {
-      return "HOLD";
-    }
-
-    const closes1m = pastCandles1m.map((c) => c.close);
-    const ema9Series = calculateEMAseries(9, closes1m);
-    const ema15Series = calculateEMAseries(15, closes1m);
-    const ema21Series = calculateEMAseries(21, closes1m);
-
-    const ema9 = ema9Series[ema9Series.length - 1];
-    const ema15 = ema15Series[ema15Series.length - 1];
-    const ema21 = ema21Series[ema21Series.length - 1];
-
-    const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
-    const ema15Angle = getEMAAngleFromSeries(ema15Series, 3);
-
-    const volatility = calculateVolatility(pastCandles1m, 20);
-    console.log(`🌊 Market Volatility: ${volatility.toFixed(2)}%`);
-    if (volatility < 0.1) {
-      console.log(`⚠️ Market too flat (volatility < 0.1%). Decision: HOLD`);
-      return "HOLD";
-    }
-
-    if (
-      Math.abs(ema9Angle) < MIN_ANGLE_THRESHOLD &&
-      Math.abs(ema15Angle) < MIN_ANGLE_THRESHOLD
-    ) {
-      console.log(
-        `⚠️ EMA angles too flat (<${MIN_ANGLE_THRESHOLD}°). Decision: HOLD`
+    if (roi >= 2) {
+      const roiStepsAbove2 = Math.floor(roi - 2);
+      const newStop = parseFloat(
+        (entryPrice * (1 + roiStepsAbove2 * 0.01)).toFixed(pricePrecision)
       );
-      return "HOLD";
+
+      if (newStop > oldStop) {
+        console.log(
+          `[${symbol}] LONG ROI ${roi.toFixed(
+            pricePrecision
+          )}% → Updating SL from ${oldStop} to ${newStop}`
+        );
+        await binance.futuresCancel(symbol, stopLossOrderId);
+        const stopLossOrder = await binance.futuresOrder(
+          "STOP_MARKET",
+          "SELL",
+          symbol,
+          qtyFixed,
+          null,
+          {
+            stopPrice: newStop,
+            reduceOnly: true,
+            timeInForce: "GTC",
+          }
+        );
+
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: {
+            stopLossPrice: newStop,
+            stopLossOrderId: stopLossOrder.orderId,
+          },
+        });
+
+        console.log(`[${symbol}] LONG Stop Loss updated successfully.`);
+      } else {
+        console.log(
+          `[${symbol}] LONG ROI ${roi.toFixed(2)}% — SL unchanged (${oldStop}).`
+        );
+      }
+    } else {
+      console.log(
+        `[${symbol}] LONG ROI ${roi.toFixed(2)}% — Below 2%, no trailing yet.`
+      );
     }
-
-    const lastCandle = pastCandles1m[pastCandles1m.length - 1];
-    const candleType = detectCandleType(lastCandle);
-
-    const rsi1m = calculateRSI(pastCandles1m, 7);
-    const rsi5m = calculateRSI(pastCandles5m, 14);
-
-    const { macdLine, signalLine, histogram } = calculateMACD(pastCandles1m);
-
-    const volumeSpike = checkVolumeSpike(pastCandles1m);
-    const momentum = calculateMomentum(pastCandles1m, 5);
-
-    const longConditions = [
-      ema9 > ema15,
-      ema15 > ema21,
-      ema9Angle > EMA_ANGLE_THRESHOLD || ema15Angle > EMA_ANGLE_THRESHOLD,
-      rsi1m > 45 && rsi1m < 80,
-      macdLine > signalLine,
-      histogram > 0,
-      momentum > 0.1,
-      volumeSpike || candleType !== "none",
-    ];
-
-    const longScore = longConditions.filter(Boolean).length;
-
-    const shortConditions = [
-      ema9 < ema15,
-      ema15 < ema21,
-      ema9Angle < -EMA_ANGLE_THRESHOLD || ema15Angle < -EMA_ANGLE_THRESHOLD,
-      rsi1m < 55 && rsi1m > 20,
-      macdLine < signalLine,
-      histogram < 0,
-      momentum < -0.1,
-      volumeSpike || candleType !== "none",
-    ];
-
-    const shortScore = shortConditions.filter(Boolean).length;
-
-    if (longScore >= 6) {
-      return "LONG";
-    }
-
-    if (shortScore >= 6) {
-      return "SHORT";
-    }
-
-    console.log(`⚖️ No clear signal. Decision: HOLD`);
-    return "HOLD";
   } catch (err) {
-    console.error("❌ Decision error:", err.message);
-    return "HOLD";
+    console.error(`[${symbol}] Error trailing LONG stop-loss:`, err.message);
   }
 }
 
-async function backtest(symbols, startDate, endDate) {
-  const startTime = new Date(startDate).getTime();
-  const endTime = new Date(endDate).getTime();
+async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
+  try {
+    const {
+      stopLossOrderId,
+      objectId,
+      ShortTimeCurrentPrice: { $numberDecimal: shortTimeCurrentPrice },
+      quantity,
+      stopLossPrice: oldStopLoss,
+    } = tradeDetails;
 
-  console.log(`🚀 Starting backtest from ${startDate} to ${endDate}...`);
+    const entryPrice = parseFloat(shortTimeCurrentPrice);
+    const oldStop = parseFloat(oldStopLoss);
 
-  for (const symbol of symbols) {
-    console.log(`\n📊 Backtesting ${symbol}...`);
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
+    const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    const candles1m = await getCandles(
-      symbol,
-      TIMEFRAME_MAIN,
-      startTime,
-      endTime
-    );
-    const candles5m = await getCandles(
-      symbol,
-      TIMEFRAME_TREND,
-      startTime,
-      endTime
-    );
+    const roi = ((entryPrice - currentPrice) / entryPrice) * 100;
 
-    if (candles1m.length < 50 || candles5m.length < 20) {
-      console.log(`⚠️ Insufficient data for ${symbol}. Skipping...`);
-      continue;
+    if (roi >= 2) {
+      const roiStepsAbove2 = Math.floor(roi - 2);
+
+      const newStop = parseFloat(
+        (entryPrice * (1 - roiStepsAbove2 * 0.01)).toFixed(pricePrecision)
+      );
+
+      if (newStop < oldStop) {
+        console.log(
+          `[${symbol}] SHORT ROI ${roi.toFixed(
+            pricePrecision
+          )}% → Updating SL from ${oldStop} to ${newStop}`
+        );
+
+        await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
+
+        const stopLossOrder = await binance.futuresOrder(
+          "STOP_MARKET",
+          "BUY",
+          symbol,
+          qtyFixed,
+          null,
+          {
+            stopPrice: newStop,
+            reduceOnly: true,
+            timeInForce: "GTC",
+          }
+        );
+
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: {
+            stopLossPrice: newStop,
+            stopLossOrderId: stopLossOrder.orderId,
+          },
+        });
+
+        console.log(`[${symbol}] SHORT Stop Loss updated successfully.`);
+      } else {
+        console.log(
+          `[${symbol}] SHORT ROI ${roi.toFixed(
+            2
+          )}% — SL unchanged (${oldStop}).`
+        );
+      }
+    } else {
+      console.log(
+        `[${symbol}] SHORT ROI ${roi.toFixed(2)}% — Below 2%, no trailing yet.`
+      );
+    }
+  } catch (err) {
+    console.error(`[${symbol}] Error trailing SHORT stop-loss:`, err.message);
+  }
+}
+
+async function trailStopLoss(symbol) {
+  try {
+    const priceMap = await binance.futuresPrices();
+    const currentPrice = parseFloat(priceMap[symbol]);
+    const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
+    const { found, tradeDetails } = response.data?.data;
+
+    if (!found) {
+      console.log(`[${symbol}] No active trade found.`);
+      return;
     }
 
-    const results = {
-      LONG: 0,
-      SHORT: 0,
-      HOLD: 0,
-      trades: [],
-      profit: 0,
-      wins: 0,
-      losses: 0,
+    const { side } = tradeDetails;
+
+    if (side === "LONG") {
+      await trailStopLossForLong(symbol, tradeDetails, currentPrice);
+    } else if (side === "SHORT") {
+      await trailStopLossForShort(symbol, tradeDetails, currentPrice);
+    } else {
+      console.log(`[${symbol}] Unknown position side: ${side}`);
+    }
+  } catch (err) {
+    console.error(
+      `[${symbol}] Error in main trailing stop-loss function:`,
+      err.message
+    );
+  }
+}
+
+async function processSymbol(symbol, maxSpendPerTrade) {
+  const decision = await decideTradeDirection(symbol);
+  if (decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
+}
+
+async function placeBuyOrder(symbol, marginAmount) {
+  try {
+    await setLeverage(symbol);
+    const price = (await binance.futuresPrices())[symbol];
+    const entryPrice = parseFloat(price);
+    const positionValue = marginAmount * leverage;
+    const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
+    const qtyFixed = quantity.toFixed(quantityPrecision);
+    const { stopLossPrice, takeProfitPrice } = calculateROIPrices(
+      entryPrice,
+      marginAmount,
+      quantity,
+      "LONG"
+    );
+
+    const stopLossFixed = stopLossPrice.toFixed(pricePrecision);
+    const takeProfitFixed = takeProfitPrice.toFixed(pricePrecision);
+
+    console.log(`LONG Order Details for ${symbol}:`);
+    console.log(`Entry Price: ${entryPrice}`);
+    console.log(`Quantity: ${qtyFixed}`);
+    console.log(`Margin Used: ${marginAmount}`);
+    console.log(`Position Value: ${positionValue} (${leverage}x leverage)`);
+    console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
+    console.log(
+      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
+    );
+    const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
+    console.log(`Bought ${symbol} at ${entryPrice}`);
+
+    const buyOrderDetails = {
+      side: "LONG",
+      symbol,
+      quantity: qtyFixed,
+      LongTimeCoinPrice: entryPrice,
+      placeOrderId: buyOrder.orderId,
+      marginUsed: marginAmount,
+      leverage: leverage,
+      positionValue: positionValue,
     };
 
-    let position = null;
-    let stopLossPrice = null;
-
-    for (let i = 50; i < candles1m.length - 1; i++) {
-      const signal = await decideTradeDirection(
-        symbol,
-        candles1m,
-        candles5m,
-        i
-      );
-      results[signal]++;
-
-      const currentCandle = candles1m[i];
-      const nextCandle = candles1m[i + 1];
-
-      if ((signal === "LONG" || signal === "SHORT") && !position) {
-        // Enter new position
-        position = {
-          type: signal,
-          entryPrice: currentCandle.close,
-          entryTime: currentCandle.openTime,
-        };
-        // Set initial stop loss (1% below/above entry for LONG/SHORT)
-        stopLossPrice =
-          signal === "LONG"
-            ? currentCandle.close * (1 - INITIAL_STOP_LOSS_PERCENT)
-            : currentCandle.close * (1 + INITIAL_STOP_LOSS_PERCENT);
-      } else if (position) {
-        // Update trailing stop loss
-        if (position.type === "LONG") {
-          const currentProfit = (nextCandle.close - position.entryPrice) / position.entryPrice;
-          if (currentProfit > INITIAL_STOP_LOSS_PERCENT) {
-            // Adjust stop loss to lock in at least 1% profit or higher
-            const newStopLoss = nextCandle.close * (1 - INITIAL_STOP_LOSS_PERCENT);
-            stopLossPrice = Math.max(stopLossPrice, newStopLoss);
-          }
-          // Check if stop loss is hit
-          if (nextCandle.low <= stopLossPrice) {
-            const exitPrice = Math.max(nextCandle.open, stopLossPrice); // Exit at stop loss or open price
-            const profit = (exitPrice - position.entryPrice) / position.entryPrice;
-            const netProfit = profit - 2 * TAKER_FEE;
-
-            results.profit += netProfit * 100;
-            if (netProfit > 0) results.wins++;
-            else results.losses++;
-
-            results.trades.push({
-              timestamp: new Date(position.entryTime).toLocaleString(),
-              signal: position.type,
-              entryPrice: position.entryPrice,
-              exitPrice,
-              profit: (netProfit * 100).toFixed(2),
-              stopLossTriggered: true,
-            });
-
-            position = null;
-            stopLossPrice = null;
-            continue;
-          }
-        } else if (position.type === "SHORT") {
-          const currentProfit = (position.entryPrice - nextCandle.close) / position.entryPrice;
-          if (currentProfit > INITIAL_STOP_LOSS_PERCENT) {
-            // Adjust stop loss to lock in at least 1% profit or higher
-            const newStopLoss = nextCandle.close * (1 + INITIAL_STOP_LOSS_PERCENT);
-            stopLossPrice = Math.min(stopLossPrice, newStopLoss);
-          }
-          // Check if stop loss is hit
-          if (nextCandle.high >= stopLossPrice) {
-            const exitPrice = Math.min(nextCandle.open, stopLossPrice); // Exit at stop loss or open price
-            const profit = (position.entryPrice - exitPrice) / position.entryPrice;
-            const netProfit = profit - 2 * TAKER_FEE;
-
-            results.profit += netProfit * 100;
-            if (netProfit > 0) results.wins++;
-            else results.losses++;
-
-            results.trades.push({
-              timestamp: new Date(position.entryTime).toLocaleString(),
-              signal: position.type,
-              entryPrice: position.entryPrice,
-              exitPrice,
-              profit: (netProfit * 100).toFixed(2),
-              stopLossTriggered: true,
-            });
-
-            position = null;
-            stopLossPrice = null;
-            continue;
-          }
-        }
-
-        // Exit on HOLD signal if stop loss not triggered
-        if (signal === "HOLD") {
-          const exitPrice = nextCandle.close;
-          const profit =
-            position.type === "LONG"
-              ? (exitPrice - position.entryPrice) / position.entryPrice
-              : (position.entryPrice - exitPrice) / position.entryPrice;
-          const netProfit = profit - 2 * TAKER_FEE;
-
-          results.profit += netProfit * 100;
-          if (netProfit > 0) results.wins++;
-          else results.losses++;
-
-          results.trades.push({
-            timestamp: new Date(position.entryTime).toLocaleString(),
-            signal: position.type,
-            entryPrice: position.entryPrice,
-            exitPrice,
-            profit: (netProfit * 100).toFixed(2),
-            stopLossTriggered: false,
-          });
-
-          position = null;
-          stopLossPrice = null;
-        }
-      }
-    }
-
-    // Close any open position at the end
-    if (position && candles1m.length > 50) {
-      const exitPrice = candles1m[candles1m.length - 1].close;
-      const profit =
-        position.type === "LONG"
-          ? (exitPrice - position.entryPrice) / position.entryPrice
-          : (position.entryPrice - exitPrice) / position.entryPrice;
-      const netProfit = profit - 2 * TAKER_FEE;
-
-      results.profit += netProfit * 100;
-      if (netProfit > 0) results.wins++;
-      else results.losses++;
-
-      results.trades.push({
-        timestamp: new Date(position.entryTime).toLocaleString(),
-        signal: position.type,
-        entryPrice: position.entryPrice,
-        exitPrice,
-        profit: (netProfit * 100).toFixed(2),
-        stopLossTriggered: false,
-      });
-    }
-
-    console.log(`\n📈 Backtest Summary for ${symbol}`);
-    console.log(`🟢 LONG Signals: ${results.LONG}`);
-    console.log(`🔴 SHORT Signals: ${results.SHORT}`);
-    console.log(`⚪ HOLD Signals: ${results.HOLD}`);
-    console.log(
-      `📊 Total Signals: ${results.LONG + results.SHORT + results.HOLD}`
-    );
-    console.log(`💰 Total Profit: ${results.profit.toFixed(2)}%`);
-    console.log(`✅ Wins: ${results.wins} | ❌ Losses: ${results.losses}`);
-    console.log(
-      `🏆 Win Rate: ${(
-        (results.wins / (results.wins + results.losses) || 0) * 100
-      ).toFixed(2)}%`
-    );
-    console.log(`\nDetailed Trades:`);
-    results.trades.forEach((trade) => {
-      console.log(
-        `${trade.timestamp} | Signal: ${trade.signal} | Entry: ${trade.entryPrice.toFixed(
-          6
-        )} | Exit: ${trade.exitPrice.toFixed(6)} | Profit: ${trade.profit}% | Stop Loss: ${trade.stopLossTriggered ? "Triggered" : "Not Triggered"}`
-      );
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: buyOrderDetails,
     });
-    console.log("=".repeat(60));
+    console.log(`Trade Response:`, tradeResponse?.data);
+
+    const tradeId = tradeResponse.data._id;
+    const stopLossOrder = await binance.futuresOrder(
+      "STOP_MARKET",
+      "SELL",
+      symbol,
+      qtyFixed,
+      null,
+      {
+        stopPrice: stopLossFixed,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+    console.log(
+      `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
+    );
+
+    const details = {
+      stopLossPrice: stopLossFixed,
+      stopLossOrderId: stopLossOrder.orderId,
+    };
+
+    await axios.put(`${API_ENDPOINT}${tradeId}`, {
+      data: details,
+    });
+  } catch (error) {
+    console.error(`Error placing LONG order for ${symbol}:`, error);
   }
 }
 
-const startDate = "2025-05-01T00:00:00Z";
-const endDate = "2025-06-28T23:59:59Z";
+// 📉 Place Short Order + Stop Loss (SHORT Position)
+async function placeShortOrder(symbol, marginAmount) {
+  try {
+    await setLeverage(symbol);
 
-backtest(symbols, startDate, endDate).catch((err) => {
-  console.error("❌ Backtest error:", err.message);
-});
+    const price = (await binance.futuresPrices())[symbol];
+    const entryPrice = parseFloat(price);
+    const positionValue = marginAmount * leverage;
+    const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
+
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
+
+    const qtyFixed = quantity.toFixed(quantityPrecision);
+    const { stopLossPrice, takeProfitPrice } = calculateROIPrices(
+      entryPrice,
+      marginAmount,
+      quantity,
+      "SHORT"
+    );
+
+    const stopLossFixed = stopLossPrice.toFixed(pricePrecision);
+    const takeProfitFixed = takeProfitPrice.toFixed(pricePrecision);
+
+    console.log(`SHORT Order Details for ${symbol}:`);
+    console.log(`Entry Price: ${entryPrice}`);
+    console.log(`Quantity: ${qtyFixed}`);
+    console.log(`Margin Used: ${marginAmount}`);
+    console.log(`Position Value: ${positionValue} (${leverage}x leverage)`);
+    console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
+    console.log(
+      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
+    );
+
+    // Place market sell order
+    const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
+    console.log(`Shorted ${symbol} at ${entryPrice}`);
+
+    const shortOrderDetails = {
+      side: "SHORT",
+      symbol,
+      quantity: qtyFixed,
+      ShortTimeCurrentPrice: entryPrice,
+      placeOrderId: shortOrder.orderId,
+      marginUsed: marginAmount,
+      leverage: leverage,
+      positionValue: positionValue,
+    };
+
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: shortOrderDetails,
+    });
+    console.log(`Trade Response:`, tradeResponse?.data);
+
+    const tradeId = tradeResponse.data._id;
+
+    // Place stop loss order
+    const stopLossOrder = await binance.futuresOrder(
+      "STOP_MARKET",
+      "BUY",
+      symbol,
+      qtyFixed,
+      null,
+      {
+        stopPrice: stopLossFixed,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+    console.log(
+      `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
+    );
+
+    const details = {
+      stopLossPrice: stopLossFixed,
+      stopLossOrderId: stopLossOrder.orderId,
+    };
+
+    await axios.put(`${API_ENDPOINT}${tradeId}`, {
+      data: details,
+    });
+  } catch (error) {
+    console.error(`Error placing SHORT order for ${symbol}:`, error);
+  }
+}
+
+setInterval(async () => {
+  const totalBalance = await getUsdtBalance();
+  const usableBalance = totalBalance - 6;
+  const maxSpendPerTrade = usableBalance / symbols.length;
+
+  if (usableBalance < 6) {
+    console.log("Not enough balance to trade.");
+    return;
+  }
+  console.log(`Total Balance: ${totalBalance} USDT`);
+  console.log(`Usable Balance: ${usableBalance} USDT`);
+  console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
+
+  for (const sym of symbols) {
+    try {
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
+
+      let status = response?.data?.data.status;
+
+      if (status == true) {
+        await processSymbol(sym, maxSpendPerTrade);
+      } else {
+        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+      }
+    } catch (err) {
+      console.error(`Error with ${sym}:`, err.message);
+    }
+  }
+}, 60 * 1000);
+
+setInterval(async () => {
+  for (const sym of symbols) {
+    await checkOrders(sym);
+  }
+}, 30000);
+
+setInterval(async () => {
+  for (const sym of symbols) {
+    try {
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
+
+      let status = response?.data?.data.status;
+
+      if (status == false) {
+        await trailStopLoss(sym);
+      } else {
+        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+      }
+    } catch (err) {
+      console.error(`Error with ${sym}:`, err.message);
+    }
+  }
+}, 2000);
