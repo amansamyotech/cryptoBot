@@ -20,9 +20,6 @@ const symbols = [
   "1000FLOKIUSDT",
 ];
 
-
-
-
 async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   try {
     if (startTime && endTime) {
@@ -142,7 +139,12 @@ function calculateEMA(prices, period) {
   return emaArray;
 }
 
-async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
+async function decideTradeDirection(
+  symbol,
+  candles5m,
+  candles15m,
+  candleIndex
+) {
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
 
@@ -177,15 +179,15 @@ async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) 
     // Combine angle and EMA signals
     let finalSignal = "HOLD";
 
-    if (angle >= 90 && angle <= 150 && emaSignal === "LONG") {
-      // console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
-      finalSignal = "LONG";
-    } else if (angle >= 210 && angle <= 270 && emaSignal === "SHORT") {
-      // console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
-      finalSignal = "SHORT";
-    } else {
-      // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
-    }
+    // if (angle >= 90 && angle <= 150 && emaSignal === "LONG") {
+    //   // console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+    //   finalSignal = "LONG";
+    // } else if (angle >= 210 && angle <= 270 && emaSignal === "SHORT") {
+    //   // console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+    //   finalSignal = "SHORT";
+    // } else {
+    //   // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+    // }
 
     return finalSignal;
   } catch (err) {
@@ -193,7 +195,6 @@ async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) 
     return "HOLD";
   }
 }
-
 
 async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
