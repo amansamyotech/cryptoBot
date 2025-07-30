@@ -12,7 +12,7 @@ const TIMEFRAME_MAIN = "1m";
 const TIMEFRAME_TREND = "5m";
 const EMA_ANGLE_THRESHOLD = 15;
 const MIN_ANGLE_THRESHOLD = 9;
-// const VOLATILITY_MULTIPLIER = 10000;
+const VOLATILITY_MULTIPLIER = 100;
 const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
@@ -96,8 +96,8 @@ function getEMAAngleFromSeries(emaSeries, lookback = 3) {
   const recent = emaSeries[emaSeries.length - 1];
   const past = emaSeries[emaSeries.length - 1 - lookback];
   const percentChange = ((recent - past) / past) * 100;
-//   const delta = percentChange * VOLATILITY_MULTIPLIER;
-  const delta = percentChange 
+  const delta = percentChange * VOLATILITY_MULTIPLIER;
+  
   const angleRad = Math.atan(delta / lookback);
 
   return angleRad * (180 / Math.PI);
