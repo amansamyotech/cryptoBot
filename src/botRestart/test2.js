@@ -11,6 +11,7 @@ const binance = new Binance().options({
 const TIMEFRAME_MAIN = "5m";
 const TIMEFRAME_TREND = "15m";
 const TAKER_FEE = 0.04 / 100;
+const EMA_PERIODS = [9, 15];
 
 const symbols = [
   "1000PEPEUSDT",
@@ -106,23 +107,81 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
 }
 
 function getCandleAngle(candle, timeSpan = 300) {
-  // timeSpan in seconds for 5m candle
-  const delta = ((candle.close - candle.open) / candle.open) * 100000; // Scale for small-priced assets
+  const delta = ((candle.close - candle.open) / candle.open) * 100000;
   const rawAngleRad = Math.atan(delta / timeSpan);
   let angle = rawAngleRad * (180 / Math.PI);
 
-  // Map angle to 360° scale: upward (close > open) to 90°-150°, downward to 210°-270°
   if (candle.close > candle.open) {
-    // Upward trend: map to 90°-150°
-    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60; // Scale to 90°-150°
+    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
   } else if (candle.close < candle.open) {
-    // Downward trend: map to 210°-270°
-    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60; // Scale to 210°-270°
+    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
   } else {
-    angle = 180; // Neutral case
+    angle = 180;
   }
 
   return angle;
+}
+
+function calculateEMA(period, candles) {
+  const k = 2 / (period + 1);
+  let ema = candles[0].close;
+  for (let i = 1; i < candles.length; i++) {
+    ema = candles[i].close * k + ema * (1 - k);
+  }
+  return ema;
+}
+
+function detectCandleType(candle) {
+  const body = Math.abs(candle.close - candle.open);
+  const upperWick = candle.high - Math.max(candle.close, candle.open);
+  const lowerWick = Math.min(candle.close, candle.open) - candle.low;
+  const range = candle.high - candle.low;
+  if (lowerWick > 2 * body || upperWick > 2 * body) return "pinbar";
+  if (range > 1.5 * body && body / range > 0.7) return "bigbar";
+  if (body / range > 0.85) return "fullbody";
+  return "none";
+}
+
+function getEMAangle(emaShort, emaLong, timeSpan = 5) {
+  const delta = emaShort - emaLong;
+  const angleRad = Math.atan(delta / timeSpan);
+  return angleRad * (180 / Math.PI);
+}
+
+function calculateRSI(candles, period = 14) {
+  let gains = 0,
+    losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const change = candles[i].close - candles[i - 1].close;
+    if (change >= 0) gains += change;
+    else losses -= change;
+  }
+  const avgGain = gains / period;
+  const avgLoss = losses / period;
+  const rs = avgGain / (avgLoss || 1);
+  return 100 - 100 / (1 + rs);
+}
+
+function calculateMACD(candles, fast = 12, slow = 26, signal = 9) {
+  const fastEMA = calculateEMA(fast, candles);
+  const slowEMA = calculateEMA(slow, candles);
+  const macdLine = fastEMA - slowEMA;
+  const macdHistory = candles.map((c, i) => {
+    if (i < slow) return 0;
+    const fastE = calculateEMA(fast, candles.slice(i - fast + 1, i + 1));
+    const slowE = calculateEMA(slow, candles.slice(i - slow + 1, i + 1));
+    return fastE - slowE;
+  });
+  const signalLine = calculateEMA(signal, macdHistory.slice(-signal));
+  return { macdLine, signalLine };
+}
+
+function checkVolumeSpike(candles, lookback = 10) {
+  const avgVol =
+    candles.slice(-lookback - 1, -1).reduce((sum, c) => sum + c.volume, 0) /
+    lookback;
+  const lastVol = candles[candles.length - 1].volume;
+  return lastVol > avgVol * 1.2;
 }
 
 async function decideTradeDirection(
@@ -134,30 +193,64 @@ async function decideTradeDirection(
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
 
-    if (pastCandles5m.length < 2) {
-      //   console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
+    if (pastCandles5m.length < 50) {
       return "HOLD";
     }
 
-    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2]; // 2nd last candle
+    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
     const angle = getCandleAngle(secondLastCandle);
 
-    // console.log(
-    //   `🔍 ${symbol} | 2nd Last Candle Open: ${secondLastCandle.open.toFixed(6)} | Close: ${secondLastCandle.close.toFixed(6)} | Angle: ${angle.toFixed(2)}°`
-    // );
+    const ema9 = calculateEMA(9, pastCandles5m);
+    const ema15 = calculateEMA(15, pastCandles5m);
+    const emaAngle = getEMAangle(ema9, ema15);
+    const lastCandle = pastCandles5m[pastCandles5m.length - 1];
+    const candleType = detectCandleType(lastCandle);
+    const rsi15m = calculateRSI(candles15m);
+    const { macdLine, signalLine } = calculateMACD(pastCandles5m);
+    const volumeSpike = checkVolumeSpike(pastCandles5m);
 
+    // Original angle-based logic
+    let signal = "HOLD";
     if (angle >= 90 && angle <= 150) {
-      //   console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
-      return "LONG";
+      signal = "LONG";
+    } else if (angle >= 210 && angle <= 270) {
+      signal = "SHORT";
     }
 
-    if (angle >= 210 && angle <= 270) {
-      //   console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
-      return "SHORT";
+    // Additional filters from new logic
+    if (Math.abs(emaAngle) < 10) {
+      return "HOLD"; // Flat EMA trend overrides angle-based signal
     }
 
-    // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°)`);
-    return "HOLD";
+    if (candleType === "none") {
+      return "HOLD"; // No significant candle pattern
+    }
+
+    // Confirm LONG signal
+    if (signal === "LONG") {
+      const isConfirmed =
+        ema9 > ema15 && // Bullish EMA crossover
+        rsi15m < 70 && // Not overbought
+        macdLine > signalLine && // Bullish MACD
+        volumeSpike; // Volume confirmation
+      if (!isConfirmed) {
+        return "HOLD";
+      }
+    }
+
+    // Confirm SHORT signal
+    if (signal === "SHORT") {
+      const isConfirmed =
+        ema9 < ema15 && // Bearish EMA crossover
+        rsi15m > 30 && // Not oversold
+        macdLine < signalLine && // Bearish MACD
+        volumeSpike; // Volume confirmation
+      if (!isConfirmed) {
+        return "HOLD";
+      }
+    }
+
+    return signal;
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
@@ -185,7 +278,6 @@ async function backtest(symbols, startDate, endDate) {
     );
 
     if (candles5m.length < 50 || candles15m.length < 20) {
-      //   console.log(`⚠️ Insufficient data for ${symbol}. Skipping... (5m: ${candles5m.length}, 15m: ${candles15m.length})`);
       continue;
     }
 
@@ -309,13 +401,13 @@ async function backtest(symbols, startDate, endDate) {
     );
     console.log(`\nDetailed Trades:`);
     results.trades.forEach((trade) => {
-      //   console.log(
-      //     `${trade.timestamp} | Signal: ${
-      //       trade.signal
-      //     } | Entry: ${trade.entryPrice.toFixed(
-      //       6
-      //     )} | Exit: ${trade.exitPrice.toFixed(6)} | Profit: ${trade.profit}%`
-      //   );
+      console.log(
+        `${trade.timestamp} | Signal: ${
+          trade.signal
+        } | Entry: ${trade.entryPrice.toFixed(
+          6
+        )} | Exit: ${trade.exitPrice.toFixed(6)} | Profit: ${trade.profit}%`
+      );
     });
     console.log("=".repeat(60));
   }
