@@ -13,13 +13,30 @@ const TIMEFRAME_TREND = "15m";
 const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
+  "XRPUSDT",
+  "ADAUSDT",
+  "BNBUSDT",
+  "DOGEUSDT",
+  "DOTUSDT",
+  "SUIUSDT",
+  "NEARUSDT",
+  "INJUSDT",
+  "ORDIUSDT",
+  "LTCUSDT",
+  "TRXUSDT",
+  "ETCUSDT",
+  "SOLUSDT",
+  "DAIUSDT",
+  "WIFUSDT",
+  "TONUSDT",
+  "TAOUSDT",
+  "LEVERUSDT",
+  "KSMUSDT",
   "1000PEPEUSDT",
   "1000BONKUSDT",
-  "DOGEUSDT",
   "CKBUSDT",
   "1000FLOKIUSDT",
 ];
-
 async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   try {
     if (startTime && endTime) {
@@ -227,20 +244,20 @@ async function backtest(symbols, startDate, endDate) {
         if (position.type === "LONG") {
           const profitPercent =
             ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 3) {
+          if (profitPercent >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (profitPercent <= -1.5) {
+          } else if (profitPercent <= -1) {
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
           }
         } else if (position.type === "SHORT") {
           const profitPercent =
             ((position.entryPrice - currentPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 3) {
+          if (profitPercent >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (profitPercent <= -1.5) {
+          } else if (profitPercent <= -1) {
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
           }
