@@ -13,7 +13,7 @@ const TIMEFRAME_TREND = "5m";
 const EMA_ANGLE_THRESHOLD = 15;
 const MIN_ANGLE_THRESHOLD = 9;
 const VOLATILITY_MULTIPLIER = 10000;
-const TAKER_FEE = 0.04 / 100; // Binance Futures taker fee (0.04%)
+const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
   "1000PEPEUSDT",
@@ -27,8 +27,6 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   try {
     const candles = [];
     let currentStartTime = startTime;
-
-    // Binance API limits to ~1000 candles per request, so paginate if needed
     while (currentStartTime < endTime) {
       const batch = await binance.futuresCandles(symbol, interval, {
         startTime: currentStartTime,
@@ -42,44 +40,46 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
       }
 
       candles.push(...batch);
-      currentStartTime = batch[batch.length - 1][0] + 60 * 1000; // Next batch starts after last candle
+      currentStartTime = batch[batch.length - 1][0] + 60 * 1000;
     }
 
-    return candles.map((c, idx) => {
-      const isObjectFormat = typeof c === "object" && !Array.isArray(c);
+    return candles
+      .map((c, idx) => {
+        const isObjectFormat = typeof c === "object" && !Array.isArray(c);
 
-      if (isObjectFormat) {
+        if (isObjectFormat) {
+          return {
+            openTime: c.openTime,
+            open: parseFloat(c.open),
+            high: parseFloat(c.high),
+            low: parseFloat(c.low),
+            close: parseFloat(c.close),
+            volume: parseFloat(c.volume),
+          };
+        }
+
+        if (Array.isArray(c) && c.length >= 6) {
+          return {
+            openTime: c[0],
+            open: parseFloat(c[1]),
+            high: parseFloat(c[2]),
+            low: parseFloat(c[3]),
+            close: parseFloat(c[4]),
+            volume: parseFloat(c[5]),
+          };
+        }
+
+        console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
         return {
-          openTime: c.openTime,
-          open: parseFloat(c.open),
-          high: parseFloat(c.high),
-          low: parseFloat(c.low),
-          close: parseFloat(c.close),
-          volume: parseFloat(c.volume),
+          openTime: 0,
+          open: NaN,
+          high: NaN,
+          low: NaN,
+          close: NaN,
+          volume: NaN,
         };
-      }
-
-      if (Array.isArray(c) && c.length >= 6) {
-        return {
-          openTime: c[0],
-          open: parseFloat(c[1]),
-          high: parseFloat(c[2]),
-          low: parseFloat(c[3]),
-          close: parseFloat(c[4]),
-          volume: parseFloat(c[5]),
-        };
-      }
-
-      console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
-      return {
-        openTime: 0,
-        open: NaN,
-        high: NaN,
-        low: NaN,
-        close: NaN,
-        volume: NaN,
-      };
-    }).filter(c => !isNaN(c.close)); // Remove invalid candles
+      })
+      .filter((c) => !isNaN(c.close));
   } catch (err) {
     console.error(`❌ Error fetching candles for ${symbol}:`, err.message);
     return [];
@@ -236,7 +236,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     const pastCandles5m = candles5m.slice(0, Math.floor(candleIndex / 5) + 1);
 
     if (pastCandles1m.length < 50 || pastCandles5m.length < 20) {
-      console.log(`⚠️ Insufficient data for ${symbol} at index ${candleIndex}`);
+      //   console.log(`⚠️ Insufficient data for ${symbol} at index ${candleIndex}`);
       return "HOLD";
     }
 
@@ -252,16 +252,16 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
     const ema15Angle = getEMAAngleFromSeries(ema15Series, 3);
 
-    console.log(
-      `📈 EMA(9): ${ema9.toFixed(6)} | EMA(15): ${ema15.toFixed(
-        6
-      )} | EMA(21): ${ema21.toFixed(6)}`
-    );
-    console.log(
-      `📐 EMA9 Angle: ${ema9Angle.toFixed(
-        2
-      )}° | EMA15 Angle: ${ema15Angle.toFixed(2)}°`
-    );
+    // console.log(
+    //   `📈 EMA(9): ${ema9.toFixed(6)} | EMA(15): ${ema15.toFixed(
+    //     6
+    //   )} | EMA(21): ${ema21.toFixed(6)}`
+    // );
+    // console.log(
+    //   `📐 EMA9 Angle: ${ema9Angle.toFixed(
+    //     2
+    //   )}° | EMA15 Angle: ${ema15Angle.toFixed(2)}°`
+    // );
 
     const volatility = calculateVolatility(pastCandles1m, 20);
     console.log(`🌊 Market Volatility: ${volatility.toFixed(2)}%`);
@@ -282,28 +282,28 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
 
     const lastCandle = pastCandles1m[pastCandles1m.length - 1];
     const candleType = detectCandleType(lastCandle);
-    console.log(`🕯️ Last Candle Type: ${candleType}`);
+    // console.log(`🕯️ Last Candle Type: ${candleType}`);
 
     const rsi1m = calculateRSI(pastCandles1m, 7);
     const rsi5m = calculateRSI(pastCandles5m, 14);
-    console.log(
-      `💪 RSI (1m): ${rsi1m.toFixed(2)} | RSI (5m): ${rsi5m.toFixed(2)}`
-    );
+    // console.log(
+    //   `💪 RSI (1m): ${rsi1m.toFixed(2)} | RSI (5m): ${rsi5m.toFixed(2)}`
+    // );
 
     const { macdLine, signalLine, histogram } = calculateMACD(pastCandles1m);
-    console.log(
-      `📊 MACD: ${macdLine.toFixed(6)} | Signal: ${signalLine.toFixed(
-        6
-      )} | Histogram: ${histogram.toFixed(6)}`
-    );
+    // console.log(
+    //   `📊 MACD: ${macdLine.toFixed(6)} | Signal: ${signalLine.toFixed(
+    //     6
+    //   )} | Histogram: ${histogram.toFixed(6)}`
+    // );
 
     const volumeSpike = checkVolumeSpike(pastCandles1m);
     const momentum = calculateMomentum(pastCandles1m, 5);
-    console.log(
-      `📢 Volume Spike: ${
-        volumeSpike ? "✅ YES" : "❌ NO"
-      } | Momentum: ${momentum.toFixed(2)}%`
-    );
+    // console.log(
+    //   `📢 Volume Spike: ${
+    //     volumeSpike ? "✅ YES" : "❌ NO"
+    //   } | Momentum: ${momentum.toFixed(2)}%`
+    // );
 
     const longConditions = [
       ema9 > ema15,
@@ -317,7 +317,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     ];
 
     const longScore = longConditions.filter(Boolean).length;
-    console.log(`🟢 LONG Score: ${longScore}/8`);
+    // console.log(`🟢 LONG Score: ${longScore}/8`);
 
     const shortConditions = [
       ema9 < ema15,
@@ -331,15 +331,15 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     ];
 
     const shortScore = shortConditions.filter(Boolean).length;
-    console.log(`🔴 SHORT Score: ${shortScore}/8`);
+    // console.log(`🔴 SHORT Score: ${shortScore}/8`);
 
     if (longScore >= 6) {
-      console.log(`✅ Strong LONG signal (Score: ${longScore}/8)`);
+      //   console.log(`✅ Strong LONG signal (Score: ${longScore}/8)`);
       return "LONG";
     }
 
     if (shortScore >= 6) {
-      console.log(`✅ Strong SHORT signal (Score: ${shortScore}/8)`);
+      //   console.log(`✅ Strong SHORT signal (Score: ${shortScore}/8)`);
       return "SHORT";
     }
 
@@ -355,18 +355,26 @@ async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
   const endTime = new Date(endDate).getTime();
 
-  console.log(
-    `🚀 Starting backtest from ${startDate} to ${endDate}...`
-  );
+  console.log(`🚀 Starting backtest from ${startDate} to ${endDate}...`);
 
   for (const symbol of symbols) {
-    console.log(`\n📊 Backtesting ${symbol}...`);
+    // console.log(`\n📊 Backtesting ${symbol}...`);
 
-    const candles1m = await getCandles(symbol, TIMEFRAME_MAIN, startTime, endTime);
-    const candles5m = await getCandles(symbol, TIMEFRAME_TREND, startTime, endTime);
+    const candles1m = await getCandles(
+      symbol,
+      TIMEFRAME_MAIN,
+      startTime,
+      endTime
+    );
+    const candles5m = await getCandles(
+      symbol,
+      TIMEFRAME_TREND,
+      startTime,
+      endTime
+    );
 
     if (candles1m.length < 50 || candles5m.length < 20) {
-      console.log(`⚠️ Insufficient data for ${symbol}. Skipping...`);
+      //   console.log(`⚠️ Insufficient data for ${symbol}. Skipping...`);
       continue;
     }
 
@@ -380,16 +388,20 @@ async function backtest(symbols, startDate, endDate) {
       losses: 0,
     };
 
-    let position = null; // Track open position { type: "LONG"/"SHORT", entryPrice, entryTime }
+    let position = null;
 
     for (let i = 50; i < candles1m.length - 1; i++) {
-      const signal = await decideTradeDirection(symbol, candles1m, candles5m, i);
+      const signal = await decideTradeDirection(
+        symbol,
+        candles1m,
+        candles5m,
+        i
+      );
       results[signal]++;
 
       const currentCandle = candles1m[i];
       const nextCandle = candles1m[i + 1];
 
-      // Simulate trade if a new signal is generated
       if ((signal === "LONG" || signal === "SHORT") && !position) {
         position = {
           type: signal,
@@ -397,15 +409,14 @@ async function backtest(symbols, startDate, endDate) {
           entryTime: currentCandle.openTime,
         };
       } else if (position && signal === "HOLD") {
-        // Close position on HOLD signal
         const exitPrice = nextCandle.close;
         const profit =
           position.type === "LONG"
             ? (exitPrice - position.entryPrice) / position.entryPrice
             : (position.entryPrice - exitPrice) / position.entryPrice;
-        const netProfit = profit - 2 * TAKER_FEE; // Entry + exit fees
+        const netProfit = profit - 2 * TAKER_FEE;
 
-        results.profit += netProfit * 100; // Profit in percentage
+        results.profit += netProfit * 100;
         if (netProfit > 0) results.wins++;
         else results.losses++;
 
@@ -417,11 +428,10 @@ async function backtest(symbols, startDate, endDate) {
           profit: (netProfit * 100).toFixed(2),
         });
 
-        position = null; // Reset position
+        position = null;
       }
     }
 
-    // Close any open position at the end
     if (position && candles1m.length > 50) {
       const exitPrice = candles1m[candles1m.length - 1].close;
       const profit =
@@ -443,27 +453,35 @@ async function backtest(symbols, startDate, endDate) {
       });
     }
 
-    // Log summary
     console.log(`\n📈 Backtest Summary for ${symbol}`);
     console.log(`🟢 LONG Signals: ${results.LONG}`);
     console.log(`🔴 SHORT Signals: ${results.SHORT}`);
     console.log(`⚪ HOLD Signals: ${results.HOLD}`);
-    console.log(`📊 Total Signals: ${results.LONG + results.SHORT + results.HOLD}`);
+    console.log(
+      `📊 Total Signals: ${results.LONG + results.SHORT + results.HOLD}`
+    );
     console.log(`💰 Total Profit: ${results.profit.toFixed(2)}%`);
     console.log(`✅ Wins: ${results.wins} | ❌ Losses: ${results.losses}`);
-    console.log(`🏆 Win Rate: ${((results.wins / (results.wins + results.losses) || 0) * 100).toFixed(2)}%`);
+    console.log(
+      `🏆 Win Rate: ${(
+        (results.wins / (results.wins + results.losses) || 0) * 100
+      ).toFixed(2)}%`
+    );
     console.log(`\nDetailed Trades:`);
     results.trades.forEach((trade) => {
       console.log(
-        `${trade.timestamp} | Signal: ${trade.signal} | Entry: ${trade.entryPrice.toFixed(6)} | Exit: ${trade.exitPrice.toFixed(6)} | Profit: ${trade.profit}%`
+        `${trade.timestamp} | Signal: ${
+          trade.signal
+        } | Entry: ${trade.entryPrice.toFixed(
+          6
+        )} | Exit: ${trade.exitPrice.toFixed(6)} | Profit: ${trade.profit}%`
       );
     });
     console.log("=".repeat(60));
   }
 }
 
-// Run backtest for June 1, 2025 to June 28, 2025 (placeholder)
-const startDate = "2025-06-01T00:00:00Z";
+const startDate = "2025-05-01T00:00:00Z";
 const endDate = "2025-06-28T23:59:59Z";
 
 backtest(symbols, startDate, endDate).catch((err) => {
