@@ -73,16 +73,13 @@ function calculateEMAseries(period, closes) {
 }
 
 function getEMAAngleFromSeries(emaSeries, lookback = 5) {
-  // Calculating the angle based on EMA values, not price
   if (emaSeries.length < lookback + 1) return 0;
 
-  const recent = emaSeries[emaSeries.length - 1]; // Most recent EMA value
-  const past = emaSeries[emaSeries.length - 1 - lookback]; // EMA value 'lookback' periods ago
-  const delta = recent - past; // Change in EMA values
-
-  // Calculate angle in radians based on EMA delta over lookback periods
+  const recent = emaSeries[emaSeries.length - 1];
+  const past = emaSeries[emaSeries.length - 1 - lookback];
+  const delta = (recent - past) * 1000;
   const angleRad = Math.atan(delta / lookback);
-  return angleRad * (180 / Math.PI); // Convert to degrees
+  return angleRad * (180 / Math.PI);
 }
 
 function detectCandleType(candle) {
@@ -148,7 +145,7 @@ async function decideTradeDirection(symbol) {
 
     const ema9 = ema9Series[ema9Series.length - 1];
     const ema15 = ema15Series[ema15Series.length - 1];
-    const emaAngle = getEMAAngleFromSeries(ema9Series, 5); // Angle calculated using EMA(9) series
+    const emaAngle = getEMAAngleFromSeries(ema9Series, 5);
 
     console.log(`📈 EMA(9): ${ema9.toFixed(6)} | EMA(15): ${ema15.toFixed(6)}`);
     console.log(`📐 EMA Angle: ${emaAngle.toFixed(2)}°`);
