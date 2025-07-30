@@ -10,8 +10,8 @@ const binance = new Binance().options({
 
 const TIMEFRAME_MAIN = "1m";
 const TIMEFRAME_TREND = "5m";
-const EMA_ANGLE_THRESHOLD = 15;
-const MIN_ANGLE_THRESHOLD = 9;
+const EMA_ANGLE_THRESHOLD = 30;
+const MIN_ANGLE_THRESHOLD = 30;
 const VOLATILITY_MULTIPLIER = 100;
 const TAKER_FEE = 0.04 / 100;
 
@@ -201,7 +201,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     const pastCandles5m = candles5m.slice(0, Math.floor(candleIndex / 5) + 1);
 
     if (pastCandles1m.length < 50 || pastCandles5m.length < 20) {
-    //   console.log(`⚠️ Insufficient data for ${symbol} at index ${candleIndex}`);
+      //   console.log(`⚠️ Insufficient data for ${symbol} at index ${candleIndex}`);
       return "HOLD";
     }
 
@@ -231,7 +231,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     const volatility = calculateVolatility(pastCandles1m, 20);
     // console.log(`🌊 Market Volatility: ${volatility.toFixed(2)}%`);
     if (volatility < 0.1) {
-    //   console.log(`⚠️ Market too flat (volatility < 0.1%). Decision: HOLD`);
+      //   console.log(`⚠️ Market too flat (volatility < 0.1%). Decision: HOLD`);
       return "HOLD";
     }
 
@@ -239,9 +239,9 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       Math.abs(ema9Angle) < MIN_ANGLE_THRESHOLD &&
       Math.abs(ema15Angle) < MIN_ANGLE_THRESHOLD
     ) {
-    //   console.log(
-    //     `⚠️ EMA angles too flat (<${MIN_ANGLE_THRESHOLD}°). Decision: HOLD`
-    //   );
+      //   console.log(
+      //     `⚠️ EMA angles too flat (<${MIN_ANGLE_THRESHOLD}°). Decision: HOLD`
+      //   );
       return "HOLD";
     }
 
@@ -299,12 +299,12 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     // console.log(`🔴 SHORT Score: ${shortScore}/3`);
 
     if (longScore == 3) {
-    //   console.log(`✅ Strong LONG signal (Score: ${longScore}/3)`);
+      //   console.log(`✅ Strong LONG signal (Score: ${longScore}/3)`);
       return "LONG";
     }
 
     if (shortScore == 3) {
-    //   console.log(`✅ Strong SHORT signal (Score: ${shortScore}/3)`);
+      //   console.log(`✅ Strong SHORT signal (Score: ${shortScore}/3)`);
       return "SHORT";
     }
 
@@ -320,7 +320,7 @@ async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
   const endTime = new Date(endDate).getTime();
 
-//   console.log(`🚀 Starting backtest from ${startDate} to ${endDate}...`);
+  //   console.log(`🚀 Starting backtest from ${startDate} to ${endDate}...`);
 
   for (const symbol of symbols) {
     // console.log(`\n📊 Backtesting ${symbol}...`);
@@ -339,7 +339,7 @@ async function backtest(symbols, startDate, endDate) {
     );
 
     if (candles1m.length < 50 || candles5m.length < 20) {
-    //   console.log(`⚠️ Insufficient data for ${symbol}. Skipping...`);
+      //   console.log(`⚠️ Insufficient data for ${symbol}. Skipping...`);
       continue;
     }
 
@@ -437,7 +437,7 @@ async function backtest(symbols, startDate, endDate) {
       results.profit += netProfit * 100;
       if (netProfit > 0) results.wins++;
       else results.losses++;
-    //   console.log(`profit---->>> >`, (netProfit * 100).toFixed(2));
+      //   console.log(`profit---->>> >`, (netProfit * 100).toFixed(2));
 
       results.trades.push({
         timestamp: new Date(position.entryTime).toLocaleString(),
