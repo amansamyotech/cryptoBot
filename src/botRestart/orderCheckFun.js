@@ -9,8 +9,6 @@ const binance = new Binance().options({
   test: false,
 });
 
-
-
 async function checkOrders(symbol) {
   try {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
