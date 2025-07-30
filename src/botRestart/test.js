@@ -298,12 +298,12 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     const shortScore = shortConditions.filter(Boolean).length;
     // console.log(`🔴 SHORT Score: ${shortScore}/3`);
 
-    if (longScore == 3) {
+    if (longScore == 4) {
       //   console.log(`✅ Strong LONG signal (Score: ${longScore}/3)`);
       return "LONG";
     }
 
-    if (shortScore == 3) {
+    if (shortScore == 4) {
       //   console.log(`✅ Strong SHORT signal (Score: ${shortScore}/3)`);
       return "SHORT";
     }
