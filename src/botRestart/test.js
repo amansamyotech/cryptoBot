@@ -12,8 +12,8 @@ const TIMEFRAME_MAIN = "1m";
 const TIMEFRAME_TREND = "5m";
 const EMA_ANGLE_THRESHOLD = 15;
 const MIN_ANGLE_THRESHOLD = 9;
-const VOLATILITY_MULTIPLIER = 10000;
-const TAKER_FEE = 0.04 / 100; 
+// const VOLATILITY_MULTIPLIER = 10000;
+const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
   "1000PEPEUSDT",
@@ -40,7 +40,7 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
       }
 
       candles.push(...batch);
-      currentStartTime = batch[batch.length - 1][0] + 60 * 1000; 
+      currentStartTime = batch[batch.length - 1][0] + 60 * 1000;
     }
 
     return candles
@@ -79,7 +79,7 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
           volume: NaN,
         };
       })
-      .filter((c) => !isNaN(c.close)); 
+      .filter((c) => !isNaN(c.close));
   } catch (err) {
     console.error(`❌ Error fetching candles for ${symbol}:`, err.message);
     return [];
@@ -99,7 +99,8 @@ function getEMAAngleFromSeries(emaSeries, lookback = 3) {
   const recent = emaSeries[emaSeries.length - 1];
   const past = emaSeries[emaSeries.length - 1 - lookback];
   const percentChange = ((recent - past) / past) * 100;
-  const delta = percentChange * VOLATILITY_MULTIPLIER;
+//   const delta = percentChange * VOLATILITY_MULTIPLIER;
+  const delta = percentChange 
   const angleRad = Math.atan(delta / lookback);
 
   return angleRad * (180 / Math.PI);
@@ -388,7 +389,7 @@ async function backtest(symbols, startDate, endDate) {
       losses: 0,
     };
 
-    let position = null; 
+    let position = null;
 
     for (let i = 50; i < candles1m.length - 1; i++) {
       const signal = await decideTradeDirection(
@@ -402,7 +403,6 @@ async function backtest(symbols, startDate, endDate) {
       const currentCandle = candles1m[i];
       const nextCandle = candles1m[i + 1];
 
-      
       if ((signal === "LONG" || signal === "SHORT") && !position) {
         position = {
           type: signal,
@@ -410,7 +410,6 @@ async function backtest(symbols, startDate, endDate) {
           entryTime: currentCandle.openTime,
         };
       } else if (position && signal === "HOLD") {
-        
         const exitPrice = nextCandle.close;
         const profit =
           position.type === "LONG"
@@ -418,7 +417,7 @@ async function backtest(symbols, startDate, endDate) {
             : (position.entryPrice - exitPrice) / position.entryPrice;
         const netProfit = profit - 2 * TAKER_FEE;
 
-        results.profit += netProfit * 100; 
+        results.profit += netProfit * 100;
         if (netProfit > 0) results.wins++;
         else results.losses++;
 
@@ -430,11 +429,10 @@ async function backtest(symbols, startDate, endDate) {
           profit: (netProfit * 100).toFixed(2),
         });
 
-        position = null; 
+        position = null;
       }
     }
 
-    
     if (position && candles1m.length > 50) {
       const exitPrice = candles1m[candles1m.length - 1].close;
       const profit =
@@ -455,7 +453,6 @@ async function backtest(symbols, startDate, endDate) {
         profit: (netProfit * 100).toFixed(2),
       });
     }
-
 
     console.log(`\n📈 Backtest Summary for ${symbol}`);
     console.log(`🟢 LONG Signals: ${results.LONG}`);
@@ -484,7 +481,6 @@ async function backtest(symbols, startDate, endDate) {
     console.log("=".repeat(60));
   }
 }
-
 
 const startDate = "2025-06-01T00:00:00Z";
 const endDate = "2025-06-28T23:59:59Z";
