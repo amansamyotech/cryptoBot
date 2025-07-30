@@ -1,6 +1,6 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { decideTradeDirection } = require("./decideTradeFuntion")
+const { decideTradeDirection } = require("./decideTradeFuntion");
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { calculateROIPrices } = require("./helper/calculateRoi");
@@ -24,14 +24,13 @@ const symbols = [
   "INJUSDT",
   "XRPUSDT",
   "SUIUSDT",
-  "BNBUSDT",
   "TRXUSDT",
+  "CKBUSDT",
 ];
 
 const interval = "1m";
 const leverage = 3;
 const STOP_LOSS_ROI = -1;
-
 
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
@@ -51,7 +50,8 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
-    const qtyFixed = quantity.toFixed(quantityPrecision);
+    const qty = parseFloat(quantity);
+    const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= 2) {
       const roiStepsAbove2 = Math.floor(roi - 2);
@@ -119,7 +119,8 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
-    const qtyFixed = quantity.toFixed(quantityPrecision);
+    const qty = parseFloat(quantity);
+    const qtyFixed = qty.toFixed(quantityPrecision);
 
     const roi = ((entryPrice - currentPrice) / entryPrice) * 100;
 
@@ -245,7 +246,7 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${leverage}x leverage)`);
     console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
-    
+
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
@@ -327,7 +328,7 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${leverage}x leverage)`);
     console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
-    
+
     // Place market sell order
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
@@ -429,7 +430,7 @@ setInterval(async () => {
 
       if (status == false) {
         await trailStopLoss(sym);
-      } 
+      }
     } catch (err) {
       console.error(`Error with ${sym}:`, err.message);
     }

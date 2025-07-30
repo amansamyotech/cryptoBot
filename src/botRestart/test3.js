@@ -34,7 +34,7 @@ const TAKER_FEE = 0.04 / 100;
 //   "KSMUSDT",
 //   "1000PEPEUSDT",
 //   "1000BONKUSDT",
-//   "CKBUSDT",
+//   "  ",
 //   "1000FLOKIUSDT",
 // ];
 
