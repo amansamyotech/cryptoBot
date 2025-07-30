@@ -1,6 +1,6 @@
 const technicalIndicators = require("technicalindicators");
 const Binance = require("node-binance-api");
-const axios = require("axios");
+const axios = require('axios');
 
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
@@ -11,7 +11,7 @@ const binance = new Binance().options({
 
 const TIMEFRAME_MAIN = "5m";
 const TIMEFRAME_TREND = "15m";
-const EMA_ANGLE_THRESHOLD = 30;
+const EMA_ANGLE_THRESHOLD = 10; // Lowered from 20 to 10 for more signals
 const VOLATILITY_MULTIPLIER = 100;
 const TAKER_FEE = 0.04 / 100;
 const EMA_PERIODS = [9, 15];
@@ -37,7 +37,7 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
         });
 
         if (!Array.isArray(batch) || !batch.length) {
-          console.error(`❌ No candle data for ${symbol} - ${interval}`);
+          console.error(`❌ No candle data for ${symbol} - ${interval} at ${new Date(currentStartTime).toISOString()}`);
           break;
         }
 
@@ -71,32 +71,27 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
             };
           }
 
-          console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
-          return {
-            openTime: 0,
-            open: NaN,
-            high: NaN,
-            low: NaN,
-            close: NaN,
-            volume: NaN,
-          };
+          console.warn(`⚠️ Malformed candle at index ${idx} for ${symbol}:`, c);
+          return null;
         })
-        .filter((c) => !isNaN(c.close));
+        .filter(c => c && !isNaN(c.close));
     } else {
-      const res = await axios.get(
-        `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-      );
-      return res.data.map((c) => ({
+      const res = await axios.get(`https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`);
+      if (!res.data || !Array.isArray(res.data)) {
+        console.error(`❌ Invalid response from axios for ${symbol} - ${interval}`);
+        return [];
+      }
+      return res.data.map(c => ({
         openTime: c[0],
         open: parseFloat(c[1]),
         high: parseFloat(c[2]),
         low: parseFloat(c[3]),
         close: parseFloat(c[4]),
         volume: parseFloat(c[5]),
-      }));
+      })).filter(c => !isNaN(c.close));
     }
   } catch (err) {
-    console.error(`❌ Error fetching candles for ${symbol}:`, err.message);
+    console.error(`❌ Error fetching candles for ${symbol} (${interval}):`, err.message);
     return [];
   }
 }
@@ -130,8 +125,8 @@ function getEMAAngleFromSeries(emaSeries, lookback = 3) {
 }
 
 function getEMAangle(emaShort, emaLong, timeSpan = 5) {
-  const delta = emaShort - emaLong;
-  const angleRad = Math.atan(delta / timeSpan);
+  const delta = (emaShort - emaLong) / emaLong * 100; // Amplify delta by normalizing as percentage
+  const angleRad = Math.atan(delta / timeSpan) * 2; // Multiply by 2 to increase angle sensitivity
   return angleRad * (180 / Math.PI);
 }
 
@@ -167,8 +162,7 @@ function detectCandleType(candle) {
 function calculateRSI(candles, period = 14) {
   if (candles.length < period + 1) return 50;
 
-  let gains = 0,
-    losses = 0;
+  let gains = 0, losses = 0;
   for (let i = 1; i <= period; i++) {
     const change = candles[i].close - candles[i - 1].close;
     if (change >= 0) gains += change;
@@ -216,12 +210,13 @@ function calculateMomentum(candles, period = 5) {
   return ((current - past) / past) * 100;
 }
 
-async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
+async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
   try {
-    const pastCandles5m = candles1m.slice(0, candleIndex + 1);
-    const pastCandles15m = candles5m.slice(0, Math.floor(candleIndex / 3) + 1);
+    const pastCandles5m = candles5m.slice(0, candleIndex + 1);
+    const pastCandles15m = candles15m.slice(0, Math.floor(candleIndex / 3) + 1);
 
     if (pastCandles5m.length < 50 || pastCandles15m.length < 20) {
+      console.log(`⚠️ Insufficient data for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}, 15m=${pastCandles15m.length}`);
       return "HOLD";
     }
 
@@ -229,22 +224,32 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     const ema15 = calculateEMA(15, pastCandles5m);
     const emaAngle = getEMAangle(ema9, ema15);
 
-    if (Math.abs(emaAngle) < 10) return "HOLD";
+    if (Math.abs(emaAngle) < 5) { // Lowered from 10 to 5
+      console.log(`⚠️ EMA angle too small for ${symbol}: ${emaAngle.toFixed(2)}°`);
+      return "HOLD";
+    }
 
     const lastCandle = pastCandles5m[pastCandles5m.length - 1];
     const candleType = detectCandleType(lastCandle);
-    if (candleType === "none") return "HOLD";
+    if (candleType === "none") {
+      console.log(`⚠️ No significant candle pattern for ${symbol}`);
+      return "HOLD";
+    }
 
     const rsi15m = calculateRSI(pastCandles15m);
     const { macdLine, signalLine } = calculateMACD(pastCandles5m);
     const volumeSpike = checkVolumeSpike(pastCandles5m);
+
+    console.log(
+      `🔍 ${symbol} | EMA9: ${ema9.toFixed(6)} | EMA15: ${ema15.toFixed(6)} | Angle: ${emaAngle.toFixed(2)}° | RSI: ${rsi15m.toFixed(2)} | MACD: ${macdLine.toFixed(6)} | Signal: ${signalLine.toFixed(6)} | VolumeSpike: ${volumeSpike} | Candle: ${candleType}`
+    );
 
     const longConditions = [
       ema9 > ema15,
       emaAngle > EMA_ANGLE_THRESHOLD,
       rsi15m > 50,
       macdLine > signalLine,
-      volumeSpike,
+      volumeSpike || candleType !== "none",
     ];
 
     const shortConditions = [
@@ -252,23 +257,28 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       emaAngle < -EMA_ANGLE_THRESHOLD,
       rsi15m < 50,
       macdLine < signalLine,
-      volumeSpike,
+      volumeSpike || candleType !== "none",
     ];
 
     const longScore = longConditions.filter(Boolean).length;
     const shortScore = shortConditions.filter(Boolean).length;
 
-    if (longScore >= 4) {
+    console.log(`🟢 LONG Score: ${longScore}/5 | 🔴 SHORT Score: ${shortScore}/5`);
+
+    if (longScore >= 3) {
+      console.log(`✅ Strong LONG signal for ${symbol} (Score: ${longScore}/5)`);
       return "LONG";
     }
 
-    if (shortScore >= 4) {
+    if (shortScore >= 3) {
+      console.log(`✅ Strong SHORT signal for ${symbol} (Score: ${shortScore}/5)`);
       return "SHORT";
     }
 
+    console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD`);
     return "HOLD";
   } catch (err) {
-    console.error("❌ Decision error:", err.message);
+    console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
@@ -278,6 +288,8 @@ async function backtest(symbols, startDate, endDate) {
   const endTime = new Date(endDate).getTime();
 
   for (const symbol of symbols) {
+    console.log(`\n📊 Backtesting ${symbol}...`);
+
     const candles5m = await getCandles(
       symbol,
       TIMEFRAME_MAIN,
@@ -292,6 +304,7 @@ async function backtest(symbols, startDate, endDate) {
     );
 
     if (candles5m.length < 50 || candles15m.length < 20) {
+      console.log(`⚠️ Insufficient data for ${symbol}. Skipping... (5m: ${candles5m.length}, 15m: ${candles15m.length})`);
       continue;
     }
 
@@ -333,7 +346,7 @@ async function backtest(symbols, startDate, endDate) {
         if (position.type === "LONG") {
           const profitPercent =
             ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 2) {
+          if (profitPercent >= 1) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
           } else if (profitPercent <= -1) {
@@ -343,7 +356,7 @@ async function backtest(symbols, startDate, endDate) {
         } else if (position.type === "SHORT") {
           const profitPercent =
             ((position.entryPrice - currentPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 2) {
+          if (profitPercent >= 1) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
           } else if (profitPercent <= -1) {
