@@ -177,7 +177,7 @@ async function decideTradeDirection(
     }
 
     // Combine angle and EMA signals
-    let finalSignal = "HOLD";
+    // let finalSignal = "HOLD";
 
     // if (angle >= 90 && angle <= 150 && emaSignal === "LONG") {
     //   // console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
@@ -189,7 +189,7 @@ async function decideTradeDirection(
     //   // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
     // }
 
-    return finalSignal;
+    return emaSignal;
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
