@@ -194,117 +194,44 @@ function calculateMomentum(candles, period = 5) {
 
 async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
   try {
-    // console.log(`🔍 Analyzing ${symbol} at candle ${candleIndex}...`);
+    const pastCandles5m = candles1m.slice(0, candleIndex + 1);
+    const pastCandles15m = candles5m.slice(0, Math.floor(candleIndex / 3) + 1);
 
-    const pastCandles1m = candles1m.slice(0, candleIndex + 1);
-    const pastCandles5m = candles5m.slice(0, Math.floor(candleIndex / 5) + 1);
+    if (pastCandles5m.length < 30 || pastCandles15m.length < 30) return 'HOLD';
 
-    if (pastCandles1m.length < 50 || pastCandles5m.length < 20) {
-      //   console.log(`⚠️ Insufficient data for ${symbol} at index ${candleIndex}`);
-      return "HOLD";
-    }
+    // Use last 50 candles
+    const recent5m = pastCandles5m.slice(-50);
+    const recent15m = pastCandles15m.slice(-50);
 
-    const closes1m = pastCandles1m.map((c) => c.close);
-    const ema9Series = calculateEMAseries(9, closes1m);
-    const ema15Series = calculateEMAseries(15, closes1m);
-    const ema21Series = calculateEMAseries(21, closes1m);
+    const ema9 = calculateEMA(9, recent5m);
+    const ema15 = calculateEMA(15, recent5m);
+    const emaAngle = getEMAangle(ema9, ema15);
 
-    const ema9 = ema9Series[ema9Series.length - 1];
-    const ema15 = ema15Series[ema15Series.length - 1];
-    const ema21 = ema21Series[ema21Series.length - 1];
+    if (Math.abs(emaAngle) < 10) return 'HOLD';
 
-    const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
-    const ema15Angle = getEMAAngleFromSeries(ema15Series, 3);
-
-    // console.log(
-    //   `📈 EMA(9): ${ema9.toFixed(6)} | EMA(15): ${ema15.toFixed(
-    //     6
-    //   )} | EMA(21): ${ema21.toFixed(6)}`
-    // );
-    // console.log(
-    //   `📐 EMA9 Angle: ${ema9Angle.toFixed(
-    //     2
-    //   )}° | EMA15 Angle: ${ema15Angle.toFixed(2)}°`
-    // );
-
-    const volatility = calculateVolatility(pastCandles1m, 20);
-    // console.log(`🌊 Market Volatility: ${volatility.toFixed(2)}%`);
-    if (volatility < 0.1) {
-      //   console.log(`⚠️ Market too flat (volatility < 0.1%). Decision: HOLD`);
-      return "HOLD";
-    }
-
-    
-    const lastCandle = pastCandles1m[pastCandles1m.length - 1];
+    const lastCandle = recent5m[recent5m.length - 1];
     const candleType = detectCandleType(lastCandle);
-    // console.log(`🕯️ Last Candle Type: ${candleType}`);
+    if (candleType === 'none') return 'HOLD';
 
-    const rsi1m = calculateRSI(pastCandles1m, 7);
-    const rsi5m = calculateRSI(pastCandles5m, 14);
-    // console.log(
-    //   `💪 RSI (1m): ${rsi1m.toFixed(2)} | RSI (5m): ${rsi5m.toFixed(2)}`
-    // );
+    const rsi15m = calculateRSI(recent15m);
+    const { macdLine, signalLine } = calculateMACD(recent5m);
+    const volumeSpike = checkVolumeSpike(recent5m);
 
-    const { macdLine, signalLine, histogram } = calculateMACD(pastCandles1m);
-    // console.log(
-    //   `📊 MACD: ${macdLine.toFixed(6)} | Signal: ${signalLine.toFixed(
-    //     6
-    //   )} | Histogram: ${histogram.toFixed(6)}`
-    // );
-
-    const volumeSpike = checkVolumeSpike(pastCandles1m);
-    const momentum = calculateMomentum(pastCandles1m, 5);
-    // console.log(
-    //   `📢 Volume Spike: ${
-    //     volumeSpike ? "✅ YES" : "❌ NO"
-    //   } | Momentum: ${momentum.toFixed(2)}%`
-    // );
-
-    const longConditions = [
-      ema9 > ema15,
-      ema15 > ema21,
-      ema9Angle > EMA_ANGLE_THRESHOLD || ema15Angle > EMA_ANGLE_THRESHOLD,
-    //   rsi1m > 45 && rsi1m < 80,
-    //   macdLine > signalLine,
-      //   histogram > 0,
-      //   momentum > 0.1,
-      //   volumeSpike || candleType !== "none",
-    ];
-
-    const longScore = longConditions.filter(Boolean).length;
-    // console.log(`🟢 LONG Score: ${longScore}/3`);
-
-    const shortConditions = [
-      ema9 < ema15,
-      ema15 < ema21,
-      ema9Angle < -EMA_ANGLE_THRESHOLD || ema15Angle < -EMA_ANGLE_THRESHOLD,
-    //   rsi1m < 55 && rsi1m > 20,
-    //   macdLine < signalLine,
-      //   histogram < 0,
-      //   momentum < -0.1,
-      //   volumeSpike || candleType !== "none",
-    ];
-
-    const shortScore = shortConditions.filter(Boolean).length;
-    // console.log(`🔴 SHORT Score: ${shortScore}/3`);
-
-    if (longScore == 3) {
-      //   console.log(`✅ Strong LONG signal (Score: ${longScore}/3)`);
-      return "LONG";
+    if (ema9 > ema15 && emaAngle > EMA_ANGLE_THRESHOLD && rsi15m > 50 && macdLine > signalLine && volumeSpike) {
+      return 'LONG';
     }
 
-    if (shortScore == 3) {
-      //   console.log(`✅ Strong SHORT signal (Score: ${shortScore}/3)`);
-      return "SHORT";
+    if (ema15 > ema9 && emaAngle < -EMA_ANGLE_THRESHOLD && rsi15m < 50 && macdLine < signalLine && volumeSpike) {
+      return 'SHORT';
     }
 
-    // console.log(`⚖️ No clear signal. Decision: HOLD`);
-    return "HOLD";
+    return 'HOLD';
   } catch (err) {
     console.error("❌ Decision error:", err.message);
     return "HOLD";
   }
 }
+
 
 async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
