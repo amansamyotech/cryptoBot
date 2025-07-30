@@ -21,7 +21,6 @@ const symbols = [
   "1000FLOKIUSDT",
 ];
 
-
 async function getCandles(symbol, interval, limit = 50) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
 
@@ -34,7 +33,6 @@ async function getCandles(symbol, interval, limit = 50) {
     volume: parseFloat(c[5]),
   }));
 }
-
 function calculateEMA(period, candles) {
   const k = 2 / (period + 1);
   let ema = candles[0].close;
@@ -99,6 +97,8 @@ function checkVolumeSpike(candles, lookback = 10) {
 
 async function decideTradeDirection(symbol) {
   try {
+    console.log(`🔍 Checking ${symbol}...`);
+
     const candles5m = await getCandles(symbol, TIMEFRAME_MAIN, 50);
     const candles15m = await getCandles(symbol, TIMEFRAME_TREND, 50);
 
@@ -106,15 +106,31 @@ async function decideTradeDirection(symbol) {
     const ema15 = calculateEMA(15, candles5m);
     const emaAngle = getEMAangle(ema9, ema15);
 
-    if (Math.abs(emaAngle) < 10) return "HOLD";
+    console.log(`📈 EMA(9): ${ema9.toFixed(6)} | EMA(15): ${ema15.toFixed(6)}`);
+    console.log(`📐 EMA Angle: ${emaAngle.toFixed(2)}°`);
+
+    if (Math.abs(emaAngle) < 10) {
+      console.log(`⚠️ EMA angle too flat (<10°). Decision: HOLD`);
+      return "HOLD";
+    }
 
     const lastCandle = candles5m[candles5m.length - 1];
     const candleType = detectCandleType(lastCandle);
-    if (candleType === "none") return "HOLD";
+
+    console.log(`🕯️ Last Candle Type: ${candleType}`);
+    if (candleType === "none") {
+      console.log(`⚠️ No candle signal detected. Decision: HOLD`);
+      return "HOLD";
+    }
 
     const rsi15m = calculateRSI(candles15m);
+    console.log(`💪 RSI (15m): ${rsi15m.toFixed(2)}`);
+
     const { macdLine, signalLine } = calculateMACD(candles5m);
+    console.log(`📊 MACD Line: ${macdLine.toFixed(6)} | Signal Line: ${signalLine.toFixed(6)}`);
+
     const volumeSpike = checkVolumeSpike(candles5m);
+    console.log(`📢 Volume Spike Detected: ${volumeSpike ? "✅ YES" : "❌ NO"}`);
 
     if (
       ema9 > ema15 &&
@@ -123,8 +139,10 @@ async function decideTradeDirection(symbol) {
       macdLine > signalLine &&
       volumeSpike
     ) {
+      console.log(`✅ Conditions met for LONG`);
       return "LONG";
     }
+
     if (
       ema15 > ema9 &&
       emaAngle < -EMA_ANGLE_THRESHOLD &&
@@ -132,14 +150,18 @@ async function decideTradeDirection(symbol) {
       macdLine < signalLine &&
       volumeSpike
     ) {
+      console.log(`✅ Conditions met for SHORT`);
       return "SHORT";
     }
+
+    console.log(`⚖️ Conditions not fully met. Decision: HOLD`);
     return "HOLD";
   } catch (err) {
-    console.error("Decision error:", err.message);
+    console.error("❌ Decision error:", err.message);
     return "HOLD";
   }
 }
+
 
 setInterval(async () => {
   for (const sym of symbols) {
