@@ -16,11 +16,8 @@ const MIN_ANGLE_THRESHOLD = 9;
 const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
-  "1000PEPEUSDT",
-  "1000BONKUSDT",
-  "DOGEUSDT",
-  "CKBUSDT",
-  "1000FLOKIUSDT",
+  "BTCUSDT",
+  
 ];
 
 async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
