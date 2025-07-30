@@ -116,28 +116,28 @@ async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) 
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
 
     if (pastCandles5m.length < 2) {
-      console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
+    //   console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
       return "HOLD";
     }
 
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2]; // 2nd last candle
     const angle = getCandleAngle(secondLastCandle);
 
-    console.log(
-      `🔍 ${symbol} | 2nd Last Candle Open: ${secondLastCandle.open.toFixed(6)} | Close: ${secondLastCandle.close.toFixed(6)} | Angle: ${angle.toFixed(2)}°`
-    );
+    // console.log(
+    //   `🔍 ${symbol} | 2nd Last Candle Open: ${secondLastCandle.open.toFixed(6)} | Close: ${secondLastCandle.close.toFixed(6)} | Angle: ${angle.toFixed(2)}°`
+    // );
 
     if (angle >= 90 && angle <= 150) {
-      console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
+    //   console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
       return "LONG";
     }
 
     if (angle >= 210 && angle <= 270) {
-      console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
+    //   console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
       return "SHORT";
     }
 
-    console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°)`);
+    // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°)`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
@@ -166,7 +166,7 @@ async function backtest(symbols, startDate, endDate) {
     );
 
     if (candles5m.length < 50 || candles15m.length < 20) {
-      console.log(`⚠️ Insufficient data for ${symbol}. Skipping... (5m: ${candles5m.length}, 15m: ${candles15m.length})`);
+    //   console.log(`⚠️ Insufficient data for ${symbol}. Skipping... (5m: ${candles5m.length}, 15m: ${candles15m.length})`);
       continue;
     }
 
