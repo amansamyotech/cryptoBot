@@ -282,7 +282,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     ];
 
     const longScore = longConditions.filter(Boolean).length;
-    console.log(`🟢 LONG Score: ${longScore}/3`);
+    // console.log(`🟢 LONG Score: ${longScore}/3`);
 
     const shortConditions = [
       ema9 < ema15,
@@ -437,7 +437,7 @@ async function backtest(symbols, startDate, endDate) {
       results.profit += netProfit * 100;
       if (netProfit > 0) results.wins++;
       else results.losses++;
-    //   console.log(`profit---->>>>`, (netProfit * 100).toFixed(2));
+    //   console.log(`profit---->>> >`, (netProfit * 100).toFixed(2));
 
       results.trades.push({
         timestamp: new Date(position.entryTime).toLocaleString(),
