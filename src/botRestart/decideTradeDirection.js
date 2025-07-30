@@ -13,11 +13,11 @@ const TIMEFRAME_TREND = "15m";
 const EMA_ANGLE_THRESHOLD = 30;
 
 const symbols = [
-  "SOLUSDT",
-  "BNBUSDT",
-  "XRPUSDT",
-  "WIFUSDT",
-  "NEARUSDT",
+  "1000PEPEUSDT",
+  "1000BONKUSDT",
+  "DOGEUSDT",
+  "CKBUSDT",
+  "1000FLOKIUSDT",
 ];
 
 async function getCandles(symbol, interval, limit = 50) {
