@@ -1,4 +1,3 @@
-const technicalIndicators = require("technicalindicators");
 const Binance = require("node-binance-api");
 const axios = require('axios');
 
@@ -11,10 +10,7 @@ const binance = new Binance().options({
 
 const TIMEFRAME_MAIN = "5m";
 const TIMEFRAME_TREND = "15m";
-const EMA_ANGLE_THRESHOLD = 4; // Lowered from 20 to 10 for more signals
-const VOLATILITY_MULTIPLIER = 100;
 const TAKER_FEE = 0.04 / 100;
-const EMA_PERIODS = [9, 15];
 
 const symbols = [
   "1000PEPEUSDT",
@@ -96,186 +92,52 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   }
 }
 
-function calculateEMA(period, candles) {
-  const k = 2 / (period + 1);
-  let ema = candles[0].close;
-  for (let i = 1; i < candles.length; i++) {
-    ema = candles[i].close * k + ema * (1 - k);
-  }
-  return ema;
-}
+function getCandleAngle(candle, timeSpan = 300) { // timeSpan in seconds for 5m candle
+  const delta = (candle.close - candle.open) / candle.open * 100000; // Scale for small-priced assets
+  const rawAngleRad = Math.atan(delta / timeSpan);
+  let angle = rawAngleRad * (180 / Math.PI);
 
-function calculateEMAseries(period, closes) {
-  return technicalIndicators.EMA.calculate({
-    period,
-    values: closes,
-  });
-}
-
-function getEMAAngleFromSeries(emaSeries, lookback = 3) {
-  if (emaSeries.length < lookback + 1) return 0;
-
-  const recent = emaSeries[emaSeries.length - 1];
-  const past = emaSeries[emaSeries.length - 1 - lookback];
-  const percentChange = ((recent - past) / past) * 100;
-  const delta = percentChange * VOLATILITY_MULTIPLIER;
-  const angleRad = Math.atan(delta / lookback);
-
-  return angleRad * (180 / Math.PI);
-}
-
-function getEMAangle(emaShort, emaLong, timeSpan = 5) {
-  const delta = (emaShort - emaLong) / emaLong * 100; // Amplify delta by normalizing as percentage
-  const angleRad = Math.atan(delta / timeSpan) * 2; // Multiply by 2 to increase angle sensitivity
-  return angleRad * (180 / Math.PI);
-}
-
-function calculateVolatility(candles, period = 10) {
-  const returns = [];
-  for (let i = 1; i < Math.min(candles.length, period + 1); i++) {
-    const ret =
-      (candles[i].close - candles[i - 1].close) / candles[i - 1].close;
-    returns.push(ret);
+  // Map angle to 360° scale: upward (close > open) to 90°-150°, downward to 210°-270°
+  if (candle.close > candle.open) {
+    // Upward trend: map to 90°-150°
+    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60; // Scale to 90°-150°
+  } else if (candle.close < candle.open) {
+    // Downward trend: map to 210°-270°
+    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60; // Scale to 210°-270°
+  } else {
+    angle = 180; // Neutral case
   }
 
-  const mean = returns.reduce((sum, ret) => sum + ret, 0) / returns.length;
-  const variance =
-    returns.reduce((sum, ret) => sum + Math.pow(ret - mean, 2), 0) /
-    returns.length;
-
-  return Math.sqrt(variance) * 100;
-}
-
-function detectCandleType(candle) {
-  const body = Math.abs(candle.close - candle.open);
-  const upperWick = candle.high - Math.max(candle.close, candle.open);
-  const lowerWick = Math.min(candle.close, candle.open) - candle.low;
-  const range = candle.high - candle.low;
-
-  if (lowerWick > 2 * body || upperWick > 2 * body) return "pinbar";
-  if (range > 1.5 * body && body / range > 0.7) return "bigbar";
-  if (body / range > 0.85) return "fullbody";
-
-  return "none";
-}
-
-function calculateRSI(candles, period = 14) {
-  if (candles.length < period + 1) return 50;
-
-  let gains = 0, losses = 0;
-  for (let i = 1; i <= period; i++) {
-    const change = candles[i].close - candles[i - 1].close;
-    if (change >= 0) gains += change;
-    else losses -= change;
-  }
-
-  const avgGain = gains / period;
-  const avgLoss = losses / period;
-  const rs = avgGain / (avgLoss || 1);
-
-  return 100 - 100 / (1 + rs);
-}
-
-function calculateMACD(candles, fast = 12, slow = 26, signal = 9) {
-  const fastEMA = calculateEMA(fast, candles);
-  const slowEMA = calculateEMA(slow, candles);
-  const macdLine = fastEMA - slowEMA;
-  const macdHistory = candles.map((c, i) => {
-    if (i < slow) return 0;
-    const fastE = calculateEMA(fast, candles.slice(i - fast + 1, i + 1));
-    const slowE = calculateEMA(slow, candles.slice(i - slow + 1, i + 1));
-    return fastE - slowE;
-  });
-  const signalLine = calculateEMA(signal, macdHistory.slice(-signal));
-  return { macdLine, signalLine, histogram: macdLine - signalLine };
-}
-
-function checkVolumeSpike(candles, lookback = 10) {
-  if (candles.length < lookback + 1) return false;
-
-  const avgVol =
-    candles.slice(-lookback - 1, -1).reduce((sum, c) => sum + c.volume, 0) /
-    lookback;
-  const lastVol = candles[candles.length - 1].volume;
-
-  return lastVol > avgVol * 1.2;
-}
-
-function calculateMomentum(candles, period = 5) {
-  if (candles.length < period + 1) return 0;
-
-  const current = candles[candles.length - 1].close;
-  const past = candles[candles.length - 1 - period].close;
-
-  return ((current - past) / past) * 100;
+  return angle;
 }
 
 async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
-    const pastCandles15m = candles15m.slice(0, Math.floor(candleIndex / 3) + 1);
 
-    if (pastCandles5m.length < 50 || pastCandles15m.length < 20) {
-      console.log(`⚠️ Insufficient data for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}, 15m=${pastCandles15m.length}`);
+    if (pastCandles5m.length < 2) {
+      console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
       return "HOLD";
     }
 
-    const ema9 = calculateEMA(9, pastCandles5m);
-    const ema15 = calculateEMA(15, pastCandles5m);
-    const emaAngle = getEMAangle(ema9, ema15);
-
-    if (Math.abs(emaAngle) < 5) { // Lowered from 10 to 5
-      console.log(`⚠️ EMA angle too small for ${symbol}: ${emaAngle.toFixed(2)}°`);
-      return "HOLD";
-    }
-
-    const lastCandle = pastCandles5m[pastCandles5m.length - 1];
-    const candleType = detectCandleType(lastCandle);
-    if (candleType === "none") {
-      console.log(`⚠️ No significant candle pattern for ${symbol}`);
-      return "HOLD";
-    }
-
-    const rsi15m = calculateRSI(pastCandles15m);
-    const { macdLine, signalLine } = calculateMACD(pastCandles5m);
-    const volumeSpike = checkVolumeSpike(pastCandles5m);
+    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2]; // 2nd last candle
+    const angle = getCandleAngle(secondLastCandle);
 
     console.log(
-      `🔍 ${symbol} | EMA9: ${ema9.toFixed(6)} | EMA15: ${ema15.toFixed(6)} | Angle: ${emaAngle.toFixed(2)}° | RSI: ${rsi15m.toFixed(2)} | MACD: ${macdLine.toFixed(6)} | Signal: ${signalLine.toFixed(6)} | VolumeSpike: ${volumeSpike} | Candle: ${candleType}`
+      `🔍 ${symbol} | 2nd Last Candle Open: ${secondLastCandle.open.toFixed(6)} | Close: ${secondLastCandle.close.toFixed(6)} | Angle: ${angle.toFixed(2)}°`
     );
 
-    const longConditions = [
-      ema9 > ema15,
-      emaAngle > EMA_ANGLE_THRESHOLD,
-      rsi15m > 50,
-      macdLine > signalLine,
-      volumeSpike || candleType !== "none",
-    ];
-
-    const shortConditions = [
-      ema15 > ema9,
-      emaAngle < -EMA_ANGLE_THRESHOLD,
-      rsi15m < 50,
-      macdLine < signalLine,
-      volumeSpike || candleType !== "none",
-    ];
-
-    const longScore = longConditions.filter(Boolean).length;
-    const shortScore = shortConditions.filter(Boolean).length;
-
-    console.log(`🟢 LONG Score: ${longScore}/5 | 🔴 SHORT Score: ${shortScore}/5`);
-
-    if (longScore >= 3) {
-      console.log(`✅ Strong LONG signal for ${symbol} (Score: ${longScore}/5)`);
+    if (angle >= 90 && angle <= 150) {
+      console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
       return "LONG";
     }
 
-    if (shortScore >= 3) {
-      console.log(`✅ Strong SHORT signal for ${symbol} (Score: ${shortScore}/5)`);
+    if (angle >= 210 && angle <= 270) {
+      console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
       return "SHORT";
     }
 
-    console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD`);
+    console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°)`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
