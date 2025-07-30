@@ -1,6 +1,6 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { decideTradeDirection } = require("./decideTradeDirection");
+const { decideTradeDirection } = require("./decideTradeFuntion")
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { calculateROIPrices } = require("./helper/calculateRoi");
