@@ -7,6 +7,9 @@ const binance = new Binance().options({
   test: false,
 });
 
+
+const STOP_LOSS_ROI = -1;
+const TAKE_PROFIT_ROI = 2
 function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   const stopLossPnL = (marginUsed * STOP_LOSS_ROI) / 100;
   const takeProfitPnL = (marginUsed * TAKE_PROFIT_ROI) / 100;

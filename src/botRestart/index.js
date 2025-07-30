@@ -31,7 +31,7 @@ const symbols = [
 const interval = "1m";
 const leverage = 3;
 const STOP_LOSS_ROI = -1;
-const TAKE_PROFIT_ROI = 2;
+
 
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
@@ -245,9 +245,7 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${leverage}x leverage)`);
     console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
-    console.log(
-      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
-    );
+    
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
@@ -329,10 +327,7 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${leverage}x leverage)`);
     console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
-    console.log(
-      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
-    );
-
+    
     // Place market sell order
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
