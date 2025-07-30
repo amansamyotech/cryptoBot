@@ -11,7 +11,7 @@ const binance = new Binance().options({
 
 const TIMEFRAME_MAIN = "5m";
 const TIMEFRAME_TREND = "15m";
-const EMA_ANGLE_THRESHOLD = 10; // Lowered from 20 to 10 for more signals
+const EMA_ANGLE_THRESHOLD = 4; // Lowered from 20 to 10 for more signals
 const VOLATILITY_MULTIPLIER = 100;
 const TAKER_FEE = 0.04 / 100;
 const EMA_PERIODS = [9, 15];
