@@ -10,8 +10,7 @@ const binance = new Binance().options({
 
 const TIMEFRAME_MAIN = "1m";
 const TIMEFRAME_TREND = "5m";
-const EMA_ANGLE_THRESHOLD = 45;
-const MIN_ANGLE_THRESHOLD = 45;
+const EMA_ANGLE_THRESHOLD = 30;
 const VOLATILITY_MULTIPLIER = 100;
 const TAKER_FEE = 0.04 / 100;
 
@@ -235,16 +234,7 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       return "HOLD";
     }
 
-    // if (
-    //   Math.abs(ema9Angle) < MIN_ANGLE_THRESHOLD &&
-    //   Math.abs(ema15Angle) < MIN_ANGLE_THRESHOLD
-    // ) {
-    //   //   console.log(
-    //   //     `⚠️ EMA angles too flat (<${MIN_ANGLE_THRESHOLD}°). Decision: HOLD`
-    //   //   );
-    //   return "HOLD";
-    // }
-
+    
     const lastCandle = pastCandles1m[pastCandles1m.length - 1];
     const candleType = detectCandleType(lastCandle);
     // console.log(`🕯️ Last Candle Type: ${candleType}`);
@@ -274,8 +264,8 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       ema9 > ema15,
       ema15 > ema21,
       ema9Angle > EMA_ANGLE_THRESHOLD || ema15Angle > EMA_ANGLE_THRESHOLD,
-        rsi1m > 45 && rsi1m < 80,
-        macdLine > signalLine,
+      rsi1m > 45 && rsi1m < 80,
+      macdLine > signalLine,
       //   histogram > 0,
       //   momentum > 0.1,
       //   volumeSpike || candleType !== "none",
@@ -288,8 +278,8 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       ema9 < ema15,
       ema15 < ema21,
       ema9Angle < -EMA_ANGLE_THRESHOLD || ema15Angle < -EMA_ANGLE_THRESHOLD,
-        rsi1m < 55 && rsi1m > 20,
-        macdLine < signalLine,
+      rsi1m < 55 && rsi1m > 20,
+      macdLine < signalLine,
       //   histogram < 0,
       //   momentum < -0.1,
       //   volumeSpike || candleType !== "none",
