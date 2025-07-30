@@ -21,12 +21,8 @@ const symbols = [
   "1000FLOKIUSDT",
 ];
 
-
 async function getCandles(symbol, interval, limit = 50) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
-
-  // Log raw structure
-  console.log(`✅ First raw candle [${symbol}, ${interval}]:`, candles[0]);
 
   if (!Array.isArray(candles) || !candles.length) {
     console.error(`❌ Invalid candle data for ${symbol} - ${interval}`);
@@ -34,7 +30,6 @@ async function getCandles(symbol, interval, limit = 50) {
   }
 
   return candles.map((c, idx) => {
-    // Support both array-based and object-based candle formats
     const isObjectFormat = typeof c === "object" && !Array.isArray(c);
 
     if (isObjectFormat) {
@@ -70,8 +65,6 @@ async function getCandles(symbol, interval, limit = 50) {
     };
   });
 }
-
-
 
 function calculateEMA(period, candles) {
   const k = 2 / (period + 1);
