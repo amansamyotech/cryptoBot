@@ -187,8 +187,6 @@ async function decideTradeDirection(symbol) {
     }
 
     const closes1m = candles1m.map((c) => c.close);
-
-    // Calculate multiple EMAs for better scalping signals
     const ema5Series = calculateEMAseries(5, closes1m);
     const ema9Series = calculateEMAseries(9, closes1m);
     const ema21Series = calculateEMAseries(21, closes1m);
@@ -197,7 +195,6 @@ async function decideTradeDirection(symbol) {
     const ema9 = ema9Series[ema9Series.length - 1];
     const ema21 = ema21Series[ema21Series.length - 1];
 
-    // Calculate angles for multiple EMAs
     const ema5Angle = getEMAAngleFromSeries(ema5Series, 3);
     const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
 
@@ -212,17 +209,13 @@ async function decideTradeDirection(symbol) {
       )}° | EMA9 Angle: ${ema9Angle.toFixed(2)}°`
     );
 
-    // Calculate market volatility
     const volatility = calculateVolatility(candles1m, 20);
     console.log(`🌊 Market Volatility: ${volatility.toFixed(2)}%`);
-
-    // Check if market is too flat (low volatility)
     if (volatility < 0.1) {
       console.log(`⚠️ Market too flat (volatility < 0.1%). Decision: HOLD`);
       return "HOLD";
     }
 
-    // Check minimum angle threshold
     if (
       Math.abs(ema5Angle) < MIN_ANGLE_THRESHOLD &&
       Math.abs(ema9Angle) < MIN_ANGLE_THRESHOLD
@@ -258,37 +251,34 @@ async function decideTradeDirection(symbol) {
       } | Momentum: ${momentum.toFixed(2)}%`
     );
 
-    // Enhanced LONG conditions for scalping
     const longConditions = [
-      ema5 > ema9, // Fast EMA above slower EMA
-      ema9 > ema21, // Trend alignment
-      ema5Angle > EMA_ANGLE_THRESHOLD || ema9Angle > EMA_ANGLE_THRESHOLD, // At least one EMA has good angle
-      rsi1m > 45 && rsi1m < 80, // Not oversold, not overbought
-      macdLine > signalLine, // MACD bullish
-      histogram > 0, // MACD histogram positive
-      momentum > 0.1, // Positive momentum
-      volumeSpike || candleType !== "none", // Volume or candle confirmation
+      ema5 > ema9,
+      ema9 > ema21,
+      ema5Angle > EMA_ANGLE_THRESHOLD || ema9Angle > EMA_ANGLE_THRESHOLD, 
+      rsi1m > 45 && rsi1m < 80, 
+      macdLine > signalLine, 
+      histogram > 0, 
+      momentum > 0.1,
+      volumeSpike || candleType !== "none",
     ];
 
     const longScore = longConditions.filter(Boolean).length;
     console.log(`🟢 LONG Score: ${longScore}/8`);
 
-    // Enhanced SHORT conditions for scalping
     const shortConditions = [
-      ema5 < ema9, // Fast EMA below slower EMA
-      ema9 < ema21, // Trend alignment
-      ema5Angle < -EMA_ANGLE_THRESHOLD || ema9Angle < -EMA_ANGLE_THRESHOLD, // At least one EMA has good angle
-      rsi1m < 55 && rsi1m > 20, // Not overbought, not oversold
-      macdLine < signalLine, // MACD bearish
-      histogram < 0, // MACD histogram negative
-      momentum < -0.1, // Negative momentum
-      volumeSpike || candleType !== "none", // Volume or candle confirmation
+      ema5 < ema9,
+      ema9 < ema21,
+      ema5Angle < -EMA_ANGLE_THRESHOLD || ema9Angle < -EMA_ANGLE_THRESHOLD, 
+      rsi1m < 55 && rsi1m > 20, 
+      macdLine < signalLine, 
+      histogram < 0, 
+      momentum < -0.1,
+      volumeSpike || candleType !== "none",
     ];
 
     const shortScore = shortConditions.filter(Boolean).length;
     console.log(`🔴 SHORT Score: ${shortScore}/8`);
 
-    // Decision making with scoring system
     if (longScore >= 6) {
       console.log(`✅ Strong LONG signal (Score: ${longScore}/8)`);
       return "LONG";
@@ -299,15 +289,15 @@ async function decideTradeDirection(symbol) {
       return "SHORT";
     }
 
-    if (longScore >= 4 && longScore > shortScore) {
-      console.log(`🟡 Weak LONG signal (Score: ${longScore}/8)`);
-      return "WEAK_LONG";
-    }
+    // if (longScore >= 4 && longScore > shortScore) {
+    //   console.log(`🟡 Weak LONG signal (Score: ${longScore}/8)`);
+    //   return "WEAK_LONG";
+    // }
 
-    if (shortScore >= 4 && shortScore > longScore) {
-      console.log(`🟡 Weak SHORT signal (Score: ${shortScore}/8)`);
-      return "WEAK_SHORT";
-    }
+    // if (shortScore >= 4 && shortScore > longScore) {
+    //   console.log(`🟡 Weak SHORT signal (Score: ${shortScore}/8)`);
+    //   return "WEAK_SHORT";
+    // }
 
     console.log(`⚖️ No clear signal. Decision: HOLD`);
     return "HOLD";
@@ -317,7 +307,6 @@ async function decideTradeDirection(symbol) {
   }
 }
 
-// Enhanced monitoring with faster intervals for scalping
 console.log("🚀 Starting Enhanced Scalping Bot for Volatile Markets...");
 console.log(
   `📊 Settings: EMA Angle Threshold: ${EMA_ANGLE_THRESHOLD}°, Min Angle: ${MIN_ANGLE_THRESHOLD}°`
