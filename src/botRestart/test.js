@@ -15,7 +15,13 @@ const MIN_ANGLE_THRESHOLD = 9;
 const VOLATILITY_MULTIPLIER = 100;
 const TAKER_FEE = 0.04 / 100;
 
-const symbol = "1000PEPEUSDT";
+const symbols = [
+  "1000PEPEUSDT",
+  "1000BONKUSDT",
+  "DOGEUSDT",
+  "CKBUSDT",
+  "1000FLOKIUSDT",
+];
 
 async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   try {
@@ -29,12 +35,11 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
       });
 
       if (!Array.isArray(batch) || !batch.length) {
-        console.log(`No more data for ${symbol} at ${new Date(currentStartTime).toISOString()}`);
+        console.error(`❌ No candle data for ${symbol} - ${interval}`);
         break;
       }
 
       candles.push(...batch);
-      console.log(`Fetched ${batch.length} ${interval} candles for ${symbol}, total: ${candles.length}`);
       currentStartTime = batch[batch.length - 1][0] + 60 * 1000;
     }
 
@@ -64,6 +69,7 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
           };
         }
 
+        console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
         return {
           openTime: 0,
           open: NaN,
@@ -75,7 +81,7 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
       })
       .filter((c) => !isNaN(c.close));
   } catch (err) {
-    console.error(`Error fetching candles for ${symbol}:`, err.message);
+    console.error(`❌ Error fetching candles for ${symbol}:`, err.message);
     return [];
   }
 }
@@ -189,10 +195,13 @@ function calculateMomentum(candles, period = 5) {
 
 async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
   try {
+    // console.log(`🔍 Analyzing ${symbol} at candle ${candleIndex}...`);
+
     const pastCandles1m = candles1m.slice(0, candleIndex + 1);
     const pastCandles5m = candles5m.slice(0, Math.floor(candleIndex / 5) + 1);
 
     if (pastCandles1m.length < 50 || pastCandles5m.length < 20) {
+    //   console.log(`⚠️ Insufficient data for ${symbol} at index ${candleIndex}`);
       return "HOLD";
     }
 
@@ -208,8 +217,21 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
     const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
     const ema15Angle = getEMAAngleFromSeries(ema15Series, 3);
 
+    // console.log(
+    //   `📈 EMA(9): ${ema9.toFixed(6)} | EMA(15): ${ema15.toFixed(
+    //     6
+    //   )} | EMA(21): ${ema21.toFixed(6)}`
+    // );
+    // console.log(
+    //   `📐 EMA9 Angle: ${ema9Angle.toFixed(
+    //     2
+    //   )}° | EMA15 Angle: ${ema15Angle.toFixed(2)}°`
+    // );
+
     const volatility = calculateVolatility(pastCandles1m, 20);
+    // console.log(`🌊 Market Volatility: ${volatility.toFixed(2)}%`);
     if (volatility < 0.1) {
+    //   console.log(`⚠️ Market too flat (volatility < 0.1%). Decision: HOLD`);
       return "HOLD";
     }
 
@@ -217,193 +239,246 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       Math.abs(ema9Angle) < MIN_ANGLE_THRESHOLD &&
       Math.abs(ema15Angle) < MIN_ANGLE_THRESHOLD
     ) {
+    //   console.log(
+    //     `⚠️ EMA angles too flat (<${MIN_ANGLE_THRESHOLD}°). Decision: HOLD`
+    //   );
       return "HOLD";
     }
 
     const lastCandle = pastCandles1m[pastCandles1m.length - 1];
     const candleType = detectCandleType(lastCandle);
+    // console.log(`🕯️ Last Candle Type: ${candleType}`);
 
     const rsi1m = calculateRSI(pastCandles1m, 7);
     const rsi5m = calculateRSI(pastCandles5m, 14);
+    // console.log(
+    //   `💪 RSI (1m): ${rsi1m.toFixed(2)} | RSI (5m): ${rsi5m.toFixed(2)}`
+    // );
 
     const { macdLine, signalLine, histogram } = calculateMACD(pastCandles1m);
+    // console.log(
+    //   `📊 MACD: ${macdLine.toFixed(6)} | Signal: ${signalLine.toFixed(
+    //     6
+    //   )} | Histogram: ${histogram.toFixed(6)}`
+    // );
 
     const volumeSpike = checkVolumeSpike(pastCandles1m);
     const momentum = calculateMomentum(pastCandles1m, 5);
+    // console.log(
+    //   `📢 Volume Spike: ${
+    //     volumeSpike ? "✅ YES" : "❌ NO"
+    //   } | Momentum: ${momentum.toFixed(2)}%`
+    // );
 
     const longConditions = [
       ema9 > ema15,
       ema15 > ema21,
       ema9Angle > EMA_ANGLE_THRESHOLD || ema15Angle > EMA_ANGLE_THRESHOLD,
+      //   rsi1m > 45 && rsi1m < 80,
+      //   macdLine > signalLine,
+      //   histogram > 0,
+      //   momentum > 0.1,
+      //   volumeSpike || candleType !== "none",
     ];
 
     const longScore = longConditions.filter(Boolean).length;
+    // console.log(`🟢 LONG Score: ${longScore}/3`);
 
     const shortConditions = [
       ema9 < ema15,
       ema15 < ema21,
       ema9Angle < -EMA_ANGLE_THRESHOLD || ema15Angle < -EMA_ANGLE_THRESHOLD,
+      //   rsi1m < 55 && rsi1m > 20,
+      //   macdLine < signalLine,
+      //   histogram < 0,
+      //   momentum < -0.1,
+      //   volumeSpike || candleType !== "none",
     ];
 
     const shortScore = shortConditions.filter(Boolean).length;
+    // console.log(`🔴 SHORT Score: ${shortScore}/3`);
 
-    if (longScore === 3) {
+    if (longScore == 3) {
+    //   console.log(`✅ Strong LONG signal (Score: ${longScore}/3)`);
       return "LONG";
     }
 
-    if (shortScore === 3) {
+    if (shortScore == 3) {
+    //   console.log(`✅ Strong SHORT signal (Score: ${shortScore}/3)`);
       return "SHORT";
     }
 
+    // console.log(`⚖️ No clear signal. Decision: HOLD`);
     return "HOLD";
   } catch (err) {
+    console.error("❌ Decision error:", err.message);
     return "HOLD";
   }
 }
 
-async function backtest(symbol, startDate, endDate) {
+async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
   const endTime = new Date(endDate).getTime();
 
-  const candles1m = await getCandles(symbol, TIMEFRAME_MAIN, startTime, endTime);
-  const candles5m = await getCandles(symbol, TIMEFRAME_TREND, startTime, endTime);
+//   console.log(`🚀 Starting backtest from ${startDate} to ${endDate}...`);
 
-  console.log(`Fetched ${candles1m.length} 1m candles and ${candles5m.length} 5m candles for ${symbol}`);
-  if (candles1m.length > 0) {
-    console.log(`First candle: ${new Date(candles1m[0].openTime).toISOString()}`);
-    console.log(`Last candle: ${new Date(candles1m[candles1m.length - 1].openTime).toISOString()}`);
-  }
+  for (const symbol of symbols) {
+    // console.log(`\n📊 Backtesting ${symbol}...`);
 
-  if (candles1m.length < 50 || candles5m.length < 20) {
-    console.log(`Insufficient data for ${symbol}. Skipping...`);
-    return;
-  }
+    const candles1m = await getCandles(
+      symbol,
+      TIMEFRAME_MAIN,
+      startTime,
+      endTime
+    );
+    const candles5m = await getCandles(
+      symbol,
+      TIMEFRAME_TREND,
+      startTime,
+      endTime
+    );
 
-  const results = {
-    LONG: 0,
-    SHORT: 0,
-    HOLD: 0,
-    trades: [],
-    profit: 0,
-    wins: 0,
-    losses: 0,
-  };
+    if (candles1m.length < 50 || candles5m.length < 20) {
+    //   console.log(`⚠️ Insufficient data for ${symbol}. Skipping...`);
+      continue;
+    }
 
-  let position = null;
+    const results = {
+      LONG: 0,
+      SHORT: 0,
+      HOLD: 0,
+      trades: [],
+      profit: 0,
+      wins: 0,
+      losses: 0,
+    };
 
-  for (let i = 50; i < candles1m.length - 1; i++) {
-    const signal = await decideTradeDirection(symbol, candles1m, candles5m, i);
-    results[signal]++;
+    let position = null;
 
-    const currentCandle = candles1m[i];
+    for (let i = 50; i < candles1m.length - 1; i++) {
+      const signal = await decideTradeDirection(
+        symbol,
+        candles1m,
+        candles5m,
+        i
+      );
+      results[signal]++;
 
-    if ((signal === "LONG" || signal === "SHORT") && !position) {
-      position = {
-        type: signal,
-        entryPrice: currentCandle.close,
-        entryTime: currentCandle.openTime,
-      };
-      console.log(`Opened ${signal} trade at ${new Date(currentCandle.openTime).toISOString()}, price: ${currentCandle.close}`);
-    } else if (position) {
-      const nextCandle = candles1m[i + 1];
-      const currentPrice = nextCandle.close;
-      let exitTrade = false;
-      let reason = "";
+      const currentCandle = candles1m[i];
 
-      if (position.type === "LONG") {
-        const profitPercent =
-          ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
-        if (profitPercent >= 2) {
-          reason = "Profit Target Hit (2%)";
-          exitTrade = true;
-        } else if (profitPercent <= -1) {
-          reason = "Stop Loss Hit (1%)";
-          exitTrade = true;
+      if ((signal === "LONG" || signal === "SHORT") && !position) {
+        position = {
+          type: signal,
+          entryPrice: currentCandle.close,
+          entryTime: currentCandle.openTime,
+        };
+      } else if (position) {
+        const nextCandle = candles1m[i + 1];
+        const currentPrice = nextCandle.close;
+        let exitTrade = false;
+        let reason = "";
+
+        if (position.type === "LONG") {
+          const profitPercent =
+            ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
+          if (profitPercent >= 2) {
+            reason = "💰 Profit Target Hit";
+            exitTrade = true;
+          } else if (profitPercent <= -1) {
+            reason = "🛑 Stop Loss Hit";
+            exitTrade = true;
+          }
+        } else if (position.type === "SHORT") {
+          const profitPercent =
+            ((position.entryPrice - currentPrice) / position.entryPrice) * 100;
+          if (profitPercent >= 2) {
+            reason = "💰 Profit Target Hit";
+            exitTrade = true;
+          } else if (profitPercent <= -1) {
+            reason = "🛑 Stop Loss Hit";
+            exitTrade = true;
+          }
         }
-      } else if (position.type === "SHORT") {
-        const profitPercent =
-          ((position.entryPrice - currentPrice) / position.entryPrice) * 100;
-        if (profitPercent >= 2) {
-          reason = "Profit Target Hit (2%)";
-          exitTrade = true;
-        } else if (profitPercent <= -1) {
-          reason = "Stop Loss Hit (1%)";
-          exitTrade = true;
+
+        if (exitTrade) {
+          const profit =
+            position.type === "LONG"
+              ? (currentPrice - position.entryPrice) / position.entryPrice
+              : (position.entryPrice - currentPrice) / position.entryPrice;
+
+          const netProfit = profit - 2 * TAKER_FEE;
+          results.profit += netProfit * 100;
+
+          if (netProfit > 0) results.wins++;
+          else results.losses++;
+
+          results.trades.push({
+            timestamp: new Date(position.entryTime).toLocaleString(),
+            signal: position.type,
+            entryPrice: position.entryPrice,
+            exitPrice: currentPrice,
+            profit: (netProfit * 100).toFixed(2),
+            reason,
+          });
+
+          position = null;
         }
-      }
-
-      if (exitTrade) {
-        const profit =
-          position.type === "LONG"
-            ? (currentPrice - position.entryPrice) / position.entryPrice
-            : (position.entryPrice - currentPrice) / position.entryPrice;
-
-        const netProfit = profit - 2 * TAKER_FEE;
-        results.profit += netProfit * 100;
-
-        if (netProfit > 0) results.wins++;
-        else results.losses++;
-
-        results.trades.push({
-          timestamp: new Date(position.entryTime).toLocaleString(),
-          signal: position.type,
-          entryPrice: position.entryPrice,
-          exitPrice: currentPrice,
-          profit: (netProfit * 100).toFixed(2),
-          reason,
-        });
-
-        console.log(`Closed trade at ${new Date(nextCandle.openTime).toISOString()}, profit: ${(netProfit * 100).toFixed(2)}%, reason: ${reason}`);
-        position = null;
       }
     }
-  }
 
-  if (position && candles1m.length > 50) {
-    const exitPrice = candles1m[candles1m.length - 1].close;
-    const profit =
-      position.type === "LONG"
-        ? (exitPrice - position.entryPrice) / position.entryPrice
-        : (position.entryPrice - exitPrice) / position.entryPrice;
-    const netProfit = profit - 2 * TAKER_FEE;
+    if (position && candles1m.length > 50) {
+      const exitPrice = candles1m[candles1m.length - 1].close;
+      const profit =
+        position.type === "LONG"
+          ? (exitPrice - position.entryPrice) / position.entryPrice
+          : (position.entryPrice - exitPrice) / position.entryPrice;
+      const netProfit = profit - 2 * TAKER_FEE;
 
-    results.profit += netProfit * 100;
-    if (netProfit > 0) results.wins++;
-    else results.losses++;
+      results.profit += netProfit * 100;
+      if (netProfit > 0) results.wins++;
+      else results.losses++;
+    //   console.log(`profit---->>> >`, (netProfit * 100).toFixed(2));
 
-    results.trades.push({
-      timestamp: new Date(position.entryTime).toLocaleString(),
-      signal: position.type,
-      entryPrice: position.entryPrice,
-      exitPrice,
-      profit: (netProfit * 100).toFixed(2),
-      reason: "End of backtest period",
-    });
+      results.trades.push({
+        timestamp: new Date(position.entryTime).toLocaleString(),
+        signal: position.type,
+        entryPrice: position.entryPrice,
+        exitPrice,
+        profit: (netProfit * 100).toFixed(2),
+      });
+    }
 
-    console.log(`Closed final trade at ${new Date(candles1m[candles1m.length - 1].openTime).toISOString()}, profit: ${(netProfit * 100).toFixed(2)}%, reason: End of backtest period`);
-  }
-
-  console.log(`\nBacktest Summary for ${symbol}`);
-  console.log(`LONG Signals: ${results.LONG}`);
-  console.log(`SHORT Signals: ${results.SHORT}`);
-  console.log(`HOLD Signals: ${results.HOLD}`);
-  console.log(`Total Signals: ${results.LONG + results.SHORT + results.HOLD}`);
-  console.log(`Total Profit: ${results.profit.toFixed(2)}%`);
-  console.log(`Wins: ${results.wins} | Losses: ${results.losses}`);
-  console.log(`Win Rate: ${((results.wins / (results.wins + results.losses) || 0) * 100).toFixed(2)}%`);
-  console.log(`\nDetailed Trades:`);
-  results.trades.forEach((trade) => {
+    console.log(`\n📈 Backtest Summary for ${symbol}`);
+    console.log(`🟢 LONG Signals: ${results.LONG}`);
+    console.log(`🔴 SHORT Signals: ${results.SHORT}`);
+    console.log(`⚪ HOLD Signals: ${results.HOLD}`);
     console.log(
-      `${trade.timestamp} | Signal: ${trade.signal} | Entry: ${trade.entryPrice.toFixed(6)} | Exit: ${trade.exitPrice.toFixed(6)} | Profit: ${trade.profit}% | Reason: ${trade.reason}`
+      `📊 Total Signals: ${results.LONG + results.SHORT + results.HOLD}`
     );
-  });
-  console.log("=".repeat(60));
+    console.log(`💰 Total Profit: ${results.profit.toFixed(2)}%`);
+    console.log(`✅ Wins: ${results.wins} | ❌ Losses: ${results.losses}`);
+    console.log(
+      `🏆 Win Rate: ${(
+        (results.wins / (results.wins + results.losses) || 0) * 100
+      ).toFixed(2)}%`
+    );
+    console.log(`\nDetailed Trades:`);
+    results.trades.forEach((trade) => {
+      console.log(
+        `${trade.timestamp} | Signal: ${
+          trade.signal
+        } | Entry: ${trade.entryPrice.toFixed(
+          6
+        )} | Exit: ${trade.exitPrice.toFixed(6)} | Profit: ${trade.profit}%`
+      );
+    });
+    console.log("=".repeat(60));
+  }
 }
 
-const startDate = "2024-06-01T00:00:00Z";
-const endDate = "2024-06-30T23:59:59Z";
+const startDate = "2025-05-01T00:00:00Z";
+const endDate = "2025-05-30T23:59:59Z";
 
-backtest(symbol, startDate, endDate).catch((err) => {
-  console.error("Backtest error:", err.message);
+backtest(symbols, startDate, endDate).catch((err) => {
+  console.error("❌ Backtest error:", err.message);
 });
-
