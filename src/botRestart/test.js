@@ -381,7 +381,7 @@ async function backtest(symbols, startDate, endDate) {
         if (position.type === "LONG") {
           const profitPercent =
             ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 1) {
+          if (profitPercent >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
           } else if (profitPercent <= -1) {
@@ -391,7 +391,7 @@ async function backtest(symbols, startDate, endDate) {
         } else if (position.type === "SHORT") {
           const profitPercent =
             ((position.entryPrice - currentPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 1) {
+          if (profitPercent >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
           } else if (profitPercent <= -1) {
