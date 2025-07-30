@@ -347,7 +347,7 @@ setInterval(async () => {
 
   for (const sym of symbols) {
     const result = await decideTradeDirection(sym);
-    console.log(`🧠 Next Candle Prediction: ${prediction}`);
+    
 
     const emoji =
       result === "LONG"
