@@ -193,41 +193,6 @@ function calculateMomentum(candles, period = 5) {
   return ((current - past) / past) * 100;
 }
 
-function predictNextCandle(candles) {
-  const closes = candles.map((c) => c.close);
-  const ema9Series = calculateEMAseries(9, closes);
-  const ema15Series = calculateEMAseries(15, closes);
-
-  const momentum = calculateMomentum(candles, 5);
-  const rsi = calculateRSI(candles, 7);
-  const { macdLine, signalLine, histogram } = calculateMACD(candles);
-
-  const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
-  const ema15Angle = getEMAAngleFromSeries(ema15Series, 3);
-
-  const bullish =
-    ema9Series.at(-1) > ema15Series.at(-1) &&
-    ema9Angle > 0 &&
-    ema15Angle > 0 &&
-    macdLine > signalLine &&
-    histogram > 0 &&
-    momentum > 0 &&
-    rsi > 50;
-
-  const bearish =
-    ema9Series.at(-1) < ema15Series.at(-1) &&
-    ema9Angle < 0 &&
-    ema15Angle < 0 &&
-    macdLine < signalLine &&
-    histogram < 0 &&
-    momentum < 0 &&
-    rsi < 50;
-
-  if (bullish) return "Probable GREEN Candle";
-  if (bearish) return "Probable RED Candle";
-  return "Uncertain / Doji Likely";
-}
-
 async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
   try {
     console.log(`🔍 Analyzing ${symbol} at candle ${candleIndex}...`);
@@ -309,37 +274,37 @@ async function decideTradeDirection(symbol, candles1m, candles5m, candleIndex) {
       ema9 > ema15,
       ema15 > ema21,
       ema9Angle > EMA_ANGLE_THRESHOLD || ema15Angle > EMA_ANGLE_THRESHOLD,
-      rsi1m > 45 && rsi1m < 80,
-      macdLine > signalLine,
-      histogram > 0,
-      momentum > 0.1,
-      volumeSpike || candleType !== "none",
+      //   rsi1m > 45 && rsi1m < 80,
+      //   macdLine > signalLine,
+      //   histogram > 0,
+      //   momentum > 0.1,
+      //   volumeSpike || candleType !== "none",
     ];
 
     const longScore = longConditions.filter(Boolean).length;
-    console.log(`🟢 LONG Score: ${longScore}/8`);
+    console.log(`🟢 LONG Score: ${longScore}/3`);
 
     const shortConditions = [
       ema9 < ema15,
       ema15 < ema21,
       ema9Angle < -EMA_ANGLE_THRESHOLD || ema15Angle < -EMA_ANGLE_THRESHOLD,
-      rsi1m < 55 && rsi1m > 20,
-      macdLine < signalLine,
-      histogram < 0,
-      momentum < -0.1,
-      volumeSpike || candleType !== "none",
+      //   rsi1m < 55 && rsi1m > 20,
+      //   macdLine < signalLine,
+      //   histogram < 0,
+      //   momentum < -0.1,
+      //   volumeSpike || candleType !== "none",
     ];
 
     const shortScore = shortConditions.filter(Boolean).length;
-    console.log(`🔴 SHORT Score: ${shortScore}/8`);
+    console.log(`🔴 SHORT Score: ${shortScore}/3`);
 
-    if (longScore >= 6) {
-      console.log(`✅ Strong LONG signal (Score: ${longScore}/8)`);
+    if (longScore == 3) {
+      console.log(`✅ Strong LONG signal (Score: ${longScore}/3)`);
       return "LONG";
     }
 
-    if (shortScore >= 6) {
-      console.log(`✅ Strong SHORT signal (Score: ${shortScore}/8)`);
+    if (shortScore == 3) {
+      console.log(`✅ Strong SHORT signal (Score: ${shortScore}/3)`);
       return "SHORT";
     }
 
@@ -400,7 +365,6 @@ async function backtest(symbols, startDate, endDate) {
       results[signal]++;
 
       const currentCandle = candles1m[i];
-      const nextCandle = candles1m[i + 1];
 
       if ((signal === "LONG" || signal === "SHORT") && !position) {
         position = {
@@ -408,27 +372,57 @@ async function backtest(symbols, startDate, endDate) {
           entryPrice: currentCandle.close,
           entryTime: currentCandle.openTime,
         };
-      } else if (position && signal === "HOLD") {
-        const exitPrice = nextCandle.close;
-        const profit =
-          position.type === "LONG"
-            ? (exitPrice - position.entryPrice) / position.entryPrice
-            : (position.entryPrice - exitPrice) / position.entryPrice;
-        const netProfit = profit - 2 * TAKER_FEE;
+      } else if (position) {
+        const nextCandle = candles1m[i + 1];
+        const currentPrice = nextCandle.close;
+        let exitTrade = false;
+        let reason = "";
 
-        results.profit += netProfit * 100;
-        if (netProfit > 0) results.wins++;
-        else results.losses++;
+        if (position.type === "LONG") {
+          const profitPercent =
+            ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
+          if (profitPercent >= 2) {
+            reason = "💰 Profit Target Hit";
+            exitTrade = true;
+          } else if (profitPercent <= -1) {
+            reason = "🛑 Stop Loss Hit";
+            exitTrade = true;
+          }
+        } else if (position.type === "SHORT") {
+          const profitPercent =
+            ((position.entryPrice - currentPrice) / position.entryPrice) * 100;
+          if (profitPercent >= 2) {
+            reason = "💰 Profit Target Hit";
+            exitTrade = true;
+          } else if (profitPercent <= -1) {
+            reason = "🛑 Stop Loss Hit";
+            exitTrade = true;
+          }
+        }
 
-        results.trades.push({
-          timestamp: new Date(position.entryTime).toLocaleString(),
-          signal: position.type,
-          entryPrice: position.entryPrice,
-          exitPrice,
-          profit: (netProfit * 100).toFixed(2),
-        });
+        if (exitTrade) {
+          const profit =
+            position.type === "LONG"
+              ? (currentPrice - position.entryPrice) / position.entryPrice
+              : (position.entryPrice - currentPrice) / position.entryPrice;
 
-        position = null;
+          const netProfit = profit - 2 * TAKER_FEE;
+          results.profit += netProfit * 100;
+
+          if (netProfit > 0) results.wins++;
+          else results.losses++;
+
+          results.trades.push({
+            timestamp: new Date(position.entryTime).toLocaleString(),
+            signal: position.type,
+            entryPrice: position.entryPrice,
+            exitPrice: currentPrice,
+            profit: (netProfit * 100).toFixed(2),
+            reason,
+          });
+
+          position = null;
+        }
       }
     }
 
