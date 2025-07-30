@@ -187,26 +187,26 @@ async function decideTradeDirection(symbol) {
     }
 
     const closes1m = candles1m.map((c) => c.close);
-    const ema5Series = calculateEMAseries(5, closes1m);
     const ema9Series = calculateEMAseries(9, closes1m);
+    const ema15Series = calculateEMAseries(15, closes1m);
     const ema21Series = calculateEMAseries(21, closes1m);
 
-    const ema5 = ema5Series[ema5Series.length - 1];
     const ema9 = ema9Series[ema9Series.length - 1];
+    const ema15 = ema15Series[ema15Series.length - 1];
     const ema21 = ema21Series[ema21Series.length - 1];
 
-    const ema5Angle = getEMAAngleFromSeries(ema5Series, 3);
     const ema9Angle = getEMAAngleFromSeries(ema9Series, 3);
+    const ema15Angle = getEMAAngleFromSeries(ema15Series, 3);
 
     console.log(
-      `📈 EMA(5): ${ema5.toFixed(6)} | EMA(9): ${ema9.toFixed(
+      `📈 EMA(9): ${ema9.toFixed(6)} | EMA(15): ${ema15.toFixed(
         6
       )} | EMA(21): ${ema21.toFixed(6)}`
     );
     console.log(
-      `📐 EMA5 Angle: ${ema5Angle.toFixed(
+      `📐 EMA9 Angle: ${ema9Angle.toFixed(
         2
-      )}° | EMA9 Angle: ${ema9Angle.toFixed(2)}°`
+      )}° | EMA15 Angle: ${ema15Angle.toFixed(2)}°`
     );
 
     const volatility = calculateVolatility(candles1m, 20);
@@ -217,8 +217,8 @@ async function decideTradeDirection(symbol) {
     }
 
     if (
-      Math.abs(ema5Angle) < MIN_ANGLE_THRESHOLD &&
-      Math.abs(ema9Angle) < MIN_ANGLE_THRESHOLD
+      Math.abs(ema9Angle) < MIN_ANGLE_THRESHOLD &&
+      Math.abs(ema15Angle) < MIN_ANGLE_THRESHOLD
     ) {
       console.log(
         `⚠️ EMA angles too flat (<${MIN_ANGLE_THRESHOLD}°). Decision: HOLD`
@@ -252,12 +252,12 @@ async function decideTradeDirection(symbol) {
     );
 
     const longConditions = [
-      ema5 > ema9,
-      ema9 > ema21,
-      ema5Angle > EMA_ANGLE_THRESHOLD || ema9Angle > EMA_ANGLE_THRESHOLD, 
-      rsi1m > 45 && rsi1m < 80, 
-      macdLine > signalLine, 
-      histogram > 0, 
+      ema9 > ema15,
+      ema15 > ema21,
+      ema9Angle > EMA_ANGLE_THRESHOLD || ema15Angle > EMA_ANGLE_THRESHOLD,
+      rsi1m > 45 && rsi1m < 80,
+      macdLine > signalLine,
+      histogram > 0,
       momentum > 0.1,
       volumeSpike || candleType !== "none",
     ];
@@ -266,12 +266,12 @@ async function decideTradeDirection(symbol) {
     console.log(`🟢 LONG Score: ${longScore}/8`);
 
     const shortConditions = [
-      ema5 < ema9,
-      ema9 < ema21,
-      ema5Angle < -EMA_ANGLE_THRESHOLD || ema9Angle < -EMA_ANGLE_THRESHOLD, 
-      rsi1m < 55 && rsi1m > 20, 
-      macdLine < signalLine, 
-      histogram < 0, 
+      ema9 < ema15,
+      ema15 < ema21,
+      ema9Angle < -EMA_ANGLE_THRESHOLD || ema15Angle < -EMA_ANGLE_THRESHOLD,
+      rsi1m < 55 && rsi1m > 20,
+      macdLine < signalLine,
+      histogram < 0,
       momentum < -0.1,
       volumeSpike || candleType !== "none",
     ];
@@ -288,16 +288,6 @@ async function decideTradeDirection(symbol) {
       console.log(`✅ Strong SHORT signal (Score: ${shortScore}/8)`);
       return "SHORT";
     }
-
-    // if (longScore >= 4 && longScore > shortScore) {
-    //   console.log(`🟡 Weak LONG signal (Score: ${longScore}/8)`);
-    //   return "WEAK_LONG";
-    // }
-
-    // if (shortScore >= 4 && shortScore > longScore) {
-    //   console.log(`🟡 Weak SHORT signal (Score: ${shortScore}/8)`);
-    //   return "WEAK_SHORT";
-    // }
 
     console.log(`⚖️ No clear signal. Decision: HOLD`);
     return "HOLD";
@@ -330,6 +320,6 @@ setInterval(async () => {
     console.log(`${emoji} Signal for ${sym}: ${result}`);
     console.log("-".repeat(40));
   }
-}, 5000);
+}, 10000);
 
 // module.exports = { decideTradeDirection };
