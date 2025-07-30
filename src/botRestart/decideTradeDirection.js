@@ -21,29 +21,43 @@ const symbols = [
   "1000FLOKIUSDT",
 ];
 
+
 async function getCandles(symbol, interval, limit = 50) {
   const candles = await binance.futuresCandles(symbol, interval, { limit });
-  console.log(
-    "candle",
-    candles.map((c) => ({
+
+  // Check if response is valid
+  if (!Array.isArray(candles)) {
+    console.error(`❌ Invalid candle data for ${symbol} - ${interval}:`, candles);
+    return [];
+  }
+
+  // Check first candle structure
+  console.log(`✅ Raw first candle for ${symbol} (${interval}):`, candles[0]);
+
+  return candles.map((c, idx) => {
+    if (!Array.isArray(c) || c.length < 6) {
+      console.warn(`⚠️ Malformed candle at index ${idx}:`, c);
+      return {
+        openTime: 0,
+        open: NaN,
+        high: NaN,
+        low: NaN,
+        close: NaN,
+        volume: NaN,
+      };
+    }
+    return {
       openTime: c[0],
       open: parseFloat(c[1]),
       high: parseFloat(c[2]),
       low: parseFloat(c[3]),
       close: parseFloat(c[4]),
       volume: parseFloat(c[5]),
-    }))
-  );
-
-  return candles.map((c) => ({
-    openTime: c[0],
-    open: parseFloat(c[1]),
-    high: parseFloat(c[2]),
-    low: parseFloat(c[3]),
-    close: parseFloat(c[4]),
-    volume: parseFloat(c[5]),
-  }));
+    };
+  });
 }
+
+
 function calculateEMA(period, candles) {
   const k = 2 / (period + 1);
   let ema = candles[0].close;
