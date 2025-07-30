@@ -583,6 +583,7 @@ async function backtest(symbols, startDate, endDate) {
       });
     }
 
+    // Backtest Summary with Chart
     console.log(`\n📈 Backtest Summary for ${symbol}`);
     console.log(`🟢 LONG Signals: ${results.LONG}`);
     console.log(`🔴 SHORT Signals: ${results.SHORT}`);
@@ -592,11 +593,10 @@ async function backtest(symbols, startDate, endDate) {
     );
     console.log(`💰 Total Profit: ${results.profit.toFixed(2)}%`);
     console.log(`✅ Wins: ${results.wins} | ❌ Losses: ${results.losses}`);
-    console.log(
-      `🏆 Win Rate: ${(
-        (results.wins / (results.wins + results.losses) || 0) * 100
-      ).toFixed(2)}%`
-    );
+    const winRate = (
+      (results.wins / (results.wins + results.losses) || 0) * 100
+    ).toFixed(2);
+    console.log(`🏆 Win Rate: ${winRate}%`);
     console.log(`\nDetailed Trades:`);
     results.trades.forEach((trade) => {
       console.log(
