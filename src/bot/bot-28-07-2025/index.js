@@ -867,8 +867,6 @@
 //   }
 // }, 30000);
 
-
-
 const Binance = require("node-binance-api");
 const technicalIndicators = require("technicalindicators");
 const {

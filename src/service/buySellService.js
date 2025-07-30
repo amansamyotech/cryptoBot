@@ -47,6 +47,7 @@ const getCountOfOpenTread = async () => {
 const getDetailsWithSymbol = async (symbol) => {
   try {
     const trades = await BuySell.find({ symbol, status: "0" });
+    console.log(`trades`, trades);
 
     if (trades.length > 0) {
       const trade = trades[0];
@@ -54,6 +55,11 @@ const getDetailsWithSymbol = async (symbol) => {
         stopLossOrderId: trade.stopLossOrderId,
         takeProfitOrderId: trade.profitOrderId,
         objectId: trade._id,
+        side: trade.side,
+        ShortTimeCurrentPrice: trade.ShortTimeCurrentPrice,
+        LongTimeCoinPrice: trade.LongTimeCoinPrice,
+        quantity: trade.quantity,
+        stopLossPrice: trade.stopLossPrice,
       };
       //get open trades
       return { symbol, tradeDetails, found: true };
