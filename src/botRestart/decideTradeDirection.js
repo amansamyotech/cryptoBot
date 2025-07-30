@@ -180,8 +180,8 @@ async function decideTradeDirection(symbol) {
 
     const candles1m = await getCandles(symbol, TIMEFRAME_MAIN, 100);
     const prediction = predictNextCandle(candles1m);
-    console.log(`prediction`,prediction);
-    
+    console.log(`prediction`, prediction);
+
     const candles5m = await getCandles(symbol, TIMEFRAME_TREND, 50);
 
     if (candles1m.length < 50 || candles5m.length < 20) {
@@ -347,7 +347,6 @@ setInterval(async () => {
 
   for (const sym of symbols) {
     const result = await decideTradeDirection(sym);
-    
 
     const emoji =
       result === "LONG"
