@@ -138,37 +138,39 @@ function getCandleAngle(candle, timeSpan = 300) {
   return angle;
 }
 
-async function decideTradeDirection(
-  symbol,
-  candles5m,
-  candles15m,
-  candleIndex
-) {
+async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
 
-    if (pastCandles5m.length < 3) {
+    if (pastCandles5m.length < 4) {
       return "HOLD";
     }
 
+    const fourthLastCandle = pastCandles5m[pastCandles5m.length - 4];
     const thirdLastCandle = pastCandles5m[pastCandles5m.length - 3];
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
     const lastCandle = pastCandles5m[pastCandles5m.length - 1];
 
-    const angle = getCandleAngle(thirdLastCandle);
+    const angle = getCandleAngle(fourthLastCandle);
+    const baseClose = fourthLastCandle.close;
 
-    const baseClose = thirdLastCandle.close;
-    const close2 = secondLastCandle.close;
-    const close1 = lastCandle.close;
+    const closesAbove = [
+      thirdLastCandle.close,
+      secondLastCandle.close,
+      lastCandle.close,
+    ].every((close) => close > baseClose);
 
-    const bothAbove = close2 > baseClose && close1 > baseClose;
-    const bothBelow = close2 < baseClose && close1 < baseClose;
+    const closesBelow = [
+      thirdLastCandle.close,
+      secondLastCandle.close,
+      lastCandle.close,
+    ].every((close) => close < baseClose);
 
-    if (angle >= 90 && angle <= 150 && bothAbove) {
+    if (angle >= 90 && angle <= 150 && closesAbove) {
       return "LONG";
     }
 
-    if (angle >= 210 && angle <= 270 && bothBelow) {
+    if (angle >= 210 && angle <= 270 && closesBelow) {
       return "SHORT";
     }
 
