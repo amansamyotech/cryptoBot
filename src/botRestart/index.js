@@ -254,7 +254,7 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
     console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
-    
+
     // Place market buy order
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
 
@@ -295,23 +295,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
 
-    // Place take profit order
-    const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT_MARKET",
-      "SELL",
-      symbol,
-      qtyFixed,
-      null,
-      {
-        stopPrice: takeProfitFixed,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
-    );
-    
     const details = {
-      takeProfitPrice: takeProfitFixed,
-      profitOrderId: takeProfitOrder.orderId,
       stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
@@ -359,7 +343,7 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
     console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
-    
+
     // Place market sell order
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
@@ -399,23 +383,7 @@ async function placeShortOrder(symbol, marginAmount) {
       `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
 
-    // Place take profit order
-    const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT_MARKET",
-      "BUY",
-      symbol,
-      qtyFixed,
-      null,
-      {
-        stopPrice: takeProfitFixed,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
-    );
-    
     const details = {
-      takeProfitPrice: takeProfitFixed,
-      profitOrderId: takeProfitOrder.orderId,
       stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
