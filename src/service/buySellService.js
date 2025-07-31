@@ -60,6 +60,7 @@ const getDetailsWithSymbol = async (symbol) => {
         LongTimeCoinPrice: trade.LongTimeCoinPrice,
         quantity: trade.quantity,
         stopLossPrice: trade.stopLossPrice,
+        leverage: trade.leverage,
       };
       //get open trades
       return { symbol, tradeDetails, found: true };

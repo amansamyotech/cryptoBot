@@ -25,6 +25,9 @@ const BuySellSchema = new Schema(
     takeProfitPrice: {
       type: String,
     },
+    leverage: {
+      type: String,
+    },
     profitOrderId: {
       type: String,
     },
