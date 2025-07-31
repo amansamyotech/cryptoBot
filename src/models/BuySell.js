@@ -28,6 +28,9 @@ const BuySellSchema = new Schema(
     leverage: {
       type: String,
     },
+    marginUsed: {
+      type: String,
+    },
     profitOrderId: {
       type: String,
     },

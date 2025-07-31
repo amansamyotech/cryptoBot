@@ -61,6 +61,7 @@ const getDetailsWithSymbol = async (symbol) => {
         quantity: trade.quantity,
         stopLossPrice: trade.stopLossPrice,
         leverage: trade.leverage,
+        marginUsed: trade.marginUsed,
       };
       //get open trades
       return { symbol, tradeDetails, found: true };

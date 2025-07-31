@@ -28,8 +28,8 @@ const symbols = [
 
 const interval = "1m";
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -1;
-const TRAILING_START_ROI = 1;
+const STOP_LOSS_ROI = -1.5;
+const TRAILING_START_ROI = 2;
 
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
@@ -39,28 +39,32 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       LongTimeCoinPrice: { $numberDecimal: longTimePrice },
       quantity,
       stopLossPrice: oldStopLoss,
+      marginUsed,
+      leverage
     } = tradeDetails;
 
     const entryPrice = parseFloat(longTimePrice);
     const oldStop = parseFloat(oldStopLoss);
-    const roi = ((currentPrice - entryPrice) / entryPrice) * 100 * LEVERAGE;
+    const margin = parseFloat(marginUsed);
+    const lev = parseFloat(leverage);
+    const qty = parseFloat(quantity);
+    const pnl = (currentPrice - entryPrice) * qty;
+    const roi = (pnl / margin) * 100;
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
-    const qty = parseFloat(quantity);
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= TRAILING_START_ROI) {
       const roiStepsAboveTrailing = Math.floor(
         (roi - TRAILING_START_ROI) / 0.5
       );
+      const targetROI = TRAILING_START_ROI + roiStepsAboveTrailing * 0.5;
+      const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
-        (
-          entryPrice *
-          (1 + (TRAILING_START_ROI + roiStepsAboveTrailing * 0.5) / 100)
-        ).toFixed(pricePrecision)
+        (entryPrice + (targetPnL / qty)).toFixed(pricePrecision)
       );
 
       if (newStop > oldStop) {
@@ -116,28 +120,33 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       ShortTimeCurrentPrice: { $numberDecimal: shortTimeCurrentPrice },
       quantity,
       stopLossPrice: oldStopLoss,
+      marginUsed, 
+      leverage
     } = tradeDetails;
 
     const entryPrice = parseFloat(shortTimeCurrentPrice);
     const oldStop = parseFloat(oldStopLoss);
-    const roi = ((entryPrice - currentPrice) / entryPrice) * 100 * LEVERAGE;
+    const margin = parseFloat(marginUsed);
+    const lev = parseFloat(leverage);
+    const qty = parseFloat(quantity);
+    const pnl = (entryPrice - currentPrice) * qty;
+    const roi = (pnl / margin) * 100;
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
-    const qty = parseFloat(quantity);
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= TRAILING_START_ROI) {
       const roiStepsAboveTrailing = Math.floor(
         (roi - TRAILING_START_ROI) / 0.5
       );
+      
+      const targetROI = TRAILING_START_ROI + roiStepsAboveTrailing * 0.5;
+      const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
-        (
-          entryPrice *
-          (1 - (TRAILING_START_ROI + roiStepsAboveTrailing * 0.5) / 100)
-        ).toFixed(pricePrecision)
+        (entryPrice - (targetPnL / qty)).toFixed(pricePrecision)
       );
 
       if (newStop < oldStop) {
@@ -234,11 +243,9 @@ async function placeBuyOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
+    const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
     const stopLossPrice = parseFloat(
-      (entryPrice * (1 + STOP_LOSS_ROI / 100)).toFixed(pricePrecision)
-    );
-    const takeProfitPrice = parseFloat(
-      (entryPrice * (1 + TRAILING_START_ROI / 100)).toFixed(pricePrecision)
+      (entryPrice + (stopLossPnL / quantity)).toFixed(pricePrecision)
     );
 
     console.log(`LONG Order Details for ${symbol}:`);
@@ -315,11 +322,10 @@ async function placeShortOrder(symbol, marginAmount) {
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
+    
+    const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
     const stopLossPrice = parseFloat(
-      (entryPrice * (1 - STOP_LOSS_ROI / 100)).toFixed(pricePrecision)
-    );
-    const takeProfitPrice = parseFloat(
-      (entryPrice * (1 - TRAILING_START_ROI / 100)).toFixed(pricePrecision)
+      (entryPrice - (stopLossPnL / quantity)).toFixed(pricePrecision)
     );
 
     console.log(`SHORT Order Details for ${symbol}:`);
