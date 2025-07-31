@@ -32,10 +32,10 @@ async function checkOrders(symbol) {
 // console.log(stopLossStatus);
 
 // 3. Also check all open orders on symbol
-const openOrders = await binance.futuresOpenOrders(symbol);
-console.log(`openOrders`,openOrders);
+// const openOrders = await binance.futuresOpenOrders(symbol);
+// console.log(`openOrders`,openOrders);
 
-console.log(openOrders.find(o => o.orderId == stopLossOrderId));
+// console.log(openOrders.find(o => o.orderId == stopLossOrderId));
 
 
 // 4. Check all orders (including closed) on symbol
