@@ -14,24 +14,29 @@ const binance = new Binance().options({
 });
 
 const symbols = [
-  "1000PEPEUSDT",
-  "ETCUSDT",
-  "LTCUSDT",
-  "ORDIUSDT",
-  "INJUSDT",
+  //   "1000PEPEUSDT",
+  "ADAUSDT",
+  "SUIUSDT",
+  //   "ETCUSDT",
+  //   "LTCUSDT",
+  //   "ORDIUSDT",
+  "TAOUSDT",
+  "LEVERUSDT",
   //   "DOTUSDT",
   // "XRPUSDT",
   //   "INJUSDT",
   //   "XRPUSDT",
-  //   "SUIUSDT",
-  //   "TRXUSDT",
+
+  "TRXUSDT",
   //   "CKBUSDT",
 ];
 
 const interval = "1m";
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -1.5;
+const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 2;
+const INITIAL_TRAILING_ROI = 3;
+const ROI_STEP = 1;
 
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
@@ -61,9 +66,9 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
     if (roi >= TRAILING_START_ROI) {
       const roiStepsAboveTrailing = Math.floor(
-        (roi - TRAILING_START_ROI) / 0.5
+        (roi - TRAILING_START_ROI) / ROI_STEP
       );
-      const targetROI = TRAILING_START_ROI + roiStepsAboveTrailing * 0.5;
+      const targetROI = INITIAL_TRAILING_ROI + roiStepsAboveTrailing * ROI_STEP;
       const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
         (entryPrice + targetPnL / qty).toFixed(pricePrecision)
@@ -73,7 +78,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
         console.log(
           `[${symbol}] LONG ROI ${roi.toFixed(
             2
-          )}% → Updating SL from ${oldStop} to ${newStop}`
+          )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
         );
         await binance.futuresCancel(symbol, { stopLossOrderId });
         const stopLossOrder = await binance.futuresOrder(
@@ -142,10 +147,9 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
 
     if (roi >= TRAILING_START_ROI) {
       const roiStepsAboveTrailing = Math.floor(
-        (roi - TRAILING_START_ROI) / 0.5
+        (roi - TRAILING_START_ROI) / ROI_STEP
       );
-
-      const targetROI = TRAILING_START_ROI + roiStepsAboveTrailing * 0.5;
+      const targetROI = INITIAL_TRAILING_ROI + roiStepsAboveTrailing * ROI_STEP;
       const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
         (entryPrice - targetPnL / qty).toFixed(pricePrecision)
@@ -155,9 +159,8 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
         console.log(
           `[${symbol}] SHORT ROI ${roi.toFixed(
             2
-          )}% → Updating SL from ${oldStop} to ${newStop}`
+          )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
         );
-
         await binance.futuresCancel(symbol, { stopLossOrderId });
 
         const stopLossOrder = await binance.futuresOrder(
