@@ -4,6 +4,7 @@ const { decideTradeDirection } = require("./decideTradeFuntion");
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { setLeverage } = require("./helper/setLavrge");
+const { calculateROIPrices } = require("./helper/calculateRoi");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
