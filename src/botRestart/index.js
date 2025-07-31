@@ -88,7 +88,28 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
           )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
         );
         let orderId = stopLossOrderId;
-        await binance.futuresCancel(symbol, orderId);
+        let orderExists = false;
+        try {
+          const order = await binance.futuresOrderStatus(
+            symbol,
+            parseInt(orderId)
+          );
+          orderExists =
+            order && order.status !== "CANCELED" && order.status !== "FILLED";
+        } catch (err) {
+          console.warn(
+            `[${symbol}] Failed to fetch order ${orderId}:`,
+            err.message
+          );
+        }
+
+        if (orderExists) {
+          await binance.futuresCancel(symbol, orderId);
+        } else {
+          console.log(
+            `[${symbol}] Stop-loss order ${orderId} does not exist or is already closed.`
+          );
+        }
         const stopLossOrder = await binance.futuresOrder(
           "STOP_MARKET",
           "SELL",
@@ -170,7 +191,28 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
           )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
         );
         let orderId = stopLossOrderId;
-        await binance.futuresCancel(symbol, orderId);
+        let orderExists = false;
+        try {
+          const order = await binance.futuresOrderStatus(
+            symbol,
+            parseInt(orderId)
+          );
+          orderExists =
+            order && order.status !== "CANCELED" && order.status !== "FILLED";
+        } catch (err) {
+          console.warn(
+            `[${symbol}] Failed to fetch order ${orderId}:`,
+            err.message
+          );
+        }
+
+        if (orderExists) {
+          await binance.futuresCancel(symbol, orderId);
+        } else {
+          console.log(
+            `[${symbol}] Stop-loss order ${orderId} does not exist or is already closed.`
+          );
+        }
 
         const stopLossOrder = await binance.futuresOrder(
           "STOP_MARKET",

@@ -16,6 +16,7 @@ const symbols = [
   "ADAUSDT",
   "DOGEUSDT",
   "WIFUSDT",
+  "CKBUSDT"
 ];
 
 const interval = "3m";
