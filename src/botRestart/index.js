@@ -27,7 +27,6 @@ const symbols = [
   "TRXUSDT",
   "ETCUSDT",
   "SOLUSDT",
-  "DAIUSDT",
   "WIFUSDT",
   "TONUSDT",
   "TAOUSDT",
