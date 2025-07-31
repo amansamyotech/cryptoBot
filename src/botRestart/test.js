@@ -8,8 +8,8 @@ const binance = new Binance().options({
   test: false,
 });
 
-const TIMEFRAME_MAIN = "5m";
-const TIMEFRAME_TREND = "5m";
+const TIMEFRAME_MAIN = "1m";
+const TIMEFRAME_TREND = "1m";
 const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
