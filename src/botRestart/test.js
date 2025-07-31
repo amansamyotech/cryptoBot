@@ -37,7 +37,7 @@ const symbols = [
   "CKBUSDT",
   "1000FLOKIUSDT",
 ];
-async function getCandles(symbol, interval, startTime, endTime, limit = 9) {
+async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   try {
     if (startTime && endTime) {
       const candles = [];
@@ -152,22 +152,22 @@ async function decideTradeDirection(
     }
 
     const thirdLastCandle = pastCandles5m[pastCandles5m.length - 2];
-    // const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
-    // const lastCandle = pastCandles5m[pastCandles5m.length - 1];
+    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
+    const lastCandle = pastCandles5m[pastCandles5m.length - 1];
 
     const angle = getCandleAngle(thirdLastCandle);
-    // const baseClose = thirdLastCandle.close;
+    const baseClose = thirdLastCandle.close;
 
-    // const closesAbove =
-    //   secondLastCandle.close > baseClose && lastCandle.close > baseClose;
-    // const closesBelow =
-    //   secondLastCandle.close < baseClose && lastCandle.close < baseClose;
+    const closesAbove =
+      secondLastCandle.close > baseClose && lastCandle.close > baseClose;
+    const closesBelow =
+      secondLastCandle.close < baseClose && lastCandle.close < baseClose;
 
-    if (angle >= 90 && angle <= 150) {
+    if (angle >= 90 && angle <= 150 && closesAbove) {
       return "LONG";
     }
 
-    if (angle >= 210 && angle <= 270) {
+    if (angle >= 210 && angle <= 270 && closesBelow) {
       return "SHORT";
     }
 
@@ -182,6 +182,7 @@ async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
   const endTime = new Date(endDate).getTime();
 
+  
   const LEVERAGE = 3;
   const MARGIN_AMOUNT = 100;
 
@@ -368,7 +369,7 @@ async function backtest(symbols, startDate, endDate) {
     console.log(`⚖️ Leverage: ${LEVERAGE}x`);
 
     console.log(`\nDetailed Trades:`);
-
+    
     console.log("=".repeat(80));
   }
 }
