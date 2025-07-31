@@ -151,7 +151,7 @@ async function decideTradeDirection(
       return "HOLD";
     }
 
-    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 5];
+    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 4];
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
     const lastCandle = pastCandles5m[pastCandles5m.length - 1];
 
