@@ -15,10 +15,12 @@ const binance = new Binance().options({
 
 const symbols = [
   "1000PEPEUSDT",
-  "WIFUSDT",
-  "NEARUSDT",
-  "DOGEUSDT",
-  "SOLUSDT",
+  "ETCUSDT",
+  "LTCUSDT",
+  "ORDIUSDT",
+  "INJUSDT",
+  //   "DOTUSDT",
+  // "XRPUSDT",
   //   "INJUSDT",
   //   "XRPUSDT",
   //   "SUIUSDT",
