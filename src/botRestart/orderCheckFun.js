@@ -32,9 +32,9 @@ async function checkOrders(symbol) {
     if (stopLossStatus?.status === "FILLED") {
       console.log(`Stop loss order filled for ${symbol}`);
 
-      const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
-        data: { status: "1" },
-      });
+      // const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
+      //   data: { status: "1" },
+      // });
 
       console.log(`Trade marked as closed in DB for ${symbol}`, data?.data);
     } else {
