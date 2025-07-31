@@ -2,8 +2,8 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 
 const binance = new Binance().options({
-  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
-  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
+  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
   test: false,
 });
@@ -83,15 +83,12 @@ async function decideTradeDirection(symbol) {
 
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2]; // 2nd last candle
     const angle = getCandleAngle(secondLastCandle);
-    
 
     // Calculate EMA 9 and EMA 15
     const closePrices = pastCandles5m.map((candle) => candle.close);
     const ema9 = calculateEMA(closePrices, 9);
-    
 
     const ema15 = calculateEMA(closePrices, 15);
-    
 
     const lastEma9 = ema9[ema9.length - 2]; // EMA 9 for second last candle
     const lastEma15 = ema15[ema15.length - 2]; // EMA 15 for second last candle

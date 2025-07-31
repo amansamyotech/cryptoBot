@@ -1,14 +1,5 @@
 const Binance = require("node-binance-api");
-const technicalIndicators = require("technicalindicators");
-const {
-  RSI,
-  MACD,
-  BollingerBands,
-  EMA,
-  ADX,
-  VWMA,
-  Stochastic,
-} = require("technicalindicators");
+
 const axios = require("axios");
 const { decideTradeDirection } = require("./decideTradeFuntion");
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
@@ -19,41 +10,18 @@ const binance = new Binance().options({
   test: false,
 });
 const symbols = [
-  "1000PEPEUSDT",
+  "XRPUSDT",
+  "SUIUSDT",
   "1000BONKUSDT",
+  "ADAUSDT",
   "DOGEUSDT",
-  "CKBUSDT",
-  "1000FLOKIUSDT",
+  "WIFUSDT",
 ];
 
 const interval = "3m";
 const leverage = 3; // Leverage
-const STOP_LOSS_ROI = -1.5; // -2% ROI for stop loss
+const STOP_LOSS_ROI = -1; // -2% ROI for stop loss
 const TAKE_PROFIT_ROI = 2; // +4% ROI for take
-
-const MINIMUM_PROFIT_ROI = 2;
-const INITIAL_TAKE_PROFIT_ROI = 2;
-const RSI_PERIOD = 14;
-const RSI_OVERBOUGHT = 70; // Tightened for meme coins
-const RSI_OVERSOLD = 30;
-const MACD_FAST = 12;
-const MACD_SLOW = 26;
-const MACD_SIGNAL = 9;
-const BB_PERIOD = 20;
-const BB_STD_DEV = 2.5; // Increased to filter noise
-const EMA_FAST = 12;
-const EMA_SLOW = 26;
-const EMA_TREND_SHORT = 50;
-const EMA_TREND_LONG = 200;
-const ADX_PERIOD = 14;
-const ADX_THRESHOLD = 25; // Stronger trend requirement
-const VWMA_PERIOD = 20;
-const STOCHASTIC_PERIOD = 14; // Stochastic settings
-const STOCHASTIC_K = 3;
-const STOCHASTIC_D = 3;
-const LONG_THRESHOLD = 4; // Higher threshold for stronger signals
-const SHORT_THRESHOLD = -4;
-const VOLATILITY_THRESHOLD = 0.02; // 📊 Scoring Thresholds
 
 async function getUsdtBalance() {
   try {
@@ -94,320 +62,8 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
   return { stopLossPrice, takeProfitPrice };
 }
 
-async function getCandles(symbol, interval, limit = 100) {
-  const candles = await binance.futuresCandles(symbol, interval, { limit });
-
-  return candles.map((c) => ({
-    open: parseFloat(c.open),
-    high: parseFloat(c.high),
-    low: parseFloat(c.low),
-    close: parseFloat(c.close),
-    volume: parseFloat(c.volume),
-  }));
-}
-
-function calculateVWMA(prices, volumes, period) {
-  const result = [];
-
-  for (let i = period - 1; i < prices.length; i++) {
-    let weightedSum = 0;
-    let volumeSum = 0;
-
-    for (let j = 0; j < period; j++) {
-      const index = i - period + 1 + j;
-      weightedSum += prices[index] * volumes[index];
-      volumeSum += volumes[index];
-    }
-
-    result.push(volumeSum > 0 ? weightedSum / volumeSum : prices[i]);
-  }
-
-  return result;
-}
-
-async function getIndicators(symbol, interval) {
-  try {
-    const data = await getCandles(symbol, interval, 200);
-
-    if (data.length < 50) {
-      throw new Error(
-        `Insufficient data for ${symbol}: ${data.length} candles (minimum 50 required)`
-      );
-    }
-
-    const closes = data.map((c) => c.close);
-    const highs = data.map((c) => c.high);
-    const lows = data.map((c) => c.low);
-    const volumes = data.map((c) => c.volume);
-
-    // Additional validation
-    if (
-      closes.some(isNaN) ||
-      highs.some(isNaN) ||
-      lows.some(isNaN) ||
-      volumes.some(isNaN)
-    ) {
-      throw new Error(`Invalid price data detected for ${symbol}`);
-    }
-
-    const indicators = {};
-
-    // RSI
-    try {
-      if (closes.length >= RSI_PERIOD) {
-        indicators.rsi = RSI.calculate({
-          period: RSI_PERIOD,
-          values: closes,
-        });
-        if (!indicators.rsi || indicators.rsi.length === 0) {
-          throw new Error("RSI calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for RSI: need ${RSI_PERIOD}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(`RSI calculation failed for ${symbol}:`, e.message);
-      throw new Error(`RSI calculation failed: ${e.message}`);
-    }
-
-    // MACD
-    try {
-      if (closes.length >= MACD_SLOW) {
-        indicators.macd = MACD.calculate({
-          values: closes,
-          fastPeriod: MACD_FAST,
-          slowPeriod: MACD_SLOW,
-          signalPeriod: MACD_SIGNAL,
-          SimpleMAOscillator: false,
-          SimpleMASignal: false,
-        });
-        if (!indicators.macd || indicators.macd.length === 0) {
-          throw new Error("MACD calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for MACD: need ${MACD_SLOW}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(`MACD calculation failed for ${symbol}:`, e.message);
-      throw new Error(`MACD calculation failed: ${e.message}`);
-    }
-
-    // Bollinger Bands
-    try {
-      if (closes.length >= BB_PERIOD) {
-        indicators.bb = BollingerBands.calculate({
-          period: BB_PERIOD,
-          stdDev: BB_STD_DEV,
-          values: closes,
-        });
-        if (!indicators.bb || indicators.bb.length === 0) {
-          throw new Error("Bollinger Bands calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for BB: need ${BB_PERIOD}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(
-        `Bollinger Bands calculation failed for ${symbol}:`,
-        e.message
-      );
-      throw new Error(`BB calculation failed: ${e.message}`);
-    }
-
-    // EMA Fast
-    try {
-      if (closes.length >= EMA_FAST) {
-        indicators.emaFast = EMA.calculate({
-          period: EMA_FAST,
-          values: closes,
-        });
-        if (!indicators.emaFast || indicators.emaFast.length === 0) {
-          throw new Error("EMA Fast calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for EMA Fast: need ${EMA_FAST}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(`EMA Fast calculation failed for ${symbol}:`, e.message);
-      throw new Error(`EMA Fast calculation failed: ${e.message}`);
-    }
-
-    // EMA Slow
-    try {
-      if (closes.length >= EMA_SLOW) {
-        indicators.emaSlow = EMA.calculate({
-          period: EMA_SLOW,
-          values: closes,
-        });
-        if (!indicators.emaSlow || indicators.emaSlow.length === 0) {
-          throw new Error("EMA Slow calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for EMA Slow: need ${EMA_SLOW}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(`EMA Slow calculation failed for ${symbol}:`, e.message);
-      throw new Error(`EMA Slow calculation failed: ${e.message}`);
-    }
-
-    // EMA Trend Short
-    try {
-      if (closes.length >= EMA_TREND_SHORT) {
-        indicators.emaTrendShort = EMA.calculate({
-          period: EMA_TREND_SHORT,
-          values: closes,
-        });
-        if (
-          !indicators.emaTrendShort ||
-          indicators.emaTrendShort.length === 0
-        ) {
-          throw new Error("EMA Trend Short calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for EMA Trend Short: need ${EMA_TREND_SHORT}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(
-        `EMA Trend Short calculation failed for ${symbol}:`,
-        e.message
-      );
-      throw new Error(`EMA Trend Short calculation failed: ${e.message}`);
-    }
-
-    // EMA Trend Long
-    try {
-      if (closes.length >= EMA_TREND_LONG) {
-        indicators.emaTrendLong = EMA.calculate({
-          period: EMA_TREND_LONG,
-          values: closes,
-        });
-        if (!indicators.emaTrendLong || indicators.emaTrendLong.length === 0) {
-          throw new Error("EMA Trend Long calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for EMA Trend Long: need ${EMA_TREND_LONG}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(
-        `EMA Trend Long calculation failed for ${symbol}:`,
-        e.message
-      );
-      throw new Error(`EMA Trend Long calculation failed: ${e.message}`);
-    }
-
-    // ADX
-    try {
-      if (
-        closes.length >= ADX_PERIOD &&
-        highs.length >= ADX_PERIOD &&
-        lows.length >= ADX_PERIOD
-      ) {
-        indicators.adx = ADX.calculate({
-          close: closes,
-          high: highs,
-          low: lows,
-          period: ADX_PERIOD,
-        });
-        if (!indicators.adx || indicators.adx.length === 0) {
-          throw new Error("ADX calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for ADX: need ${ADX_PERIOD}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(`ADX calculation failed for ${symbol}:`, e.message);
-      throw new Error(`ADX calculation failed: ${e.message}`);
-    }
-
-    // VWMA
-    try {
-      if (closes.length >= VWMA_PERIOD && volumes.length >= VWMA_PERIOD) {
-        indicators.vwma = calculateVWMA(closes, volumes, VWMA_PERIOD);
-        if (!indicators.vwma || indicators.vwma.length === 0) {
-          throw new Error("VWMA calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for VWMA: need ${VWMA_PERIOD}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(`VWMA calculation failed for ${symbol}:`, e.message);
-      throw new Error(`VWMA calculation failed: ${e.message}`);
-    }
-
-    // Stochastic Oscillator
-    try {
-      if (
-        closes.length >= STOCHASTIC_PERIOD &&
-        highs.length >= STOCHASTIC_PERIOD &&
-        lows.length >= STOCHASTIC_PERIOD
-      ) {
-        indicators.stochastic = Stochastic.calculate({
-          high: highs,
-          low: lows,
-          close: closes,
-          period: STOCHASTIC_PERIOD,
-          signalPeriod: STOCHASTIC_D,
-        });
-        if (!indicators.stochastic || indicators.stochastic.length === 0) {
-          throw new Error("Stochastic calculation returned empty result");
-        }
-      } else {
-        throw new Error(
-          `Not enough data for Stochastic: need ${STOCHASTIC_PERIOD}, have ${closes.length}`
-        );
-      }
-    } catch (e) {
-      console.error(`Stochastic calculation failed for ${symbol}:`, e.message);
-      throw new Error(`Stochastic calculation failed: ${e.message}`);
-    }
-
-    indicators.latestClose = closes[closes.length - 1];
-
-    // Calculate volatility (ATR approximation)
-    const priceRange = highs.slice(-20).map((h, i) => h - lows[i]);
-    indicators.volatility =
-      priceRange.reduce((sum, val) => sum + val, 0) /
-      priceRange.length /
-      indicators.latestClose;
-
-    return indicators;
-  } catch (error) {
-    console.error(`Error calculating indicators for ${symbol}:`, error.message);
-    throw error;
-  }
-}
-
-function getMarketCondition(indicators) {
-  const latestRSI = indicators.rsi[indicators.rsi.length - 1];
-  const latestADX = indicators.adx[indicators.adx.length - 1]?.adx;
-  const volatility = indicators.volatility;
-
-  if (!latestRSI || !latestADX) return "unknown";
-  if (latestADX < ADX_THRESHOLD || volatility < VOLATILITY_THRESHOLD)
-    return "sideways";
-  return "trending";
-}
-
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = decideTradeDirection(indicators);
+  const decision = decideTradeDirection(symbol);
 
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
@@ -649,7 +305,7 @@ async function placeShortOrder(symbol, marginAmount) {
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 5.1; // Keep $5.1 reserve
+  const usableBalance = totalBalance - 3; // Keep $5.1 reserve
   console.log(`usableBalance usableBalance usableBalance`, usableBalance);
 
   const maxSpendPerTrade = usableBalance / symbols.length;
