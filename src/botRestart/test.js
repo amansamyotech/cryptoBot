@@ -163,13 +163,13 @@ async function decideTradeDirection(
     // const closesBelow =
     //   secondLastCandle.close < baseClose && lastCandle.close < baseClose;
 
-    if (angle >= 90 && angle <= 150) {
+    if (angle >= 90 && angle <= 140) {
       console.log(`angle LONG`, angle);
 
       return "LONG";
     }
 
-    if (angle >= 210 && angle <= 270) {
+    if (angle >= 220 && angle <= 270) {
       console.log(`angle SHORT`, angle);
       return "SHORT";
     }
