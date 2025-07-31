@@ -7,28 +7,36 @@ const { getUsdtBalance } = require("./helper/getBalance");
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
 const binance = new Binance().options({
-  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
-  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
+  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
   useServerTime: true,
   test: false,
 });
 
 const symbols = [
-  //   "1000PEPEUSDT",
+  "XRPUSDT",
   "ADAUSDT",
+  "BNBUSDT",
+  "DOGEUSDT",
+  "DOTUSDT",
   "SUIUSDT",
-  //   "ETCUSDT",
-  //   "LTCUSDT",
-  //   "ORDIUSDT",
+  "NEARUSDT",
+  "INJUSDT",
+  "ORDIUSDT",
+  "LTCUSDT",
+  "TRXUSDT",
+  "ETCUSDT",
+  "SOLUSDT",
+  "DAIUSDT",
+  "WIFUSDT",
+  "TONUSDT",
   "TAOUSDT",
   "LEVERUSDT",
-  //   "DOTUSDT",
-  // "XRPUSDT",
-  //   "INJUSDT",
-  //   "XRPUSDT",
-
-  "TRXUSDT",
-  //   "CKBUSDT",
+  "KSMUSDT",
+  "1000PEPEUSDT",
+  "1000BONKUSDT",
+  "CKBUSDT",
+  "1000FLOKIUSDT",
 ];
 
 const interval = "1m";
