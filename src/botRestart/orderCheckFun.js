@@ -18,21 +18,26 @@ async function checkOrders(symbol) {
 
     const { tradeDetails } = response.data?.data;
     // const { stopLossOrderId, objectId } = tradeDetails;
-    let stopLossOrderId = 45820364346;
+
+    let stopLossOrderId = 45820364346
 
     if (!stopLossOrderId) {
       console.log(`No stopLossOrderId found for ${symbol}`);
       return;
     }
 
-    const allOrders = await binance.futuresAllOrders(symbol);
-    const stopLossOrder = allOrders.find((o) => o.orderId == stopLossOrderId);
+    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
+  orderId: stopLossOrderId,
+});
+console.log(stopLossStatus);
 
-    if (stopLossOrder) {
-      console.log(`Stop Loss Order Status: ${stopLossOrder.status}`);
-    } else {
-      console.error(`Stop Loss Order not found in all orders list.`);
-    }
+// 3. Also check all open orders on symbol
+const openOrders = await binance.futuresOpenOrders(symbol);
+console.log(openOrders.find(o => o.orderId == stopLossOrderId));
+
+// 4. Check all orders (including closed) on symbol
+const allOrders = await binance.futuresAllOrders(symbol);
+console.log(allOrders.find(o => o.orderId == stopLossOrderId));
     // const stopLossStatus = await binance.futuresOrderStatus(symbol, {
     //   orderId: parseInt(stopLossOrderId),
     // });
