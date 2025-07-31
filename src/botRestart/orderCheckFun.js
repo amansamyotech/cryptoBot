@@ -25,8 +25,7 @@ async function checkOrders(symbol) {
     }
 
     const stopLossStatus = await binance.futuresOrderStatus(
-      symbol,
-      parseInt(stopLossOrderId)
+      symbol,{orderId: parseInt(stopLossOrderId)}
     );
     console.log(`stopLossStatus`, stopLossStatus?.status);
 
