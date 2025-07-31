@@ -17,8 +17,8 @@ async function checkOrders(symbol) {
     if (!found) return;
 
     const { tradeDetails } = response.data?.data;
-    const { stopLossOrderId, objectId } = tradeDetails;
-
+    // const { stopLossOrderId, objectId } = tradeDetails;
+let stopLossOrderId = "45819419550"
     if (!stopLossOrderId) {
       console.log(`No stopLossOrderId found for ${symbol}`);
       return;
@@ -46,5 +46,5 @@ async function checkOrders(symbol) {
     console.error("Error checking stop loss order status:", error);
   }
 }
-
+checkOrders("1000PEPEUSDT")
 module.exports = { checkOrders };
