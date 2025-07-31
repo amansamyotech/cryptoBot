@@ -15,9 +15,9 @@ const binance = new Binance().options({
 
 const symbols = [
   "1000PEPEUSDT",
-  "WIFUSDT",
-  "NEARUSDT",
-  "DOGEUSDT",
+  //   "WIFUSDT",
+  //   "NEARUSDT",
+  //   "DOGEUSDT",
   //   "SOLUSDT",
   //   "INJUSDT",
   //   "XRPUSDT",
@@ -283,6 +283,7 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(
       `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
+    console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
 
     const details = {
       stopLossPrice: stopLossPrice,
