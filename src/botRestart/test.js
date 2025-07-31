@@ -8,8 +8,8 @@ const binance = new Binance().options({
   test: false,
 });
 
-const TIMEFRAME_MAIN = "1m";
-const TIMEFRAME_TREND = "1m";
+const TIMEFRAME_MAIN = "5m";
+const TIMEFRAME_TREND = "5m";
 const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
@@ -156,18 +156,18 @@ async function decideTradeDirection(
     const lastCandle = pastCandles5m[pastCandles5m.length - 1];
 
     const angle = getCandleAngle(thirdLastCandle);
-    const baseClose = thirdLastCandle.close;
+    // const baseClose = thirdLastCandle.close;
 
-    const closesAbove =
-      secondLastCandle.close > baseClose && lastCandle.close > baseClose;
-    const closesBelow =
-      secondLastCandle.close < baseClose && lastCandle.close < baseClose;
+    // const closesAbove =
+    //   secondLastCandle.close > baseClose && lastCandle.close > baseClose;
+    // const closesBelow =
+    //   secondLastCandle.close < baseClose && lastCandle.close < baseClose;
 
-    if (angle >= 90 && angle <= 150 && closesAbove) {
+    if (angle >= 90 && angle <= 150 ) {
       return "LONG";
     }
 
-    if (angle >= 210 && angle <= 270 && closesBelow) {
+    if (angle >= 210 && angle <= 270) {
       return "SHORT";
     }
 
