@@ -19,7 +19,7 @@ async function checkOrders(symbol) {
 
     const { tradeDetails } = response.data?.data;
     // const { stopLossOrderId, objectId } = tradeDetails;
-let stopLossOrderId = 12151002876
+let stopLossOrderId = "12151002876"
     if (!stopLossOrderId) {
       console.log(`No stopLossOrderId found for ${symbol}`);
       return;
