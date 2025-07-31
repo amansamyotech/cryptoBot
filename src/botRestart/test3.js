@@ -34,7 +34,7 @@ const TAKER_FEE = 0.04 / 100;
 //   "KSMUSDT",
 //   "1000PEPEUSDT",
 //   "1000BONKUSDT",
-//   "  ",
+//   "CKBUSDT",
 //   "1000FLOKIUSDT",
 // ];
 
@@ -155,11 +155,11 @@ async function decideTradeDirection(
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
     const angle = getCandleAngle(secondLastCandle);
 
-    if (angle >= 90 && angle <= 150) {
+    if (angle >= 90 && angle <= 160) {
       return "LONG";
     }
 
-    if (angle >= 210 && angle <= 270) {
+    if (angle >= 220 && angle <= 270) {
       return "SHORT";
     }
 
