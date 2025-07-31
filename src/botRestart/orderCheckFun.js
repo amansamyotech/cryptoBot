@@ -36,7 +36,7 @@ async function checkOrders(symbol) {
       //   data: { status: "1" },
       // });
 
-      console.log(`Trade marked as closed in DB for ${symbol}`, data?.data);
+      // console.log(`Trade marked as closed in DB for ${symbol}`, data?.data);
     } else {
       console.log(
         `Stop loss order not filled yet for ${symbol}. No action taken.`
