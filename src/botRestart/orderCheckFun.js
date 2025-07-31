@@ -24,9 +24,7 @@ let stopLossOrderId = "45819419501"
       return;
     }
 
-    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: stopLossOrderId,
-    });
+    const stopLossStatus = await binance.futuresOrderStatus(symbol,stopLossOrderId    );
     console.log(`stopLossStatus`, stopLossStatus?.status);
 
     if (stopLossStatus?.status === "FILLED") {
