@@ -260,9 +260,7 @@ async function placeBuyOrder(symbol, marginAmount) {
 
     // Place market buy order
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
-    sendTelegram(
-      `🟢 LONG ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${LEVERAGE}x`
-    );
+
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
     const buyOrderDetails = {
@@ -329,7 +327,6 @@ async function placeBuyOrder(symbol, marginAmount) {
     });
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
-    sendTelegram(`❌ Error placing LONG order for ${symbol}: ${error.message}`);
   }
 }
 
@@ -374,9 +371,6 @@ async function placeShortOrder(symbol, marginAmount) {
 
     // Place market sell order
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
-    sendTelegram(
-      `🔴 SHORT ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${LEVERAGE}x`
-    );
     console.log(`Shorted ${symbol} at ${entryPrice}`);
 
     const shortOrderDetails = {
@@ -443,9 +437,6 @@ async function placeShortOrder(symbol, marginAmount) {
     });
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
-    sendTelegram(
-      `❌ Error placing SHORT order for ${symbol}: ${error.message}`
-    );
   }
 }
 
