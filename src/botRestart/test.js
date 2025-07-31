@@ -37,7 +37,7 @@ const symbols = [
   "CKBUSDT",
   "1000FLOKIUSDT",
 ];
-async function getCandles(symbol, interval, startTime, endTime, limit = 9) {
+async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   try {
     if (startTime && endTime) {
       const candles = [];
@@ -151,7 +151,7 @@ async function decideTradeDirection(
       return "HOLD";
     }
 
-    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 3];
+    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 2];
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
     const lastCandle = pastCandles5m[pastCandles5m.length - 1];
 
@@ -174,7 +174,6 @@ async function decideTradeDirection(
       return "SHORT";
     }
 
-    
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
