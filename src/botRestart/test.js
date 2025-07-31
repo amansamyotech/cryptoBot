@@ -8,8 +8,8 @@ const binance = new Binance().options({
   test: false,
 });
 
-const TIMEFRAME_MAIN = "5m";
-const TIMEFRAME_TREND = "5m";
+const TIMEFRAME_MAIN = "1m";
+const TIMEFRAME_TREND = "1m";
 const TAKER_FEE = 0.04 / 100;
 
 const symbols = [
@@ -151,7 +151,7 @@ async function decideTradeDirection(
       return "HOLD";
     }
 
-    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 2];
+    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 3];
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
     const lastCandle = pastCandles5m[pastCandles5m.length - 1];
 
