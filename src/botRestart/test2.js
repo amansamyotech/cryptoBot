@@ -105,25 +105,6 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   }
 }
 
-function getCandleAngle(candle, timeSpan = 300) {
-  // timeSpan in seconds for 5m candle
-  const delta = ((candle.close - candle.open) / candle.open) * 100000; // Scale for small-priced assets
-  const rawAngleRad = Math.atan(delta / timeSpan);
-  let angle = rawAngleRad * (180 / Math.PI);
-
-  // Map angle to 360° scale: upward (close > open) to 90°-150°, downward to 210°-270°
-  if (candle.close > candle.open) {
-    // Upward trend: map to 90°-150°
-    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60; // Scale to 90°-150°
-  } else if (candle.close < candle.open) {
-    // Downward trend: map to 210°-270°
-    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60; // Scale to 210°-270°
-  } else {
-    angle = 180; // Neutral case
-  }
-
-  return angle;
-}
 
 // Helper function to calculate EMA
 function calculateEMA(prices, period) {
@@ -137,6 +118,23 @@ function calculateEMA(prices, period) {
   }
 
   return emaArray;
+}
+
+
+function getCandleAngle(candle, timeSpan = 300) {
+  const delta = ((candle.close - candle.open) / candle.open) * 100000;
+  const rawAngleRad = Math.atan(delta / timeSpan);
+  let angle = rawAngleRad * (180 / Math.PI);
+
+  if (candle.close > candle.open) {
+    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
+  } else if (candle.close < candle.open) {
+    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
+  } else {
+    angle = 180;
+  }
+
+  return angle;
 }
 
 async function decideTradeDirection(
@@ -169,25 +167,25 @@ async function decideTradeDirection(
 
     let emaSignal = "HOLD";
 
-    // Detect EMA crossover
+    
     if (prevEma9 <= prevEma15 && lastEma9 > lastEma15) {
       emaSignal = "LONG"; // Bullish crossover
     } else if (prevEma9 >= prevEma15 && lastEma9 < lastEma15) {
       emaSignal = "SHORT"; // Bearish crossover
     }
 
-    // Combine angle and EMA signals
-    // let finalSignal = "HOLD";
+    
+    let finalSignal = "HOLD";
 
-    // if (angle >= 90 && angle <= 150 && emaSignal === "LONG") {
-    //   // console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
-    //   finalSignal = "LONG";
-    // } else if (angle >= 210 && angle <= 270 && emaSignal === "SHORT") {
-    //   // console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
-    //   finalSignal = "SHORT";
-    // } else {
-    //   // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
-    // }
+    if (angle >= 90 && angle <= 150 && emaSignal === "LONG") {
+      // console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+      finalSignal = "LONG";
+    } else if (angle >= 210 && angle <= 270 && emaSignal === "SHORT") {
+      // console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+      finalSignal = "SHORT";
+    } else {
+      // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+    }
 
     return emaSignal;
   } catch (err) {
