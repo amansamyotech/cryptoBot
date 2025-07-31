@@ -122,6 +122,7 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   }
 }
 
+
 // Helper function to calculate EMA
 function calculateEMA(prices, period) {
   const k = 2 / (period + 1); // Smoothing factor
@@ -135,6 +136,7 @@ function calculateEMA(prices, period) {
 
   return emaArray;
 }
+
 
 function getCandleAngle(candle, timeSpan = 300) {
   const delta = ((candle.close - candle.open) / candle.open) * 100000;
@@ -182,12 +184,14 @@ async function decideTradeDirection(
 
     let emaSignal = "HOLD";
 
-    if (lastEma9 > lastEma15) {
+    
+    if (prevEma9 <= prevEma15 && lastEma9 > lastEma15) {
       emaSignal = "LONG"; // Bullish crossover
-    } else if (lastEma9 < lastEma15) {
+    } else if (prevEma9 >= prevEma15 && lastEma9 < lastEma15) {
       emaSignal = "SHORT"; // Bearish crossover
     }
 
+    
     let finalSignal = "HOLD";
 
     if (angle >= 90 && angle <= 150 && emaSignal === "LONG") {
@@ -392,12 +396,13 @@ async function backtest(symbols, startDate, endDate) {
     const totalTrades = results.wins + results.losses;
     const avgROI =
       totalTrades > 0 ? (results.profit / totalTrades).toFixed(2) : 0;
-
+ 
     console.log(`\nDetailed Trades:`);
 
     console.log("=".repeat(80));
   }
 }
+
 
 const startDate = "2025-05-01T00:00:00Z";
 const endDate = "2025-05-30T23:59:59Z";
