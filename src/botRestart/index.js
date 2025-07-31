@@ -254,10 +254,7 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
     console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
-    console.log(
-      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
-    );
-
+    
     // Place market buy order
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
 
@@ -311,10 +308,7 @@ async function placeBuyOrder(symbol, marginAmount) {
         timeInForce: "GTC",
       }
     );
-    console.log(
-      `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
-    );
-
+    
     const details = {
       takeProfitPrice: takeProfitFixed,
       profitOrderId: takeProfitOrder.orderId,
@@ -365,10 +359,7 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
     console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
-    console.log(
-      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
-    );
-
+    
     // Place market sell order
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
@@ -421,10 +412,7 @@ async function placeShortOrder(symbol, marginAmount) {
         timeInForce: "GTC",
       }
     );
-    console.log(
-      `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
-    );
-
+    
     const details = {
       takeProfitPrice: takeProfitFixed,
       profitOrderId: takeProfitOrder.orderId,
