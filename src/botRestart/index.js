@@ -88,7 +88,8 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
             2
           )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
         );
-        await binance.futuresCancel(symbol, { stopLossOrderId });
+        let orderId = stopLossOrderId;
+        await binance.futuresCancel(symbol, orderId);
         const stopLossOrder = await binance.futuresOrder(
           "STOP_MARKET",
           "SELL",
@@ -169,7 +170,8 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
             2
           )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
         );
-        await binance.futuresCancel(symbol, { stopLossOrderId });
+        let orderId = stopLossOrderId;
+        await binance.futuresCancel(symbol, orderId);
 
         const stopLossOrder = await binance.futuresOrder(
           "STOP_MARKET",
