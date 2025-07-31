@@ -123,7 +123,7 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
 }
 
 function getCandleAngle(candle, timeSpan = 300) {
-  const delta = ((candle.close - candle.open) / candle.open) ;
+  const delta = ((candle.close - candle.open) / candle.open) * 100000;
   const rawAngleRad = Math.atan(delta / timeSpan);
   let angle = rawAngleRad * (180 / Math.PI);
 
@@ -151,7 +151,7 @@ async function decideTradeDirection(
       return "HOLD";
     }
 
-    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 3];
+    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 5];
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
     const lastCandle = pastCandles5m[pastCandles5m.length - 1];
 
