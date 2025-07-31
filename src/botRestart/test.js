@@ -134,7 +134,8 @@ function getCandleAngle(candle, timeSpan = 300) {
   } else {
     angle = 180;
   }
-
+  console.log(`angle`,angle);
+  
   return angle;
 }
 
