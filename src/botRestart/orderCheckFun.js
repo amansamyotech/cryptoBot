@@ -17,42 +17,17 @@ async function checkOrders(symbol) {
     if (!found) return;
 
     const { tradeDetails } = response.data?.data;
-    // const { stopLossOrderId, objectId } = tradeDetails;
-
-    let stopLossOrderId = 45820364346
+    const { stopLossOrderId, objectId } = tradeDetails;
 
     if (!stopLossOrderId) {
       console.log(`No stopLossOrderId found for ${symbol}`);
       return;
     }
 
-//     const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-//   orderId: stopLossOrderId,
-// });
-// console.log(stopLossStatus);
-
-// 3. Also check all open orders on symbol
-// const openOrders = await binance.futuresOpenOrders(symbol);
-// console.log(`openOrders`,openOrders);
-
-// console.log(openOrders.find(o => o.orderId == stopLossOrderId));
-
-
-// 4. Check all orders (including closed) on symbol
-const allOrders = await binance.futuresAllOrders(symbol);
-console.log(`Total Orders: ${allOrders.length}`);
-
-// Get last 5 orders (most recent)
-const lastFiveOrders = allOrders.slice(-5);
-console.log('Last 5 Orders:', lastFiveOrders);
-
-// Find stopLossOrderId in last 5 orders if you want
-const foundOrder = lastFiveOrders.find(o => o.orderId == stopLossOrderId);
-console.log('Found Order in last 5:', foundOrder);
-    // const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-    //   orderId: parseInt(stopLossOrderId),
-    // });
-    // console.log(`stopLossStatus`, stopLossStatus?.status);
+    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
+      orderId: parseInt(stopLossOrderId),
+    });
+    console.log(`stopLossStatus`, stopLossStatus?.status);
 
     if (stopLossStatus?.status === "FILLED") {
       console.log(`Stop loss order filled for ${symbol}`);
@@ -71,5 +46,5 @@ console.log('Found Order in last 5:', foundOrder);
     console.error("Error checking stop loss order status:", error);
   }
 }
-checkOrders("1000PEPEUSDT")
+
 module.exports = { checkOrders };

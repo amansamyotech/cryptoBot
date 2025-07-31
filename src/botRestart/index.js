@@ -3,6 +3,7 @@ const axios = require("axios");
 const { decideTradeDirection } = require("./decideTradeFuntion");
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
+const { setLeverage } = require("./helper/setLavrge");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
@@ -220,11 +221,11 @@ async function trailStopLoss(symbol) {
 
 async function placeBuyOrder(symbol, marginAmount) {
   try {
-    await binance.futuresLeverage(symbol, LEVERAGE);
-    console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
+    await setLeverage(symbol);
 
     const price = (await binance.futuresPrices())[symbol];
     const entryPrice = parseFloat(price);
+
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
@@ -232,23 +233,35 @@ async function placeBuyOrder(symbol, marginAmount) {
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
+
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    const stopLossPrice = parseFloat(
-      (entryPrice * (1 + STOP_LOSS_ROI / 100)).toFixed(pricePrecision)
+    // Calculate ROI-based stop loss and take profit prices
+    const { stopLossPrice, takeProfitPrice } = calculateROIPrices(
+      entryPrice,
+      marginAmount,
+      quantity,
+      "LONG"
     );
-    const takeProfitPrice = parseFloat(
-      (entryPrice * (1 + TRAILING_START_ROI / 100)).toFixed(pricePrecision)
-    );
+
+    const stopLossFixed = stopLossPrice.toFixed(pricePrecision);
+    const takeProfitFixed = takeProfitPrice.toFixed(pricePrecision);
 
     console.log(`LONG Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    console.log(`Stop Loss Price: ${stopLossPrice} (${STOP_LOSS_ROI}% ROI)`);
+    console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
+    console.log(
+      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
+    );
 
+    // Place market buy order
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
+    sendTelegram(
+      `🟢 LONG ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${LEVERAGE}x`
+    );
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
     const buyOrderDetails = {
@@ -262,15 +275,14 @@ async function placeBuyOrder(symbol, marginAmount) {
       positionValue: positionValue,
     };
 
-    console.log(`buyOrderDetails`,buyOrderDetails);
-    
-
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: buyOrderDetails,
     });
     console.log(`Trade Response:`, tradeResponse?.data);
 
     const tradeId = tradeResponse.data._id;
+
+    // Place stop loss order
     const stopLossOrder = await binance.futuresOrder(
       "STOP_MARKET",
       "SELL",
@@ -278,36 +290,56 @@ async function placeBuyOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: stopLossPrice,
+        stopPrice: stopLossFixed,
         reduceOnly: true,
         timeInForce: "GTC",
       }
     );
     console.log(
-      `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
+      `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
-    console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
+
+    // Place take profit order
+    const takeProfitOrder = await binance.futuresOrder(
+      "TAKE_PROFIT_MARKET",
+      "SELL",
+      symbol,
+      qtyFixed,
+      null,
+      {
+        stopPrice: takeProfitFixed,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+    console.log(
+      `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
+    );
 
     const details = {
-      stopLossPrice: stopLossPrice,
+      takeProfitPrice: takeProfitFixed,
+      profitOrderId: takeProfitOrder.orderId,
+      stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
-console.log(`details`,details);
+
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
       data: details,
     });
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
+    sendTelegram(`❌ Error placing LONG order for ${symbol}: ${error.message}`);
   }
 }
 
 async function placeShortOrder(symbol, marginAmount) {
   try {
-    await binance.futuresLeverage(symbol, LEVERAGE);
-    console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
+    await setLeverage(symbol);
 
     const price = (await binance.futuresPrices())[symbol];
     const entryPrice = parseFloat(price);
+
+    // Calculate position size with leverage
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
@@ -315,22 +347,35 @@ async function placeShortOrder(symbol, marginAmount) {
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
+
     const qtyFixed = quantity.toFixed(quantityPrecision);
-    const stopLossPrice = parseFloat(
-      (entryPrice * (1 - STOP_LOSS_ROI / 100)).toFixed(pricePrecision)
+
+    // Calculate ROI-based stop loss and take profit prices
+    const { stopLossPrice, takeProfitPrice } = calculateROIPrices(
+      entryPrice,
+      marginAmount,
+      quantity,
+      "SHORT"
     );
-    const takeProfitPrice = parseFloat(
-      (entryPrice * (1 - TRAILING_START_ROI / 100)).toFixed(pricePrecision)
-    );
+
+    const stopLossFixed = stopLossPrice.toFixed(pricePrecision);
+    const takeProfitFixed = takeProfitPrice.toFixed(pricePrecision);
 
     console.log(`SHORT Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    console.log(`Stop Loss Price: ${stopLossPrice} (${STOP_LOSS_ROI}% ROI)`);
+    console.log(`Stop Loss Price: ${stopLossFixed} (${STOP_LOSS_ROI}% ROI)`);
+    console.log(
+      `Take Profit Price: ${takeProfitFixed} (${TAKE_PROFIT_ROI}% ROI)`
+    );
 
+    // Place market sell order
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
+    sendTelegram(
+      `🔴 SHORT ${symbol} at ${entryPrice} | Qty: ${qtyFixed} | Leverage: ${LEVERAGE}x`
+    );
     console.log(`Shorted ${symbol} at ${entryPrice}`);
 
     const shortOrderDetails = {
@@ -344,8 +389,6 @@ async function placeShortOrder(symbol, marginAmount) {
       positionValue: positionValue,
     };
 
-    console.log(`shortOrderDetails`,shortOrderDetails);
-    
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: shortOrderDetails,
     });
@@ -353,6 +396,7 @@ async function placeShortOrder(symbol, marginAmount) {
 
     const tradeId = tradeResponse.data._id;
 
+    // Place stop loss order
     const stopLossOrder = await binance.futuresOrder(
       "STOP_MARKET",
       "BUY",
@@ -360,27 +404,47 @@ async function placeShortOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: stopLossPrice,
+        stopPrice: stopLossFixed,
         reduceOnly: true,
         timeInForce: "GTC",
       }
     );
     console.log(
-      `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
+      `Stop Loss set at ${stopLossFixed} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
+    );
+
+    // Place take profit order
+    const takeProfitOrder = await binance.futuresOrder(
+      "TAKE_PROFIT_MARKET",
+      "BUY",
+      symbol,
+      qtyFixed,
+      null,
+      {
+        stopPrice: takeProfitFixed,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+    console.log(
+      `Take Profit set at ${takeProfitFixed} for ${symbol} (${TAKE_PROFIT_ROI}% ROI)`
     );
 
     const details = {
-      stopLossPrice: stopLossPrice,
+      takeProfitPrice: takeProfitFixed,
+      profitOrderId: takeProfitOrder.orderId,
+      stopLossPrice: stopLossFixed,
       stopLossOrderId: stopLossOrder.orderId,
     };
 
-    console.log(`details`,details);
-    
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
       data: details,
     });
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
+    sendTelegram(
+      `❌ Error placing SHORT order for ${symbol}: ${error.message}`
+    );
   }
 }
 
