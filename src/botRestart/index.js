@@ -15,10 +15,10 @@ const binance = new Binance().options({
 
 const symbols = [
   "1000PEPEUSDT",
-  //   "WIFUSDT",
-  //   "NEARUSDT",
-  //   "DOGEUSDT",
-  //   "SOLUSDT",
+  "WIFUSDT",
+  "NEARUSDT",
+  "DOGEUSDT",
+  "SOLUSDT",
   //   "INJUSDT",
   //   "XRPUSDT",
   //   "SUIUSDT",
@@ -251,11 +251,6 @@ async function placeBuyOrder(symbol, marginAmount) {
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
-    const buyOrderdata = await binance.futuresOrderStatus(symbol, {
-      orderId: parseInt(buyOrder.orderId),
-    });
-    console.log(`buyOrder`, buyOrderdata?.status);
-
     const buyOrderDetails = {
       side: "LONG",
       symbol,
@@ -291,12 +286,6 @@ async function placeBuyOrder(symbol, marginAmount) {
       `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
     console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
-
-    const datatagaga = await binance.futuresOrderStatus(symbol, {
-      orderId: parseInt(stopLossOrder.orderId),
-    });
-    console.log(`buyOrder`, datatagaga?.status);
-
 
     const details = {
       stopLossPrice: stopLossPrice,
@@ -342,10 +331,6 @@ async function placeShortOrder(symbol, marginAmount) {
 
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
-    const shortOrderdeta = await binance.futuresOrderStatus(symbol, {
-      orderId: parseInt(shortOrder.orderId),
-    });
-    console.log(`stopLossStatus`, shortOrderdeta?.status);
 
     const shortOrderDetails = {
       side: "SHORT",
@@ -387,11 +372,6 @@ async function placeShortOrder(symbol, marginAmount) {
       stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
     };
-
-    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: parseInt(stopLossOrder.orderId),
-    });
-    console.log(`stopLossStatus`, stopLossStatus?.status);
 
     console.log(`details`, details);
 
