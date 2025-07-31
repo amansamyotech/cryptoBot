@@ -40,8 +40,15 @@ async function checkOrders(symbol) {
 
 // 4. Check all orders (including closed) on symbol
 const allOrders = await binance.futuresAllOrders(symbol);
-console.log(`allOrders `,allOrders );
-console.log(allOrders.find(o => o.orderId == stopLossOrderId));
+console.log(`Total Orders: ${allOrders.length}`);
+
+// Get last 5 orders (most recent)
+const lastFiveOrders = allOrders.slice(-5);
+console.log('Last 5 Orders:', lastFiveOrders);
+
+// Find stopLossOrderId in last 5 orders if you want
+const foundOrder = lastFiveOrders.find(o => o.orderId == stopLossOrderId);
+console.log('Found Order in last 5:', foundOrder);
     // const stopLossStatus = await binance.futuresOrderStatus(symbol, {
     //   orderId: parseInt(stopLossOrderId),
     // });
