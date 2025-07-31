@@ -337,7 +337,7 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 60 * 1000); // Run every 1 minute
+}, 60 * 450); // Run every 1 minute
 
 async function checkOrders(symbol) {
   try {
@@ -435,4 +435,4 @@ setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 30000);
+}, 10000);
