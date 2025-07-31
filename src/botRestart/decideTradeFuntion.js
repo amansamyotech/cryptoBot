@@ -11,7 +11,7 @@ const binance = new Binance().options({
 const TIMEFRAME_MAIN = "5m";
 const TIMEFRAME_TREND = "15m";
 
-async function getCandles(symbol, interval, limit = 1000) {
+async function getCandles(symbol, interval, limit = 9) {
   try {
     const res = await axios.get(
       `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
@@ -59,29 +59,21 @@ function getCandleAngle(candle, timeSpan = 300) {
 
 async function decideTradeDirection(symbol) {
   try {
-    const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 100);
+    const candles5m = await getCandles(symbol, TIMEFRAME_MAIN, 9);
+    const candles15m = await getCandles(symbol, TIMEFRAME_TREND, 15);
 
-    if (pastCandles5m.length < 3) {
+    if (candles5m.length < 2) {
       return "HOLD";
     }
 
-    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 3];
-    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
-    const lastCandle = pastCandles5m[pastCandles5m.length - 1];
+    const secondLastCandle = candles5m[candles5m.length - 2];
+    const angle = getCandleAngle(secondLastCandle);
 
-    const angle = getCandleAngle(thirdLastCandle);
-    const baseClose = thirdLastCandle.close;
-
-    const closesAbove =
-      secondLastCandle.close > baseClose && lastCandle.close > baseClose;
-    const closesBelow =
-      secondLastCandle.close < baseClose && lastCandle.close < baseClose;
-
-    if (angle >= 90 && angle <= 150 && closesAbove) {
+    if (angle >= 90 && angle <= 150) {
       return "LONG";
     }
 
-    if (angle >= 210 && angle <= 270 && closesBelow) {
+    if (angle >= 210 && angle <= 270) {
       return "SHORT";
     }
 
