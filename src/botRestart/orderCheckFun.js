@@ -14,29 +14,29 @@ async function checkOrders(symbol) {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
     console.log(`response.data?.data`, response.data?.data);
     const { found } = response.data?.data;
-    // if (!found) return;
+    if (!found) return;
 
     const { tradeDetails } = response.data?.data;
-    // const { stopLossOrderId, objectId } = tradeDetails;
-    let stopLossOrderId = "11970986237";
+    const { stopLossOrderId, objectId } = tradeDetails;
+
     if (!stopLossOrderId) {
       console.log(`No stopLossOrderId found for ${symbol}`);
       return;
     }
 
-    const stopLossStatus = await binance.futuresOrderStatus(
-      symbol,{orderId: parseInt(stopLossOrderId)}
-    );
+    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
+      orderId: parseInt(stopLossOrderId),
+    });
     console.log(`stopLossStatus`, stopLossStatus?.status);
 
     if (stopLossStatus?.status === "FILLED") {
       console.log(`Stop loss order filled for ${symbol}`);
 
-      // const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
-      //   data: { status: "1" },
-      // });
+      const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
+        data: { status: "1" },
+      });
 
-      // console.log(`Trade marked as closed in DB for ${symbol}`, data?.data);
+      console.log(`Trade marked as closed in DB for ${symbol}`, data?.data);
     } else {
       console.log(
         `Stop loss order not filled yet for ${symbol}. No action taken.`
@@ -46,5 +46,5 @@ async function checkOrders(symbol) {
     console.error("Error checking stop loss order status:", error);
   }
 }
-checkOrders("1000BONKUSDT");
+
 module.exports = { checkOrders };

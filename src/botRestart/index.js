@@ -262,6 +262,9 @@ async function placeBuyOrder(symbol, marginAmount) {
       positionValue: positionValue,
     };
 
+    console.log(`buyOrderDetails`,buyOrderDetails);
+    
+
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: buyOrderDetails,
     });
@@ -289,7 +292,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
     };
-
+console.log(`details`,details);
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
       data: details,
     });
@@ -341,6 +344,8 @@ async function placeShortOrder(symbol, marginAmount) {
       positionValue: positionValue,
     };
 
+    console.log(`shortOrderDetails`,shortOrderDetails);
+    
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: shortOrderDetails,
     });
@@ -369,6 +374,8 @@ async function placeShortOrder(symbol, marginAmount) {
       stopLossOrderId: stopLossOrder.orderId,
     };
 
+    console.log(`details`,details);
+    
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
       data: details,
     });
