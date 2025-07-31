@@ -37,7 +37,7 @@ const symbols = [
   "CKBUSDT",
   "1000FLOKIUSDT",
 ];
-async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
+async function getCandles(symbol, interval, startTime, endTime, limit = 9) {
   try {
     if (startTime && endTime) {
       const candles = [];
