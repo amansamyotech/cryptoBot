@@ -123,7 +123,7 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
 }
 
 function getCandleAngle(candle, timeSpan = 300) {
-  const delta = ((candle.close - candle.open) / candle.open) * 100000;
+  const delta = ((candle.close - candle.open) / candle.open) ;
   const rawAngleRad = Math.atan(delta / timeSpan);
   let angle = rawAngleRad * (180 / Math.PI);
 
