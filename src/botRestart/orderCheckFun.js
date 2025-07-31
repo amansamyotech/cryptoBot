@@ -48,5 +48,5 @@ async function checkOrders(symbol) {
     console.error("Error checking stop loss order status:", error);
   }
 }
-
+checkOrders()
 module.exports = { checkOrders };
