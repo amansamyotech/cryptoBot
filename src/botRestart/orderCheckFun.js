@@ -14,7 +14,7 @@ async function checkOrders(symbol) {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
     console.log(`response.data?.data`, response.data?.data);
     const { found } = response.data?.data;
-    if (!found) return;
+    // if (!found) return;
 
     const { tradeDetails } = response.data?.data;
     // const { stopLossOrderId, objectId } = tradeDetails;
