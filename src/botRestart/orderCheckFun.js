@@ -20,6 +20,8 @@ async function checkOrders(symbol) {
     const { stopLossOrderId, objectId } = tradeDetails;
 
     if (!stopLossOrderId) {
+      console.log(`stopLossOrderId`, stopLossOrderId);
+
       console.log(`No stopLossOrderId found for ${symbol}`);
       return;
     }
@@ -27,11 +29,9 @@ async function checkOrders(symbol) {
     const stopLossStatus = await binance.futuresOrderStatus(symbol, {
       orderId: stopLossOrderId,
     });
+    console.log(`stopLossStatus`, stopLossStatus?.status);
 
-    const stopLossOrderStatus = stopLossStatus?.status;
-    console.log(`Stop Loss Status for ${symbol}:`, stopLossOrderStatus);
-
-    if (stopLossOrderStatus === "FILLED") {
+    if (stopLossStatus?.status === "FILLED") {
       console.log(`Stop loss order filled for ${symbol}`);
 
       const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
