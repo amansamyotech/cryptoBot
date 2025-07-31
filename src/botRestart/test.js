@@ -182,6 +182,10 @@ async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
   const endTime = new Date(endDate).getTime();
 
+  
+  const LEVERAGE = 3;
+  const MARGIN_AMOUNT = 100;
+
   for (const symbol of symbols) {
     console.log(`\n📊 Backtesting ${symbol}...`);
 
@@ -227,10 +231,17 @@ async function backtest(symbols, startDate, endDate) {
       const currentCandle = candles5m[i];
 
       if ((signal === "LONG" || signal === "SHORT") && !position) {
+        const entryPrice = currentCandle.close;
+        const positionValue = MARGIN_AMOUNT * LEVERAGE;
+        const quantity = positionValue / entryPrice;
+
         position = {
           type: signal,
-          entryPrice: currentCandle.close,
+          entryPrice: entryPrice,
           entryTime: currentCandle.openTime,
+          marginUsed: MARGIN_AMOUNT,
+          quantity: quantity,
+          leverage: LEVERAGE,
         };
       } else if (position) {
         const nextCandle = candles5m[i + 1];
@@ -238,38 +249,46 @@ async function backtest(symbols, startDate, endDate) {
         let exitTrade = false;
         let reason = "";
 
+        // Calculate PnL and ROI based on Binance method
+        let pnl, roi;
+
         if (position.type === "LONG") {
-          const profitPercent =
-            ((currentPrice - position.entryPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 2) {
+          pnl = (currentPrice - position.entryPrice) * position.quantity;
+          roi = (pnl / position.marginUsed) * 100;
+
+          if (roi >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (profitPercent <= -1) {
+          } else if (roi <= -1.5) {
+            // Using -1.5% as stop loss like your main bot
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
           }
         } else if (position.type === "SHORT") {
-          const profitPercent =
-            ((position.entryPrice - currentPrice) / position.entryPrice) * 100;
-          if (profitPercent >= 2) {
+          pnl = (position.entryPrice - currentPrice) * position.quantity;
+          roi = (pnl / position.marginUsed) * 100;
+
+          if (roi >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (profitPercent <= -1) {
+          } else if (roi <= -1.5) {
+            // Using -1.5% as stop loss like your main bot
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
           }
         }
 
         if (exitTrade) {
-          const profit =
-            position.type === "LONG"
-              ? (currentPrice - position.entryPrice) / position.entryPrice
-              : (position.entryPrice - currentPrice) / position.entryPrice;
+          // Calculate net profit after fees
+          const feeAmount =
+            position.quantity * position.entryPrice * TAKER_FEE +
+            position.quantity * currentPrice * TAKER_FEE;
+          const netPnL = pnl - feeAmount;
+          const netROI = (netPnL / position.marginUsed) * 100;
 
-          const netProfit = profit - 2 * TAKER_FEE;
-          results.profit += netProfit * 100;
+          results.profit += netROI;
 
-          if (netProfit > 0) results.wins++;
+          if (netROI > 0) results.wins++;
           else results.losses++;
 
           results.trades.push({
@@ -277,7 +296,11 @@ async function backtest(symbols, startDate, endDate) {
             signal: position.type,
             entryPrice: position.entryPrice,
             exitPrice: currentPrice,
-            profit: (netProfit * 100).toFixed(2),
+            marginUsed: position.marginUsed,
+            quantity: position.quantity.toFixed(6),
+            pnl: pnl.toFixed(4),
+            roi: roi.toFixed(2),
+            netROI: netROI.toFixed(2),
             reason,
           });
 
@@ -286,16 +309,26 @@ async function backtest(symbols, startDate, endDate) {
       }
     }
 
+    // Handle open position at end of backtest
     if (position && candles5m.length > 50) {
       const exitPrice = candles5m[candles5m.length - 1].close;
-      const profit =
-        position.type === "LONG"
-          ? (exitPrice - position.entryPrice) / position.entryPrice
-          : (position.entryPrice - exitPrice) / position.entryPrice;
-      const netProfit = profit - 2 * TAKER_FEE;
 
-      results.profit += netProfit * 100;
-      if (netProfit > 0) results.wins++;
+      let pnl;
+      if (position.type === "LONG") {
+        pnl = (exitPrice - position.entryPrice) * position.quantity;
+      } else {
+        pnl = (position.entryPrice - exitPrice) * position.quantity;
+      }
+
+      const roi = (pnl / position.marginUsed) * 100;
+      const feeAmount =
+        position.quantity * position.entryPrice * TAKER_FEE +
+        position.quantity * exitPrice * TAKER_FEE;
+      const netPnL = pnl - feeAmount;
+      const netROI = (netPnL / position.marginUsed) * 100;
+
+      results.profit += netROI;
+      if (netROI > 0) results.wins++;
       else results.losses++;
 
       results.trades.push({
@@ -303,7 +336,12 @@ async function backtest(symbols, startDate, endDate) {
         signal: position.type,
         entryPrice: position.entryPrice,
         exitPrice,
-        profit: (netProfit * 100).toFixed(2),
+        marginUsed: position.marginUsed,
+        quantity: position.quantity.toFixed(6),
+        pnl: pnl.toFixed(4),
+        roi: roi.toFixed(2),
+        netROI: netROI.toFixed(2),
+        reason: "📊 Backtest End",
       });
     }
 
@@ -314,24 +352,33 @@ async function backtest(symbols, startDate, endDate) {
     console.log(
       `📊 Total Signals: ${results.LONG + results.SHORT + results.HOLD}`
     );
-    console.log(`💰 Total Profit: ${results.profit.toFixed(2)}%`);
+    console.log(`💰 Total ROI: ${results.profit.toFixed(2)}%`);
     console.log(`✅ Wins: ${results.wins} | ❌ Losses: ${results.losses}`);
     console.log(
       `🏆 Win Rate: ${(
         (results.wins / (results.wins + results.losses) || 0) * 100
       ).toFixed(2)}%`
     );
+
+    // Calculate average ROI per trade
+    const totalTrades = results.wins + results.losses;
+    const avgROI =
+      totalTrades > 0 ? (results.profit / totalTrades).toFixed(2) : 0;
+    console.log(`📊 Average ROI per Trade: ${avgROI}%`);
+    console.log(`💵 Margin per Trade: ${MARGIN_AMOUNT} USDT`);
+    console.log(`⚖️ Leverage: ${LEVERAGE}x`);
+
     console.log(`\nDetailed Trades:`);
-    results.trades.forEach((trade) => {
-      //   console.log(
-      //     `${trade.timestamp} | Signal: ${
-      //       trade.signal
-      //     } | Entry: ${trade.entryPrice.toFixed(
-      //       6
-      //     )} | Exit: ${trade.exitPrice.toFixed(6)} | Profit: ${trade.profit}%`
-      //   );
+    results.trades.forEach((trade, index) => {
+      console.log(
+        `${index + 1}. ${trade.timestamp} | ${trade.signal} | ` +
+          `Entry: $${trade.entryPrice.toFixed(
+            6
+          )} | Exit: $${trade.exitPrice.toFixed(6)} | ` +
+          `ROI: ${trade.roi}% | Net ROI: ${trade.netROI}% | ${trade.reason}`
+      );
     });
-    console.log("=".repeat(60));
+    console.log("=".repeat(80));
   }
 }
 
