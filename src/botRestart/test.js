@@ -147,12 +147,21 @@ async function decideTradeDirection(
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
 
-    if (pastCandles5m.length < 2) {
+    if (pastCandles5m.length < 3) {
       return "HOLD";
     }
 
-    const secondLastCandle = pastCandles5m[candles5m.length - 2];
-    const angle = getCandleAngle(secondLastCandle);
+    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 2];
+    // const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
+    // const lastCandle = pastCandles5m[pastCandles5m.length - 1];
+
+    const angle = getCandleAngle(thirdLastCandle);
+    // const baseClose = thirdLastCandle.close;
+
+    // const closesAbove =
+    //   secondLastCandle.close > baseClose && lastCandle.close > baseClose;
+    // const closesBelow =
+    //   secondLastCandle.close < baseClose && lastCandle.close < baseClose;
 
     if (angle >= 90 && angle <= 150) {
       return "LONG";
