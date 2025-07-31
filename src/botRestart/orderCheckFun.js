@@ -26,10 +26,10 @@ async function checkOrders(symbol) {
       return;
     }
 
-    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-  orderId: stopLossOrderId,
-});
-console.log(stopLossStatus);
+//     const stopLossStatus = await binance.futuresOrderStatus(symbol, {
+//   orderId: stopLossOrderId,
+// });
+// console.log(stopLossStatus);
 
 // 3. Also check all open orders on symbol
 const openOrders = await binance.futuresOpenOrders(symbol);
