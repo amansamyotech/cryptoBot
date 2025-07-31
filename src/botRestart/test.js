@@ -369,15 +369,7 @@ async function backtest(symbols, startDate, endDate) {
     console.log(`⚖️ Leverage: ${LEVERAGE}x`);
 
     console.log(`\nDetailed Trades:`);
-    results.trades.forEach((trade, index) => {
-      console.log(
-        `${index + 1}. ${trade.timestamp} | ${trade.signal} | ` +
-          `Entry: $${trade.entryPrice.toFixed(
-            6
-          )} | Exit: $${trade.exitPrice.toFixed(6)} | ` +
-          `ROI: ${trade.roi}% | Net ROI: ${trade.netROI}% | ${trade.reason}`
-      );
-    });
+    
     console.log("=".repeat(80));
   }
 }
