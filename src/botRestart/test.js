@@ -174,7 +174,7 @@ async function decideTradeDirection(
       return "SHORT";
     }
 
-    console.log(`angle HOLD`, angle);
+    
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
