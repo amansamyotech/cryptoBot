@@ -134,8 +134,7 @@ function getCandleAngle(candle, timeSpan = 300) {
   } else {
     angle = 180;
   }
-  console.log(`angle`,angle);
-  
+
   return angle;
 }
 
@@ -164,14 +163,18 @@ async function decideTradeDirection(
     // const closesBelow =
     //   secondLastCandle.close < baseClose && lastCandle.close < baseClose;
 
-    if (angle >= 90 && angle <= 150 ) {
+    if (angle >= 90 && angle <= 150) {
+      console.log(`angle LONG`, angle);
+
       return "LONG";
     }
 
     if (angle >= 210 && angle <= 270) {
+      console.log(`angle SHORT`, angle);
       return "SHORT";
     }
 
+    console.log(`angle HOLD`, angle);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
@@ -183,7 +186,6 @@ async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
   const endTime = new Date(endDate).getTime();
 
-  
   const LEVERAGE = 3;
   const MARGIN_AMOUNT = 100;
 
@@ -370,7 +372,7 @@ async function backtest(symbols, startDate, endDate) {
     console.log(`⚖️ Leverage: ${LEVERAGE}x`);
 
     console.log(`\nDetailed Trades:`);
-    
+
     console.log("=".repeat(80));
   }
 }
