@@ -40,7 +40,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       quantity,
       stopLossPrice: oldStopLoss,
       marginUsed,
-      leverage
+      leverage,
     } = tradeDetails;
 
     const entryPrice = parseFloat(longTimePrice);
@@ -64,7 +64,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       const targetROI = TRAILING_START_ROI + roiStepsAboveTrailing * 0.5;
       const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
-        (entryPrice + (targetPnL / qty)).toFixed(pricePrecision)
+        (entryPrice + targetPnL / qty).toFixed(pricePrecision)
       );
 
       if (newStop > oldStop) {
@@ -120,8 +120,8 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       ShortTimeCurrentPrice: { $numberDecimal: shortTimeCurrentPrice },
       quantity,
       stopLossPrice: oldStopLoss,
-      marginUsed, 
-      leverage
+      marginUsed,
+      leverage,
     } = tradeDetails;
 
     const entryPrice = parseFloat(shortTimeCurrentPrice);
@@ -142,11 +142,11 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       const roiStepsAboveTrailing = Math.floor(
         (roi - TRAILING_START_ROI) / 0.5
       );
-      
+
       const targetROI = TRAILING_START_ROI + roiStepsAboveTrailing * 0.5;
       const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
-        (entryPrice - (targetPnL / qty)).toFixed(pricePrecision)
+        (entryPrice - targetPnL / qty).toFixed(pricePrecision)
       );
 
       if (newStop < oldStop) {
@@ -245,7 +245,7 @@ async function placeBuyOrder(symbol, marginAmount) {
 
     const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
     const stopLossPrice = parseFloat(
-      (entryPrice + (stopLossPnL / quantity)).toFixed(pricePrecision)
+      (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
     );
 
     console.log(`LONG Order Details for ${symbol}:`);
@@ -322,10 +322,10 @@ async function placeShortOrder(symbol, marginAmount) {
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
-    
+
     const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
     const stopLossPrice = parseFloat(
-      (entryPrice - (stopLossPnL / quantity)).toFixed(pricePrecision)
+      (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
     );
 
     console.log(`SHORT Order Details for ${symbol}:`);

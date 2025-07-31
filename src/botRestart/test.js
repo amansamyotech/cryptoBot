@@ -123,20 +123,16 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
 }
 
 function getCandleAngle(candle, timeSpan = 300) {
-  // timeSpan in seconds for 5m candle
-  const delta = ((candle.close - candle.open) / candle.open) * 100000; // Scale for small-priced assets
+  const delta = ((candle.close - candle.open) / candle.open) * 100000;
   const rawAngleRad = Math.atan(delta / timeSpan);
   let angle = rawAngleRad * (180 / Math.PI);
 
-  // Map angle to 360° scale: upward (close > open) to 90°-150°, downward to 210°-270°
   if (candle.close > candle.open) {
-    // Upward trend: map to 90°-150°
-    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60; // Scale to 90°-150°
+    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
   } else if (candle.close < candle.open) {
-    // Downward trend: map to 210°-270°
-    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60; // Scale to 210°-270°
+    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
   } else {
-    angle = 180; // Neutral case
+    angle = 180;
   }
 
   return angle;
@@ -151,29 +147,31 @@ async function decideTradeDirection(
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
 
-    if (pastCandles5m.length < 2) {
-      //   console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
+    if (pastCandles5m.length < 3) {
       return "HOLD";
     }
 
-    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2]; // 2nd last candle
-    const angle = getCandleAngle(secondLastCandle);
+    const thirdLastCandle = pastCandles5m[pastCandles5m.length - 3];
+    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
+    const lastCandle = pastCandles5m[pastCandles5m.length - 1];
 
-    // console.log(
-    //   `🔍 ${symbol} | 2nd Last Candle Open: ${secondLastCandle.open.toFixed(6)} | Close: ${secondLastCandle.close.toFixed(6)} | Angle: ${angle.toFixed(2)}°`
-    // );
+    const angle = getCandleAngle(thirdLastCandle);
 
-    if (angle >= 90 && angle <= 150) {
-      //   console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
+    const baseClose = thirdLastCandle.close;
+    const close2 = secondLastCandle.close;
+    const close1 = lastCandle.close;
+
+    const bothAbove = close2 > baseClose && close1 > baseClose;
+    const bothBelow = close2 < baseClose && close1 < baseClose;
+
+    if (angle >= 90 && angle <= 150 && bothAbove) {
       return "LONG";
     }
 
-    if (angle >= 210 && angle <= 270) {
-      //   console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°)`);
+    if (angle >= 210 && angle <= 270 && bothBelow) {
       return "SHORT";
     }
 
-    // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°)`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
