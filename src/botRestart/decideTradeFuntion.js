@@ -11,7 +11,7 @@ const binance = new Binance().options({
 const TIMEFRAME_MAIN = "5m";
 const TIMEFRAME_TREND = "15m";
 
-async function getCandles(symbol, interval, limit = 200) {
+async function getCandles(symbol, interval, limit = 1000) {
   try {
     const res = await axios.get(
       `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
@@ -72,8 +72,10 @@ function getCandleAngle(candle, timeSpan = 300) {
 
 async function decideTradeDirection(symbol) {
   try {
-    const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 200);
+    const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
     if (pastCandles5m.length < 15) {
+      console.log('in the if block');
+      
       // Need enough candles for EMA 9 and EMA 15
       // console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
       return "HOLD";
