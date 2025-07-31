@@ -291,7 +291,7 @@ async function backtest(symbols, startDate, endDate) {
           if (roi >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (roi <= -1.5) {
+          } else if (roi <= -1) {
             // Using -1.5% as stop loss like your main bot
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
@@ -303,7 +303,7 @@ async function backtest(symbols, startDate, endDate) {
           if (roi >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (roi <= -1.5) {
+          } else if (roi <= -1) {
             // Using -1.5% as stop loss like your main bot
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
