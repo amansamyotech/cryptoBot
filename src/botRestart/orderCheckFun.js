@@ -17,17 +17,26 @@ async function checkOrders(symbol) {
     if (!found) return;
 
     const { tradeDetails } = response.data?.data;
-    const { stopLossOrderId, objectId } = tradeDetails;
+    // const { stopLossOrderId, objectId } = tradeDetails;
+    let stopLossOrderId = 45820364346;
 
     if (!stopLossOrderId) {
       console.log(`No stopLossOrderId found for ${symbol}`);
       return;
     }
 
-    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: parseInt(stopLossOrderId),
-    });
-    console.log(`stopLossStatus`, stopLossStatus?.status);
+    const allOrders = await binance.futuresAllOrders(symbol);
+    const stopLossOrder = allOrders.find((o) => o.orderId == stopLossOrderId);
+
+    if (stopLossOrder) {
+      console.log(`Stop Loss Order Status: ${stopLossOrder.status}`);
+    } else {
+      console.error(`Stop Loss Order not found in all orders list.`);
+    }
+    // const stopLossStatus = await binance.futuresOrderStatus(symbol, {
+    //   orderId: parseInt(stopLossOrderId),
+    // });
+    // console.log(`stopLossStatus`, stopLossStatus?.status);
 
     if (stopLossStatus?.status === "FILLED") {
       console.log(`Stop loss order filled for ${symbol}`);
@@ -46,5 +55,5 @@ async function checkOrders(symbol) {
     console.error("Error checking stop loss order status:", error);
   }
 }
-
+checkOrders("1000PEPEUSDT")
 module.exports = { checkOrders };
