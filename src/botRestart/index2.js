@@ -11,10 +11,12 @@ const binance = new Binance().options({
 const symbols = [
   "XRPUSDT",
   "SUIUSDT",
+  "BNBUSDT",
   "1000BONKUSDT",
   "ADAUSDT",
   "DOGEUSDT",
   "WIFUSDT",
+  "1000FLOKIUSDT",
   "CKBUSDT",
 ];
 
@@ -305,7 +307,7 @@ async function placeShortOrder(symbol, marginAmount) {
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 3; // Keep $5.1 reserve
+  const usableBalance = totalBalance - 2; // Keep $5.1 reserve
   console.log(`usableBalance usableBalance usableBalance`, usableBalance);
 
   const maxSpendPerTrade = usableBalance / symbols.length;
