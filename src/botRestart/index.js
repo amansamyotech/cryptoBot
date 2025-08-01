@@ -22,6 +22,7 @@ const symbols = [
   "SUIUSDT",
   "NEARUSDT",
   "INJUSDT",
+  "IOTAUSDT",
   "ORDIUSDT",
   "LTCUSDT",
   "TRXUSDT",
@@ -104,12 +105,16 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
         }
 
         if (orderExists) {
-          await binance.futuresCancel(symbol, orderId);
-        } else {
-          console.log(
-            `[${symbol}] Stop-loss order ${orderId} does not exist or is already closed.`
-          );
+          try {
+            await binance.futuresCancel(symbol, orderId);
+          } catch (err) {
+            console.warn(
+              `[${symbol}] Failed to cancel order ${orderId}:`,
+              err.message
+            );
+          }
         }
+
         const stopLossOrder = await binance.futuresOrder(
           "STOP_MARKET",
           "SELL",
@@ -207,11 +212,14 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
         }
 
         if (orderExists) {
-          await binance.futuresCancel(symbol, orderId);
-        } else {
-          console.log(
-            `[${symbol}] Stop-loss order ${orderId} does not exist or is already closed.`
-          );
+          try {
+            await binance.futuresCancel(symbol, orderId);
+          } catch (err) {
+            console.warn(
+              `[${symbol}] Failed to cancel order ${orderId}:`,
+              err.message
+            );
+          }
         }
 
         const stopLossOrder = await binance.futuresOrder(
