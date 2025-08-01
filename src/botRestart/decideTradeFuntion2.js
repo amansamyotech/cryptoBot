@@ -74,8 +74,7 @@ async function decideTradeDirection2(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
     if (pastCandles5m.length < 15) {
-      console.log("in the if block");
-
+    
       // Need enough candles for EMA 9 and EMA 15
       // console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
       return "HOLD";
@@ -83,15 +82,15 @@ async function decideTradeDirection2(symbol) {
 
     const secondLastCandle = pastCandles5m[pastCandles5m.length - 2]; // 2nd last candle
     const angle = getCandleAngle(secondLastCandle);
-    console.log(`angle`, angle);
+    
 
     // Calculate EMA 9 and EMA 15
     const closePrices = pastCandles5m.map((candle) => candle.close);
     const ema9 = calculateEMA(closePrices, 9);
-    console.log(`ema9`, ema9);
+    
 
     const ema15 = calculateEMA(closePrices, 15);
-    console.log(`ema15`, ema15);
+    
 
     const lastEma9 = ema9[ema9.length - 2]; // EMA 9 for second last candle
     const lastEma15 = ema15[ema15.length - 2]; // EMA 15 for second last candle
