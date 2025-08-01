@@ -1,7 +1,6 @@
 const Binance = require("node-binance-api");
-
+const { decideTradeDirection2 } = require("./decideTradeFuntion2.js");
 const axios = require("axios");
-const { decideTradeDirection } = require("./decideTradeFuntion");
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
@@ -16,7 +15,7 @@ const symbols = [
   "ADAUSDT",
   "DOGEUSDT",
   "WIFUSDT",
-  "CKBUSDT"
+  "CKBUSDT",
 ];
 
 const interval = "3m";
@@ -64,7 +63,7 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = decideTradeDirection(symbol);
+  const decision = decideTradeDirection2(symbol);
 
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
