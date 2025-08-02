@@ -196,39 +196,74 @@ function getCandleAngle(candle, timeSpan = 300) {
 }
 function isSidewaysMarket(
   candles,
-  lookbackPeriod = 50,
-  thresholdPercent = 1.5
+  lookbackPeriod = 20,
+  thresholdPercent = 0.8
 ) {
   if (candles.length < lookbackPeriod) {
-    return false;
+    return false; // Not enough data
   }
+
+  // Get the last 'lookbackPeriod' candles (shorter for scalping)
   const recentCandles = candles.slice(-lookbackPeriod);
 
+  // Find highest high and lowest low in the period
   const highs = recentCandles.map((c) => c.high);
   const lows = recentCandles.map((c) => c.low);
 
   const highestHigh = Math.max(...highs);
   const lowestLow = Math.min(...lows);
 
+  // Calculate the range as percentage of current price
   const currentPrice = candles[candles.length - 1].close;
   const priceRange = ((highestHigh - lowestLow) / currentPrice) * 100;
 
+  // Check recent volatility - for scalping we want to avoid low volatility periods
+  const recentVolatility =
+    recentCandles.slice(-5).reduce((sum, candle) => {
+      return sum + Math.abs((candle.high - candle.low) / candle.close) * 100;
+    }, 0) / 5;
+
+  // EMA convergence check with shorter EMAs for scalping
   const closePrices = recentCandles.map((c) => c.close);
-  const ema9 = calculateEMA(closePrices, 9);
-  const ema21 = calculateEMA(closePrices, 21);
+  const ema5 = calculateEMA(closePrices, 5);
+  const ema15 = calculateEMA(closePrices, 15);
 
-  const lastEma9 = ema9[ema9.length - 1];
-  const lastEma21 = ema21[ema21.length - 1];
+  const lastEma5 = ema5[ema5.length - 1];
+  const lastEma15 = ema15[ema15.length - 1];
 
-  const emaConvergence = Math.abs((lastEma9 - lastEma21) / currentPrice) * 100;
+  // Calculate EMA divergence as percentage
+  const emaConvergence = Math.abs((lastEma5 - lastEma15) / currentPrice) * 100;
 
-  const isSideways = priceRange <= thresholdPercent && emaConvergence <= 0.5;
+  // Check if price is oscillating around EMAs (sideways characteristic)
+  let priceAboveEma = 0;
+  let priceBelowEma = 0;
+  const avgEma = (lastEma5 + lastEma15) / 2;
+
+  recentCandles.slice(-10).forEach((candle) => {
+    if (candle.close > avgEma) priceAboveEma++;
+    else priceBelowEma++;
+  });
+
+  const oscillationRatio = Math.min(priceAboveEma, priceBelowEma) / 10;
+
+  // Market is sideways if:
+  // 1. Price range is small (tighter for scalping)
+  // 2. EMAs are converging
+  // 3. Low recent volatility
+  // 4. Price is oscillating around EMAs (not trending)
+  const isSideways =
+    priceRange <= thresholdPercent &&
+    emaConvergence <= 0.3 &&
+    recentVolatility <= 0.4 &&
+    oscillationRatio >= 0.3; // At least 30% of candles on each side
 
   if (isSideways) {
     console.log(
-      `📊 Sideways market detected for current symbol: Range=${priceRange.toFixed(
+      `📊 Sideways market detected for scalping: Range=${priceRange.toFixed(
         2
-      )}%, EMA convergence=${emaConvergence.toFixed(3)}%`
+      )}%, EMA convergence=${emaConvergence.toFixed(
+        3
+      )}%, Volatility=${recentVolatility.toFixed(2)}%`
     );
   }
 
