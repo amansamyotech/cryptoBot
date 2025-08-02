@@ -78,16 +78,10 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       );
       const targetROI = INITIAL_TRAILING_ROI + roiStepsAboveTrailing * ROI_STEP;
       const targetPnL = (targetROI / 100) * margin;
-      const rawStop = entryPrice + targetPnL / qty;
-      const newStop = parseFloat(rawStop.toFixed(pricePrecision));
-      const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
+      const newStop = parseFloat(
+        (entryPrice + targetPnL / qty).toFixed(pricePrecision)
+      );
 
-      if (newStop >= roundedCurrent) {
-        console.warn(
-          `[${symbol}] Skipping SL update — newStop (${newStop}) >= currentPrice (${roundedCurrent})`
-        );
-        return;
-      }
       if (newStop > oldStop) {
         console.log(
           `[${symbol}] LONG ROI ${roi.toFixed(
@@ -195,12 +189,9 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
           pricePrecision
         )
       );
-      const roundedStop = parseFloat(newStop.toFixed(pricePrecision));
-      const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
-
-      if (roundedStop <= roundedCurrent) {
+      if (newStop <= currentPrice) {
         console.warn(
-          `[${symbol}] Skipping SL update — newStop (${roundedStop}) <= currentPrice (${roundedCurrent})`
+          `[${symbol}] Invalid SL calculation: ${newStop} <= ${currentPrice}. Skipping update.`
         );
         return;
       }
