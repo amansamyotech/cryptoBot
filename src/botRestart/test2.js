@@ -122,9 +122,10 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   }
 }
 
+// Helper function to calculate EMA
 function calculateEMA(prices, period) {
-  const k = 2 / (period + 1);
-  let ema = prices[0];
+  const k = 2 / (period + 1); // Smoothing factor
+  let ema = prices[0]; // Start with the first price
   const emaArray = [ema];
 
   for (let i = 1; i < prices.length; i++) {
@@ -133,19 +134,6 @@ function calculateEMA(prices, period) {
   }
 
   return emaArray;
-}
-
-function calculateTEMA(prices, period) {
-  const ema1 = calculateEMA(prices, period);
-  const ema2 = calculateEMA(ema1, period);
-  const ema3 = calculateEMA(ema2, period);
-
-  const tema = ema1.map((_, i) => {
-    if (i < period * 2) return null;
-    return 3 * ema1[i] - 3 * ema2[i] + ema3[i];
-  });
-
-  return tema;
 }
 
 function getCandleAngle(candle, timeSpan = 300) {
@@ -164,45 +152,60 @@ function getCandleAngle(candle, timeSpan = 300) {
   return angle;
 }
 
-async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
+async function decideTradeDirection(
+  symbol,
+  candles5m,
+  candles15m,
+  candleIndex
+) {
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
-    if (pastCandles5m.length < 30) return "HOLD"; // Enough candles for TEMA 30
 
-    const closePrices = pastCandles5m.map(c => c.close);
-    const tema = calculateTEMA(closePrices, 30);
-
-    // Indexes for last candles
-    const i = tema.length - 2; // second last candle (to avoid using forming candle)
-    if (i < 1) return "HOLD";
-
-    const currentClose = closePrices[i];
-    const prevTema = tema[i - 1];
-    const currentTema = tema[i];
-
-    // Calculate deviation percentage
-    const deviation = Math.abs((currentClose - currentTema) / currentTema) * 100;
-
-    // Check slope: TEMA rising or falling
-    const slopeUp = currentTema > prevTema;
-    const slopeDown = currentTema < prevTema;
-
-    let signal = "HOLD";
-
-    // Apply condition here
-    if (slopeUp && currentClose > currentTema && deviation > 0.1) {
-      signal = "LONG";
-    } else if (slopeDown && currentClose < currentTema && deviation > 0.1) {
-      signal = "SHORT";
+    if (pastCandles5m.length < 15) {
+      // Need enough candles for EMA 9 and EMA 15
+      // console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
+      return "HOLD";
     }
 
-    return signal;
+    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2]; // 2nd last candle
+    const angle = getCandleAngle(secondLastCandle);
+
+    // Calculate EMA 9 and EMA 15
+    const closePrices = pastCandles5m.map((candle) => candle.close);
+    const ema9 = calculateEMA(closePrices, 5);
+    const ema15 = calculateEMA(closePrices, 9);
+
+    const lastEma9 = ema9[ema9.length - 1]; // EMA 9 for second last candle
+    const lastEma15 = ema15[ema15.length - 1]; // EMA 15 for second last candle
+    const prevEma9 = ema9[ema9.length - 2]; // EMA 9 for third last candle
+    const prevEma15 = ema15[ema15.length - 2]; // EMA 15 for third last candle
+
+    let emaSignal = "HOLD";
+
+    if (prevEma9 <= prevEma15 && lastEma9 > lastEma15) {
+      emaSignal = "LONG"; // Bullish crossover
+    } else if (prevEma9 >= prevEma15 && lastEma9 < lastEma15) {
+      emaSignal = "SHORT"; // Bearish crossover
+    }
+
+    let finalSignal = "HOLD";
+
+    if (angle >= 90 && angle <= 160 && emaSignal === "LONG") {
+      // console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+      finalSignal = "LONG";
+    } else if (angle >= 220 && angle <= 270 && emaSignal === "SHORT") {
+      // console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+      finalSignal = "SHORT";
+    } else {
+      // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+    }
+
+    return emaSignal;
   } catch (err) {
-    console.error(`Error in decideTradeDirection for ${symbol}:`, err);
+    console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
-
 
 async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
