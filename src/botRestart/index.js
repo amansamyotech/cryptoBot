@@ -119,7 +119,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
         if (orderExists) {
           try {
-            await binance.futuresCancel(symbol, { orderId });
+            await binance.futuresCancel(symbol, orderId);
           } catch (err) {
             console.warn(
               `[${symbol}] Failed to cancel order ${orderId}:`,
@@ -249,7 +249,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
 
         if (orderExists) {
           try {
-            await binance.futuresCancel(symbol, { orderId });
+            await binance.futuresCancel(symbol, orderId);
           } catch (err) {
             console.warn(
               `[${symbol}] Failed to cancel order ${orderId}:`,
