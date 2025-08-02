@@ -182,24 +182,24 @@ async function decideTradeDirection(
     }
 
     const closePrices = pastCandles5m.map((c) => c.close);
-    const ema9 = calculateEMA(closePrices, 9);
-    const ema15 = calculateEMA(closePrices, 15);
+    const ema5 = calculateEMA(closePrices, 5);
+const ema9 = calculateEMA(closePrices, 9);
 
-    const lastEma9 = ema9[ema9.length - 2];
-    const lastEma15 = ema15[ema15.length - 2];
-    const prevEma9 = ema9[ema9.length - 3];
-    const prevEma15 = ema15[ema15.length - 3];
+    const lastEma5 = ema5[ema5.length - 2];
+const lastEma9 = ema9[ema9.length - 2];
+const prevEma5 = ema5[ema5.length - 3];
+const prevEma9 = ema9[ema9.length - 3];
 
-    let emaSignal = "HOLD";
-    let crossoverCandle = null;
+let emaSignal = "HOLD";
+let crossoverCandle = null;
 
-    if (prevEma9 <= prevEma15 && lastEma9 > lastEma15) {
-      emaSignal = "LONG";
-      crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
-    } else if (prevEma9 >= prevEma15 && lastEma9 < lastEma15) {
-      emaSignal = "SHORT";
-      crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
-    }
+if (prevEma5 <= prevEma9 && lastEma5 > lastEma9) {
+  emaSignal = "LONG";
+  crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
+} else if (prevEma5 >= prevEma9 && lastEma5 < lastEma9) {
+  emaSignal = "SHORT";
+  crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
+}
 
     if (!crossoverCandle) return "HOLD";
 
