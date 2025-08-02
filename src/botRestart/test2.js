@@ -182,7 +182,7 @@ async function decideTradeDirection(
     const angle = getCandleAngle(secondLastCandle);
 
     const closePrices = pastCandles5m.map((candle) => candle.close);
-    const tema = calculateTEMA(closePrices, 9);
+    const tema = calculateTEMA(closePrices, 14);
 
     const lastTEMA = tema[tema.length - 2]; // 2nd last candle
     const prevTEMA = tema[tema.length - 3]; // 3rd last candle
