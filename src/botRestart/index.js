@@ -43,7 +43,7 @@ const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 2;
-const INITIAL_TRAILING_ROI = 3;
+const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
@@ -73,16 +73,12 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= TRAILING_START_ROI) {
-      const roiStepsAboveTrailing = Math.floor(
-        (roi - TRAILING_START_ROI) / ROI_STEP
-      );
-      const targetROI = INITIAL_TRAILING_ROI + roiStepsAboveTrailing * ROI_STEP;
-
+      const targetROI = roi - 1;
       const targetPnL = (targetROI / 100) * margin;
-      const rawStop = entryPrice + targetPnL / qty;
 
-      const newStop = parseFloat(rawStop.toFixed(pricePrecision));
-
+      const newStop = parseFloat(
+        (entryPrice + targetPnL / qty).toFixed(pricePrecision)
+      );
       const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
 
       if (newStop >= roundedCurrent) {
@@ -91,18 +87,20 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
         );
         return;
       }
-      console.log(`oldStop`, oldStop);
-      console.log(`roundedCurrent`, roundedCurrent);
-      console.log(`newStop`, newStop);
-      console.log(`rawStop`, rawStop);
-      console.log(`targetPnL`, targetPnL);
-      console.log(`targetROI`, targetROI);
+
+      console.log(`oldStop: ${oldStop}`);
+      console.log(`roundedCurrent: ${roundedCurrent}`);
+      console.log(`newStop: ${newStop}`);
+      console.log(`targetPnL: ${targetPnL}`);
+      console.log(`targetROI: ${targetROI}`);
 
       if (newStop > oldStop) {
         console.log(
           `[${symbol}] LONG ROI ${roi.toFixed(
             2
-          )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
+          )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI.toFixed(
+            2
+          )}%)`
         );
         let orderId = parseInt(stopLossOrderId);
         let orderExists = false;
@@ -121,7 +119,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
         if (orderExists) {
           try {
-            await binance.futuresCancel(symbol, orderId);
+            await binance.futuresCancel(symbol, { orderId });
           } catch (err) {
             console.warn(
               `[${symbol}] Failed to cancel order ${orderId}:`,
@@ -195,15 +193,11 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= TRAILING_START_ROI) {
-      const roiStepsAboveTrailing = Math.floor(
-        (roi - TRAILING_START_ROI) / ROI_STEP
-      );
-      const targetROI = INITIAL_TRAILING_ROI + roiStepsAboveTrailing * ROI_STEP;
+      const targetROI = roi - 1;
       const targetPnL = (targetROI / 100) * margin;
+
       const newStop = parseFloat(
-        (entryPrice + (entryPrice - currentPrice) * (targetROI / roi)).toFixed(
-          pricePrecision
-        )
+        (entryPrice - targetPnL / qty).toFixed(pricePrecision)
       );
       const roundedStop = parseFloat(newStop.toFixed(pricePrecision));
       const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
@@ -215,20 +209,20 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
         return;
       }
 
+      console.log(`oldStop: ${oldStop}`);
+      console.log(`roundedStop: ${roundedStop}`);
+      console.log(`roundedCurrent: ${roundedCurrent}`);
+      console.log(`newStop: ${newStop}`);
+      console.log(`targetPnL: ${targetPnL}`);
+      console.log(`targetROI: ${targetROI}`);
 
-      console.log(`oldStop`, oldStop);
-      console.log(`roundedStop`,roundedStop);
-      
-      console.log(`roundedCurrent`, roundedCurrent);
-      console.log(`newStop`, newStop);
-      console.log(`targetPnL`, targetPnL);
-      console.log(`targetROI`, targetROI);
-      
-      if (newStop < oldStop) {
+      if (roundedStop > oldStop) {
         console.log(
           `[${symbol}] SHORT ROI ${roi.toFixed(
             2
-          )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
+          )}% → Updating SL from ${oldStop} to ${roundedStop} (Target ROI: ${targetROI.toFixed(
+            2
+          )}%)`
         );
         let orderId = parseInt(stopLossOrderId);
         let orderExists = false;
@@ -247,7 +241,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
 
         if (orderExists) {
           try {
-            await binance.futuresCancel(symbol, orderId);
+            await binance.futuresCancel(symbol, { orderId });
           } catch (err) {
             console.warn(
               `[${symbol}] Failed to cancel order ${orderId}:`,
@@ -263,7 +257,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
           qtyFixed,
           null,
           {
-            stopPrice: newStop,
+            stopPrice: roundedStop,
             reduceOnly: true,
             timeInForce: "GTC",
           }
@@ -271,7 +265,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
 
         await axios.put(`${API_ENDPOINT}${objectId}`, {
           data: {
-            stopLossPrice: newStop,
+            stopLossPrice: roundedStop,
             stopLossOrderId: stopLossOrder.orderId,
           },
         });
@@ -295,7 +289,6 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
     console.error(`[${symbol}] Error trailing SHORT stop-loss:`, err.message);
   }
 }
-
 async function trailStopLoss(symbol) {
   try {
     const priceMap = await binance.futuresPrices();
