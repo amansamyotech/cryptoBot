@@ -224,7 +224,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       console.log(`targetPnL: ${targetPnL}`);
       console.log(`targetROI: ${targetROI}`);
 
-      if (roundedStop > oldStop) {
+      if (roundedStop < oldStop) {
         console.log(
           `[${symbol}] SHORT ROI ${roi.toFixed(
             2
@@ -256,7 +256,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
               err.message
             );
           }
-        }
+        }        
         const tickSize = Math.pow(10, -pricePrecision);
         const bufferMultiplier = 5;
         const buffer = tickSize * bufferMultiplier;
@@ -292,7 +292,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
         console.log(
           `[${symbol}] SHORT ROI ${roi.toFixed(
             2
-          )}% — SL unchanged (${oldStop}).`
+          )}% — SL unchanged (${oldStop}). New stop ${roundedStop} is not better than current.`
         );
       }
     } else {
@@ -305,8 +305,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
   } catch (err) {
     console.error(`[${symbol}] Error trailing SHORT stop-loss:`, err.message);
   }
-}
-async function trailStopLoss(symbol) {
+}async function trailStopLoss(symbol) {
   try {
     const priceMap = await binance.futuresPrices();
     const currentPrice = parseFloat(priceMap[symbol]);
