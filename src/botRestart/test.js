@@ -407,5 +407,7 @@ async function getUsdtBalance() {
   }
 }
 
-getUsdtBalance();
+const balance = getUsdtBalance();
+console.log(`balance`,balance);
+
 module.exports = { getUsdtBalance };
