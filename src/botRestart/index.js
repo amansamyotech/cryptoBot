@@ -77,9 +77,12 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
         (roi - TRAILING_START_ROI) / ROI_STEP
       );
       const targetROI = INITIAL_TRAILING_ROI + roiStepsAboveTrailing * ROI_STEP;
+
       const targetPnL = (targetROI / 100) * margin;
       const rawStop = entryPrice + targetPnL / qty;
+
       const newStop = parseFloat(rawStop.toFixed(pricePrecision));
+
       const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
 
       if (newStop >= roundedCurrent) {
@@ -88,6 +91,13 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
         );
         return;
       }
+      console.log(`oldStop`, oldStop);
+      console.log(`roundedCurrent`, roundedCurrent);
+      console.log(`newStop`, newStop);
+      console.log(`rawStop`, rawStop);
+      console.log(`targetPnL`, targetPnL);
+      console.log(`targetROI`, targetROI);
+
       if (newStop > oldStop) {
         console.log(
           `[${symbol}] LONG ROI ${roi.toFixed(
@@ -205,6 +215,15 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
         return;
       }
 
+
+      console.log(`oldStop`, oldStop);
+      console.log(`roundedStop`,roundedStop);
+      
+      console.log(`roundedCurrent`, roundedCurrent);
+      console.log(`newStop`, newStop);
+      console.log(`targetPnL`, targetPnL);
+      console.log(`targetROI`, targetROI);
+      
       if (newStop < oldStop) {
         console.log(
           `[${symbol}] SHORT ROI ${roi.toFixed(
