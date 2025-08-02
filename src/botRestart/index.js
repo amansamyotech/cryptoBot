@@ -88,13 +88,12 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
             2
           )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
         );
-        let orderId = stopLossOrderId;
+        let orderId = parseInt(stopLossOrderId);
         let orderExists = false;
         try {
-          const order = await binance.futuresOrderStatus(
-            symbol,
-            parseInt(orderId)
-          );
+          const order = await binance.futuresOrderStatus(symbol, {
+            orderId,
+          });
           orderExists =
             order && order.status !== "CANCELED" && order.status !== "FILLED";
         } catch (err) {
@@ -186,8 +185,16 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       const targetROI = INITIAL_TRAILING_ROI + roiStepsAboveTrailing * ROI_STEP;
       const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
-        (entryPrice - targetPnL / qty).toFixed(pricePrecision)
+        (entryPrice + (entryPrice - currentPrice) * (targetROI / roi)).toFixed(
+          pricePrecision
+        )
       );
+      if (newStop <= currentPrice) {
+        console.warn(
+          `[${symbol}] Invalid SL calculation: ${newStop} <= ${currentPrice}. Skipping update.`
+        );
+        return;
+      }
 
       if (newStop < oldStop) {
         console.log(
@@ -195,13 +202,12 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
             2
           )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI}%)`
         );
-        let orderId = stopLossOrderId;
+        let orderId = parseInt(stopLossOrderId);
         let orderExists = false;
         try {
-          const order = await binance.futuresOrderStatus(
-            symbol,
-            parseInt(orderId)
-          );
+          const order = await binance.futuresOrderStatus(symbol, {
+            orderId,
+          });
           orderExists =
             order && order.status !== "CANCELED" && order.status !== "FILLED";
         } catch (err) {
