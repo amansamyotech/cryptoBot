@@ -153,7 +153,7 @@ function getCandleAngle(candle, timeSpan = 300) {
 }
 
 function isSidewaysMarket(candles, thresholdPercent = 0.5) {
-  const lookback = 10; // last 10 candles
+  const lookback = 100; // last 10 candles
   const slice = candles.slice(-lookback);
 
   const ranges = slice.map(c => c.high - c.low);
