@@ -406,8 +406,9 @@ async function getUsdtBalance() {
     return 0;
   }
 }
-
-const balance = await getUsdtBalance();
-console.log(`balance`,balance);
+setTimeout(async () => {
+  const balance = await getUsdtBalance();
+  console.log(`balance`, balance);
+}, 1000);
 
 module.exports = { getUsdtBalance };
