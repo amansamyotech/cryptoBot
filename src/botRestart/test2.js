@@ -152,6 +152,19 @@ function getCandleAngle(candle, timeSpan = 300) {
   return angle;
 }
 
+function isSidewaysMarket(candles, thresholdPercent = 0.5) {
+  const lookback = 10; // last 10 candles
+  const slice = candles.slice(-lookback);
+
+  const ranges = slice.map((c) => c.high - c.low);
+  const avgRange = ranges.reduce((a, b) => a + b, 0) / lookback;
+
+  const avgClose = slice.reduce((sum, c) => sum + c.close, 0) / lookback;
+  const rangePercent = (avgRange / avgClose) * 100;
+
+  return rangePercent < thresholdPercent; // e.g., < 0.5% movement = sideways
+}
+
 async function decideTradeDirection(
   symbol,
   candles5m,
@@ -160,47 +173,45 @@ async function decideTradeDirection(
 ) {
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
+    if (pastCandles5m.length < 15) return "HOLD";
 
-    if (pastCandles5m.length < 15) {
-      // Need enough candles for EMA 9 and EMA 15
-      // console.log(`⚠️ Insufficient candles for ${symbol} at index ${candleIndex}: 5m=${pastCandles5m.length}`);
+    // 🔒 Check sideways condition first
+    if (isSidewaysMarket(pastCandles5m)) {
+      // console.log(`🟡 Sideways market for ${symbol}. Skipping trade.`);
       return "HOLD";
     }
 
-    const secondLastCandle = pastCandles5m[pastCandles5m.length - 15]; // 2nd last candle
-    const angle = getCandleAngle(secondLastCandle);
-
-    // Calculate EMA 9 and EMA 15
-    const closePrices = pastCandles5m.map((candle) => candle.close);
+    const closePrices = pastCandles5m.map((c) => c.close);
     const ema9 = calculateEMA(closePrices, 9);
     const ema15 = calculateEMA(closePrices, 15);
 
-    const lastEma9 = ema9[ema9.length - 2]; // EMA 9 for second last candle
-    const lastEma15 = ema15[ema15.length - 2]; // EMA 15 for second last candle
-    const prevEma9 = ema9[ema9.length - 3]; // EMA 9 for third last candle
-    const prevEma15 = ema15[ema15.length - 3]; // EMA 15 for third last candle
+    const lastEma9 = ema9[ema9.length - 2];
+    const lastEma15 = ema15[ema15.length - 2];
+    const prevEma9 = ema9[ema9.length - 3];
+    const prevEma15 = ema15[ema15.length - 3];
 
     let emaSignal = "HOLD";
+    let crossoverCandle = null;
 
     if (prevEma9 <= prevEma15 && lastEma9 > lastEma15) {
-      emaSignal = "LONG"; // Bullish crossover
+      emaSignal = "LONG";
+      crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
     } else if (prevEma9 >= prevEma15 && lastEma9 < lastEma15) {
-      emaSignal = "SHORT"; // Bearish crossover
+      emaSignal = "SHORT";
+      crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
     }
 
-    let finalSignal = "HOLD";
+    if (!crossoverCandle) return "HOLD";
+
+    const angle = getCandleAngle(crossoverCandle);
 
     if (angle >= 90 && angle <= 160 && emaSignal === "LONG") {
-      // console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
-      finalSignal = "LONG";
+      return "LONG";
     } else if (angle >= 220 && angle <= 270 && emaSignal === "SHORT") {
-      // console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
-      finalSignal = "SHORT";
+      return "SHORT";
     } else {
-      // console.log(`⚖️ No clear signal for ${symbol}. Decision: HOLD (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
+      return "HOLD";
     }
-
-    return emaSignal;
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
