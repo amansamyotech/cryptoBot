@@ -128,6 +128,14 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
           }
         }
 
+        const tickSize = Math.pow(10, -pricePrecision);
+        const bufferMultiplier = 5;
+        const buffer = tickSize * bufferMultiplier;
+        const adjustedStop = parseFloat(
+          (newStop - buffer).toFixed(pricePrecision)
+        );
+        console.log(`adjustedStop`, adjustedStop);
+
         const stopLossOrder = await binance.futuresOrder(
           "STOP_MARKET",
           "SELL",
@@ -135,7 +143,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
           qtyFixed,
           null,
           {
-            stopPrice: newStop,
+            stopPrice: adjustedStop,
             reduceOnly: true,
             timeInForce: "GTC",
           }
@@ -249,6 +257,15 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
             );
           }
         }
+        const tickSize = Math.pow(10, -pricePrecision);
+        const bufferMultiplier = 5;
+        const buffer = tickSize * bufferMultiplier;
+
+        const adjustedStop = parseFloat(
+          (roundedStop + buffer).toFixed(pricePrecision)
+        );
+
+        console.log(`adjustedStop`, adjustedStop);
 
         const stopLossOrder = await binance.futuresOrder(
           "STOP_MARKET",
@@ -257,7 +274,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
           qtyFixed,
           null,
           {
-            stopPrice: roundedStop,
+            stopPrice: adjustedStop,
             reduceOnly: true,
             timeInForce: "GTC",
           }
