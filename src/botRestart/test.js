@@ -407,7 +407,7 @@ async function getUsdtBalance() {
   }
 }
 
-const balance = getUsdtBalance();
+const balance = await getUsdtBalance();
 console.log(`balance`,balance);
 
 module.exports = { getUsdtBalance };
