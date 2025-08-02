@@ -2,8 +2,8 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 
 const binance = new Binance().options({
-  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
-  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
+  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
   test: false,
 });
@@ -122,7 +122,6 @@ async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   }
 }
 
-
 // Helper function to calculate EMA
 function calculateEMA(prices, period) {
   const k = 2 / (period + 1); // Smoothing factor
@@ -136,7 +135,6 @@ function calculateEMA(prices, period) {
 
   return emaArray;
 }
-
 
 function getCandleAngle(candle, timeSpan = 300) {
   const delta = ((candle.close - candle.open) / candle.open) * 100000;
@@ -184,20 +182,18 @@ async function decideTradeDirection(
 
     let emaSignal = "HOLD";
 
-    
     if (prevEma9 <= prevEma15 && lastEma9 > lastEma15) {
       emaSignal = "LONG"; // Bullish crossover
     } else if (prevEma9 >= prevEma15 && lastEma9 < lastEma15) {
       emaSignal = "SHORT"; // Bearish crossover
     }
 
-    
     let finalSignal = "HOLD";
 
-    if (angle >= 90 && angle <= 150 && emaSignal === "LONG") {
+    if (angle >= 90 && angle <= 160 && emaSignal === "LONG") {
       // console.log(`✅ Strong LONG signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
       finalSignal = "LONG";
-    } else if (angle >= 210 && angle <= 270 && emaSignal === "SHORT") {
+    } else if (angle >= 220 && angle <= 270 && emaSignal === "SHORT") {
       // console.log(`✅ Strong SHORT signal for ${symbol} (Angle: ${angle.toFixed(2)}°, EMA9: ${lastEma9.toFixed(6)}, EMA15: ${lastEma15.toFixed(6)})`);
       finalSignal = "SHORT";
     } else {
@@ -291,7 +287,7 @@ async function backtest(symbols, startDate, endDate) {
           if (roi >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (roi <= -1.5) {
+          } else if (roi <= -2) {
             // Using -1.5% as stop loss like your main bot
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
@@ -303,7 +299,7 @@ async function backtest(symbols, startDate, endDate) {
           if (roi >= 2) {
             reason = "💰 Profit Target Hit";
             exitTrade = true;
-          } else if (roi <= -1.5) {
+          } else if (roi <= -2) {
             // Using -1.5% as stop loss like your main bot
             reason = "🛑 Stop Loss Hit";
             exitTrade = true;
@@ -396,13 +392,12 @@ async function backtest(symbols, startDate, endDate) {
     const totalTrades = results.wins + results.losses;
     const avgROI =
       totalTrades > 0 ? (results.profit / totalTrades).toFixed(2) : 0;
- 
+
     console.log(`\nDetailed Trades:`);
 
     console.log("=".repeat(80));
   }
 }
-
 
 const startDate = "2025-05-01T00:00:00Z";
 const endDate = "2025-05-30T23:59:59Z";
