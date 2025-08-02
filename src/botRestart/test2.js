@@ -164,61 +164,45 @@ function getCandleAngle(candle, timeSpan = 300) {
   return angle;
 }
 
-async function decideTradeDirection(
-  symbol,
-  candles5m,
-  candles15m,
-  candleIndex
-) {
+async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
   try {
     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
+    if (pastCandles5m.length < 30) return "HOLD"; // Enough candles for TEMA 30
 
-    if (pastCandles5m.length < 60) {
-      // Need enough candles for TEMA 30
-      return "HOLD";
+    const closePrices = pastCandles5m.map(c => c.close);
+    const tema = calculateTEMA(closePrices, 30);
+
+    // Indexes for last candles
+    const i = tema.length - 2; // second last candle (to avoid using forming candle)
+    if (i < 1) return "HOLD";
+
+    const currentClose = closePrices[i];
+    const prevTema = tema[i - 1];
+    const currentTema = tema[i];
+
+    // Calculate deviation percentage
+    const deviation = Math.abs((currentClose - currentTema) / currentTema) * 100;
+
+    // Check slope: TEMA rising or falling
+    const slopeUp = currentTema > prevTema;
+    const slopeDown = currentTema < prevTema;
+
+    let signal = "HOLD";
+
+    // Apply condition here
+    if (slopeUp && currentClose > currentTema && deviation > 0.1) {
+      signal = "LONG";
+    } else if (slopeDown && currentClose < currentTema && deviation > 0.1) {
+      signal = "SHORT";
     }
 
-    const secondLastCandle = pastCandles5m[pastCandles5m.length - 2];
-    const angle = getCandleAngle(secondLastCandle);
-
-    const closePrices = pastCandles5m.map((candle) => candle.close);
-    const tema = calculateTEMA(closePrices, 14);
-
-    const lastTEMA = tema[tema.length - 2]; // 2nd last candle
-    const prevTEMA = tema[tema.length - 3]; // 3rd last candle
-    const currentClose = pastCandles5m[pastCandles5m.length - 2].close;
-
-    if (lastTEMA === null || prevTEMA === null) {
-      return "HOLD";
-    }
-
-    // Determine TEMA direction signal
-    let temaSignal = "HOLD";
-
-    const slopeUp = lastTEMA > prevTEMA;
-    const slopeDown = lastTEMA < prevTEMA;
-
-    if (slopeUp && currentClose > lastTEMA) {
-      temaSignal = "LONG";
-    } else if (slopeDown && currentClose < lastTEMA) {
-      temaSignal = "SHORT";
-    }
-
-    // Filter by angle
-    let finalSignal = "HOLD";
-
-    if (angle >= 90 && angle <= 160 && temaSignal === "LONG") {
-      finalSignal = "LONG";
-    } else if (angle >= 220 && angle <= 270 && temaSignal === "SHORT") {
-      finalSignal = "SHORT";
-    }
-
-    return finalSignal;
+    return signal;
   } catch (err) {
-    console.error(`❌ Decision error for ${symbol}:`, err.message);
+    console.error(`Error in decideTradeDirection for ${symbol}:`, err);
     return "HOLD";
   }
 }
+
 
 async function backtest(symbols, startDate, endDate) {
   const startTime = new Date(startDate).getTime();
