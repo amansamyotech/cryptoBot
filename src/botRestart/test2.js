@@ -37,7 +37,7 @@ const symbols = [
   "CKBUSDT",
   "1000FLOKIUSDT",
 ];
-async function getCandles(symbol, interval, startTime, endTime, limit = 400) {
+async function getCandles(symbol, interval, startTime, endTime, limit = 1000) {
   try {
     if (startTime && endTime) {
       const candles = [];
@@ -139,7 +139,7 @@ function calculateTEMA(prices, period) {
   const ema1 = calculateEMA(prices, period);
   const ema2 = calculateEMA(ema1, period);
   const ema3 = calculateEMA(ema2, period);
-  
+
   const tema = ema1.map((_, i) => {
     if (i < period * 2) return null;
     return 3 * ema1[i] - 3 * ema2[i] + ema3[i];
