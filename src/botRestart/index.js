@@ -24,9 +24,7 @@ const symbols = [
   "INJUSDT",
   "IOTAUSDT",
   "ORDIUSDT",
-  // "LTCUSDT", REQUIRE --> MIN $20 TO TAKE TREAD
   "TRXUSDT",
-  // "ETCUSDT", REQUIRE --> MIN $20 TO TAKE TREAD
   "SOLUSDT",
   "WIFUSDT",
   "TONUSDT",
