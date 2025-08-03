@@ -419,52 +419,52 @@ module.exports = { getUsdtBalance };
 
 
 
-async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
-  try {
-    const pastCandles5m = candles5m.slice(0, candleIndex + 1);
+// async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
+//   try {
+//     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
 
-    if (pastCandles5m.length < 15) return "HOLD";
+//     if (pastCandles5m.length < 15) return "HOLD";
 
-    if (isSidewaysMarket(pastCandles5m)) {
-      return "HOLD";
-    }
+//     if (isSidewaysMarket(pastCandles5m)) {
+//       return "HOLD";
+//     }
 
-    const closePrices = pastCandles5m.map((c) => c.close);
+//     const closePrices = pastCandles5m.map((c) => c.close);
 
-    // Using TEMA instead of EMA
-    const tema9 = calculateTEMA(closePrices, 9);
-    const tema15 = calculateTEMA(closePrices, 15);
+//     // Using TEMA instead of EMA
+//     const tema9 = calculateTEMA(closePrices, 9);
+//     const tema15 = calculateTEMA(closePrices, 15);
 
-    const lastTema9 = tema9[tema9.length - 2];
-    const lastTema15 = tema15[tema15.length - 2];
-    const prevTema9 = tema9[tema9.length - 3];
-    const prevTema15 = tema15[tema15.length - 3];
+//     const lastTema9 = tema9[tema9.length - 2];
+//     const lastTema15 = tema15[tema15.length - 2];
+//     const prevTema9 = tema9[tema9.length - 3];
+//     const prevTema15 = tema15[tema15.length - 3];
 
-    let temaSignal = "HOLD";
-    let crossoverCandle = null;
+//     let temaSignal = "HOLD";
+//     let crossoverCandle = null;
 
-    if (prevTema9 <= prevTema15 && lastTema9 > lastTema15) {
-      temaSignal = "LONG";
-      crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
-    } else if (prevTema9 >= prevTema15 && lastTema9 < lastTema15) {
-      temaSignal = "SHORT";
-      crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
-    }
+//     if (prevTema9 <= prevTema15 && lastTema9 > lastTema15) {
+//       temaSignal = "LONG";
+//       crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
+//     } else if (prevTema9 >= prevTema15 && lastTema9 < lastTema15) {
+//       temaSignal = "SHORT";
+//       crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
+//     }
 
-    if (!crossoverCandle) return "HOLD";
+//     if (!crossoverCandle) return "HOLD";
 
-    const angle = getCandleAngle(crossoverCandle);
+//     const angle = getCandleAngle(crossoverCandle);
 
-    // Modified angle conditions (45° threshold)
-    if (angle >= 45 && angle <= 135 && temaSignal === "LONG") {
-      return "LONG";
-    } else if (angle >= 225 && angle <= 315 && temaSignal === "SHORT") {
-      return "SHORT";
-    } else {
-      return "HOLD";
-    }
-  } catch (err) {
-    console.error(❌ Decision error for ${symbol}:, err.message);
-    return "HOLD";
-  }
-}
+//     // Modified angle conditions (45° threshold)
+//     if (angle >= 45 && angle <= 135 && temaSignal === "LONG") {
+//       return "LONG";
+//     } else if (angle >= 225 && angle <= 315 && temaSignal === "SHORT") {
+//       return "SHORT";
+//     } else {
+//       return "HOLD";
+//     }
+//   } catch (err) {
+//     console.error(❌ Decision error for ${symbol}:, err.message);
+//     return "HOLD";
+//   }
+// }
