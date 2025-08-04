@@ -223,82 +223,214 @@ function getCandleAngle(candle, timeSpan = 300) {
 
   return angle;
 }
+function calculateBollingerBands(prices, period = 20, stdDev = 2) {
+  const sma = [];
+  const std = [];
+  const upperBand = [];
+  const lowerBand = [];
+
+  for (let i = period - 1; i < prices.length; i++) {
+    const slice = prices.slice(i - period + 1, i + 1);
+    const mean = slice.reduce((sum, p) => sum + p, 0) / period;
+    sma.push(mean);
+
+    const variance =
+      slice.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / period;
+    const standardDeviation = Math.sqrt(variance);
+    std.push(standardDeviation);
+
+    upperBand.push(mean + stdDev * standardDeviation);
+    lowerBand.push(mean - stdDev * standardDeviation);
+  }
+
+  return { sma, upperBand, lowerBand };
+}
+
+function calculateADX(candles, period = 14) {
+  let plusDM = [];
+  let minusDM = [];
+  let tr = [];
+
+  for (let i = 1; i < candles.length; i++) {
+    const high = candles[i].high;
+    const low = candles[i].low;
+    const prevHigh = candles[i - 1].high;
+    const prevLow = candles[i - 1].low;
+    const prevClose = candles[i - 1].close;
+
+    const upMove = high - prevHigh;
+    const downMove = prevLow - low;
+
+    const dmPlus = upMove > downMove && upMove > 0 ? upMove : 0;
+    const dmMinus = downMove > upMove && downMove > 0 ? downMove : 0;
+
+    const trValue = Math.max(
+      high - low,
+      Math.abs(high - prevClose),
+      Math.abs(low - prevClose)
+    );
+
+    plusDM.push(dmPlus);
+    minusDM.push(dmMinus);
+    tr.push(trValue);
+  }
+
+  // Smooth the values
+  const smoothPeriod = period;
+  let smoothedPlusDM = [];
+  let smoothedMinusDM = [];
+  let smoothedTR = [];
+
+  for (let i = smoothPeriod - 1; i < plusDM.length; i++) {
+    if (i === smoothPeriod - 1) {
+      smoothedPlusDM.push(
+        plusDM
+          .slice(i - smoothPeriod + 1, i + 1)
+          .reduce((sum, val) => sum + val, 0)
+      );
+      smoothedMinusDM.push(
+        minusDM
+          .slice(i - smoothPeriod + 1, i + 1)
+          .reduce((sum, val) => sum + val, 0)
+      );
+      smoothedTR.push(
+        tr.slice(i - smoothPeriod + 1, i + 1).reduce((sum, val) => sum + val, 0)
+      );
+    } else {
+      smoothedPlusDM.push(
+        (smoothedPlusDM[smoothedPlusDM.length - 1] * (smoothPeriod - 1) +
+          plusDM[i]) /
+          smoothPeriod
+      );
+      smoothedMinusDM.push(
+        (smoothedMinusDM[smoothedMinusDM.length - 1] * (smoothPeriod - 1) +
+          minusDM[i]) /
+          smoothPeriod
+      );
+      smoothedTR.push(
+        (smoothedTR[smoothedTR.length - 1] * (smoothPeriod - 1) + tr[i]) /
+          smoothPeriod
+      );
+    }
+  }
+
+  // Calculate DI+ and DI-
+  const plusDI = smoothedPlusDM.map((dm, i) => (dm / smoothedTR[i]) * 100);
+  const minusDI = smoothedMinusDM.map((dm, i) => (dm / smoothedTR[i]) * 100);
+
+  // Calculate DX and ADX
+  const dx = plusDI.map(
+    (pdi, i) => (Math.abs(pdi - minusDI[i]) / (pdi + minusDI[i])) * 100
+  );
+  const adx = [];
+  for (let i = smoothPeriod - 1; i < dx.length; i++) {
+    if (i === smoothPeriod - 1) {
+      adx.push(
+        dx
+          .slice(i - smoothPeriod + 1, i + 1)
+          .reduce((sum, val) => sum + val, 0) / smoothPeriod
+      );
+    } else {
+      adx.push(
+        (adx[adx.length - 1] * (smoothPeriod - 1) + dx[i]) / smoothPeriod
+      );
+    }
+  }
+
+  return adx;
+}
+
 function isSidewaysMarket(
   candles,
   lookbackPeriod = 20,
-  thresholdPercent = 0.8
+  thresholdPercent = 0.6 // Tighter for 5m scalping
 ) {
   if (candles.length < lookbackPeriod) {
-    return false; // Not enough data
+    console.log("❌ Insufficient candles for sideways analysis");
+    return false;
   }
 
-  // Get the last 'lookbackPeriod' candles (shorter for scalping)
+  // Get recent candles
   const recentCandles = candles.slice(-lookbackPeriod);
+  const closePrices = recentCandles.map((c) => c.close);
 
-  // Find highest high and lowest low in the period
+  // 1. Price Range Check
   const highs = recentCandles.map((c) => c.high);
   const lows = recentCandles.map((c) => c.low);
-
   const highestHigh = Math.max(...highs);
   const lowestLow = Math.min(...lows);
-
-  // Calculate the range as percentage of current price
   const currentPrice = candles[candles.length - 1].close;
   const priceRange = ((highestHigh - lowestLow) / currentPrice) * 100;
 
-  // Check recent volatility - for scalping we want to avoid low volatility periods
+  // 2. Volatility Check (tighter for 5m)
   const recentVolatility =
     recentCandles.slice(-5).reduce((sum, candle) => {
       return sum + Math.abs((candle.high - candle.low) / candle.close) * 100;
     }, 0) / 5;
 
-  // EMA convergence check with shorter EMAs for scalping
-  const closePrices = recentCandles.map((c) => c.close);
+  // 3. EMA Convergence Check
   const ema5 = calculateEMA(closePrices, 5);
   const ema15 = calculateEMA(closePrices, 15);
-
   const lastEma5 = ema5[ema5.length - 1];
   const lastEma15 = ema15[ema15.length - 1];
-
-  // Calculate EMA divergence as percentage
   const emaConvergence = Math.abs((lastEma5 - lastEma15) / currentPrice) * 100;
 
-  // Check if price is oscillating around EMAs (sideways characteristic)
+  // 4. Oscillation Check
+  const avgEma = (lastEma5 + lastEma15) / 2;
   let priceAboveEma = 0;
   let priceBelowEma = 0;
-  const avgEma = (lastEma5 + lastEma15) / 2;
-
   recentCandles.slice(-10).forEach((candle) => {
     if (candle.close > avgEma) priceAboveEma++;
     else priceBelowEma++;
   });
-
   const oscillationRatio = Math.min(priceAboveEma, priceBelowEma) / 10;
 
-  // Market is sideways if:
-  // 1. Price range is small (tighter for scalping)
-  // 2. EMAs are converging
-  // 3. Low recent volatility
-  // 4. Price is oscillating around EMAs (not trending)
+  // 5. Bollinger Bands Check
+  const bb = calculateBollingerBands(closePrices, 20, 2);
+  const lastPrice = closePrices[closePrices.length - 1];
+  const lastUpperBand = bb.upperBand[bb.upperBand.length - 1];
+  const lastLowerBand = bb.lowerBand[bb.lowerBand.length - 1];
+  const bbWidth = ((lastUpperBand - lastLowerBand) / lastPrice) * 100;
+  const priceWithinBands =
+    lastPrice <= lastUpperBand && lastPrice >= lastLowerBand;
+
+  // 6. ADX Check (low ADX indicates no trend)
+  const adx = calculateADX(recentCandles, 14);
+  const lastAdx = adx[adx.length - 1];
+
+  // 7. Consolidation Pattern Check (doji-like candles)
+  const recentCandlesShort = recentCandles.slice(-5);
+  const dojiCount = recentCandlesShort.filter((c) => {
+    const bodySize = Math.abs(c.close - c.open) / c.open;
+    const totalRange = (c.high - c.low) / c.open;
+    return bodySize <= 0.001 && totalRange >= 0.002; // Small body, reasonable range
+  }).length;
+
+  // Enhanced Sideways Criteria
   const isSideways =
-    priceRange <= thresholdPercent &&
-    emaConvergence <= 0.3 &&
-    recentVolatility <= 0.4 &&
-    oscillationRatio >= 0.3; // At least 30% of candles on each side
+    priceRange <= thresholdPercent && // Tighter range
+    emaConvergence <= 0.25 && // Tighter EMA convergence
+    recentVolatility <= 0.3 && // Lower volatility for 5m
+    oscillationRatio >= 0.4 && // Stronger oscillation
+    bbWidth <= 1.0 && // Narrow Bollinger Bands
+    priceWithinBands && // Price within bands
+    lastAdx <= 20 && // Low ADX (no trend)
+    dojiCount >= 2; // At least 2 doji-like candles
 
   if (isSideways) {
     console.log(
-      `📊 Sideways market detected for scalping: Range=${priceRange.toFixed(
-        2
-      )}%, EMA convergence=${emaConvergence.toFixed(
-        3
-      )}%, Volatility=${recentVolatility.toFixed(2)}%`
+      `📊 Sideways market detected for 5m timeframe: ` +
+        `Range=${priceRange.toFixed(2)}%, ` +
+        `EMA convergence=${emaConvergence.toFixed(3)}%, ` +
+        `Volatility=${recentVolatility.toFixed(2)}%, ` +
+        `BB Width=${bbWidth.toFixed(2)}%, ` +
+        `ADX=${lastAdx.toFixed(2)}, ` +
+        `Doji Count=${dojiCount}`
     );
   }
 
   return isSideways;
 }
-
 async function decideTradeDirection2(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
