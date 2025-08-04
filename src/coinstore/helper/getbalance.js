@@ -1,8 +1,8 @@
 const axios = require("axios");
 const crypto = require("crypto");
 
-const apiKey = "460e56f22bedb4cbb9908603dcd6f7b1"; // Replace with your API Key
-const secretKey = "31e4c0d4d894de2250c4e0c152cb8158"; // Replace with your Secret Key
+const apiKey = "6a5f74af1896d386871045899d82ea1a"; // Replace with your API Key
+const secretKey = "54eefc696aeb13bb807a44e32b349b2a"; // Replace with your Secret Key
 
 async function getUsdtBalance() {
   const url = "https://api.coinstore.com/api/spot/accountList";
@@ -29,7 +29,7 @@ async function getUsdtBalance() {
     "X-CS-EXPIRES": expires.toString(),
     "exch-language": "en_US",
     "Content-Type": "application/json",
-    "Accept": "application/json",
+    Accept: "application/json",
   };
 
   try {
