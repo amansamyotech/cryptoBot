@@ -373,10 +373,10 @@ async function decideTradeDirection(
       return "HOLD";
     }
 
-    // if (isSidewaysMarket(pastCandles5m)) {
-    //   console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
-    //   return "HOLD";
-    // }
+    if (isSidewaysMarket(pastCandles5m)) {
+      console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
+      return "HOLD";
+    }
 
     const closePrices = pastCandles5m.map((c) => c.close);
     const ema300 = calculateEMA(closePrices, 300);
@@ -458,7 +458,7 @@ async function backtest(symbols, startDate, endDate) {
 
     let position = null;
 
-    for (let i = 50; i < candles5m.length - 1; i++) {
+    for (let i = 300; i < candles5m.length - 1; i++) {
       const signal = await decideTradeDirection(
         symbol,
         candles5m,
