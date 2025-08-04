@@ -19,6 +19,11 @@ const BuySellSchema = new Schema(
     stopLossPrice: {
       type: String,
     },
+    isProfit: {
+      type: Boolean,
+      default: false,
+    },
+
     stopLossOrderId: {
       type: String,
     },

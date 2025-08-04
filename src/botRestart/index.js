@@ -3,6 +3,7 @@ const axios = require("axios");
 const { decideTradeDirection } = require("./decideTradeFuntion");
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
+const { symbols } = require("./constent");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
@@ -13,34 +14,10 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = [
-  "XRPUSDT",
-  "ADAUSDT",
-  "BNBUSDT",
-  "DOGEUSDT",
-  "DOTUSDT",
-  "SUIUSDT",
-  "NEARUSDT",
-  "INJUSDT",
-  "IOTAUSDT",
-  "ORDIUSDT",
-  "TRXUSDT",
-  "SOLUSDT",
-  "WIFUSDT",
-  "TONUSDT",
-  "TAOUSDT",
-  "LEVERUSDT",
-  "KSMUSDT",
-  "1000PEPEUSDT",
-  "1000BONKUSDT",
-  "CKBUSDT",
-  "1000FLOKIUSDT",
-];
-
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
-const TRAILING_START_ROI = 2;
+const TRAILING_START_ROI = 1;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
@@ -71,12 +48,26 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= TRAILING_START_ROI) {
-      const targetROI = roi - 1;
-      const targetPnL = (targetROI / 100) * margin;
+      let newStop;
+      if (roi <= 1) {
+        // When ROI is 1%, set stop-loss to entry price (break-even)
+        newStop = parseFloat(entryPrice.toFixed(pricePrecision));
+      } else {
+        // For ROI > 1%, trail 1% behind as original
+        const targetROI = roi - 1;
+        const targetPnL = (targetROI / 100) * margin;
+        newStop = parseFloat(
+          (entryPrice + targetPnL / qty).toFixed(pricePrecision)
+        );
+      }
 
-      const newStop = parseFloat(
-        (entryPrice + targetPnL / qty).toFixed(pricePrecision)
-      );
+      // if (roi >= TRAILING_START_ROI) {
+      //   const targetROI = roi - 1;
+      //   const targetPnL = (targetROI / 100) * margin;
+
+      //   const newStop = parseFloat(
+      //     (entryPrice + targetPnL / qty).toFixed(pricePrecision)
+      //   );
       const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
 
       if (newStop >= roundedCurrent) {
@@ -151,6 +142,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
           data: {
             stopLossPrice: newStop,
             stopLossOrderId: stopLossOrder.orderId,
+            isProfit: true,
           },
         });
 
@@ -199,12 +191,25 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= TRAILING_START_ROI) {
-      const targetROI = roi - 1;
-      const targetPnL = (targetROI / 100) * margin;
+      let newStop;
+      if (roi <= 1) {
+        // When ROI is 1%, set stop-loss to entry price (break-even)
+        newStop = parseFloat(entryPrice.toFixed(pricePrecision));
+      } else {
+        // For ROI > 1%, trail 1% behind as original
+        const targetROI = roi - 1;
+        const targetPnL = (targetROI / 100) * margin;
+        newStop = parseFloat(
+          (entryPrice - targetPnL / qty).toFixed(pricePrecision)
+        );
+      }
+      // if (roi >= TRAILING_START_ROI) {
+      //   const targetROI = roi - 1;
+      //   const targetPnL = (targetROI / 100) * margin;
 
-      const newStop = parseFloat(
-        (entryPrice - targetPnL / qty).toFixed(pricePrecision)
-      );
+      //   const newStop = parseFloat(
+      //     (entryPrice - targetPnL / qty).toFixed(pricePrecision)
+      //   );
       const roundedStop = parseFloat(newStop.toFixed(pricePrecision));
       const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
 
@@ -282,6 +287,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
           data: {
             stopLossPrice: roundedStop,
             stopLossOrderId: stopLossOrder.orderId,
+            isProfit: true,
           },
         });
 
@@ -536,13 +542,13 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 60 * 1000);
+}, 4500);
 
 setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 30000);
+}, 2500);
 
 setInterval(async () => {
   for (const sym of symbols) {
@@ -560,4 +566,4 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 5000);
+}, 1500);

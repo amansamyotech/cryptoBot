@@ -1,0 +1,25 @@
+const symbols = [
+  "ADAUSDT",
+  "BNBUSDT",
+  "DOGEUSDT",
+  "DOTUSDT",
+  "SUIUSDT",
+  "NEARUSDT",
+  "INJUSDT",
+  "IOTAUSDT",
+  "TRXUSDT",
+  "SOLUSDT",
+  "TONUSDT",
+  "TAOUSDT",
+  "LEVERUSDT",
+  "CKBUSDT",
+  "1000FLOKIUSDT",
+  // "XRPUSDT",
+  // "ORDIUSDT",
+  // "WIFUSDT",
+  // "KSMUSDT",
+  // "1000PEPEUSDT",
+  // "1000BONKUSDT",
+];
+
+module.exports = { symbols };
