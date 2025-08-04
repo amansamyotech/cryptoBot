@@ -1,51 +1,56 @@
 const axios = require("axios");
 const crypto = require("crypto");
 
-const accessKey = "460e56f22bedb4cbb9908603dcd6f7b1";
-const secretKey = "31e4c0d4d894de2250c4e0c152cb8158";
-
-function signParams(params, secretKey) {
-  const queryString = Object.keys(params)
-    .sort()
-    .map((key) => `${key}=${params[key]}`)
-    .join("&");
-
-  return crypto
-    .createHmac("sha256", secretKey)
-    .update(queryString)
-    .digest("hex");
-}
+const apiKey = "460e56f22bedb4cbb9908603dcd6f7b1"; // Replace with your API Key
+const secretKey = "31e4c0d4d894de2250c4e0c152cb8158"; // Replace with your Secret Key
 
 async function getUsdtBalance() {
-  const baseURL = "https://api.coinstore.com";
-  const path = "/api/v1/account";
-  const timestamp = Date.now();
+  const url = "https://api.coinstore.com/api/spot/accountList";
 
-  const params = {
-    accessKey,
-    timestamp,
+  const expires = Date.now(); // milliseconds
+  const expiresKey = Math.floor(expires / 30000).toString();
+
+  const hashedKey = crypto
+    .createHmac("sha256", secretKey)
+    .update(expiresKey)
+    .digest("hex");
+
+  const key = Buffer.from(hashedKey);
+
+  const payload = JSON.stringify({}); // empty JSON body
+  const signature = crypto
+    .createHmac("sha256", key)
+    .update(payload)
+    .digest("hex");
+
+  const headers = {
+    "X-CS-APIKEY": apiKey,
+    "X-CS-SIGN": signature,
+    "X-CS-EXPIRES": expires.toString(),
+    "exch-language": "en_US",
+    "Content-Type": "application/json",
+    Accept: "*/*",
   };
 
-  params.sign = signParams(params, secretKey);
-
   try {
-    const response = await axios.get(`${baseURL}${path}`, { params });
+    const response = await axios.post(url, {}, { headers });
     const balances = response.data?.data || [];
 
-    const usdt = balances.find((asset) => asset.asset === "USDT");
-    const usdtBalance = parseFloat(usdt?.free || "0");
+    const usdtBalance = balances
+      .filter((entry) => entry.currency === "USDT")
+      .reduce((total, entry) => total + parseFloat(entry.balance), 0);
+
+    console.log(`✅ USDT Balance: ${usdtBalance}`);
     return usdtBalance;
   } catch (error) {
     console.error(
-      "Error fetching Coinstore balance:",
+      "❌ Error fetching Coinstore balance:",
       error.response?.data || error.message
     );
     return 0;
   }
 }
 
-setTimeout(async () => {
-  const balance = await getUsdtBalance();
-  console.log(`balance`, balance);
-}, 1000);
+getUsdtBalance();
+
 module.exports = { getUsdtBalance };
