@@ -1,14 +1,8 @@
 const axios = require("axios");
 const crypto = require("crypto");
-const tough = require("tough-cookie");
-const { wrapper: axiosCookieJarSupport } = require("axios-cookiejar-support"); // Correct import
 
 const apiKey = "460e56f22bedb4cbb9908603dcd6f7b1"; // Replace with your API Key
 const secretKey = "31e4c0d4d894de2250c4e0c152cb8158"; // Replace with your Secret Key
-
-// Apply cookie support to axios
-axiosCookieJarSupport(axios);
-const cookieJar = new tough.CookieJar();
 
 async function getUsdtBalance() {
   const url = "https://api.coinstore.com/api/spot/accountList";
@@ -42,12 +36,7 @@ async function getUsdtBalance() {
   };
 
   try {
-    const response = await axios.post(url, payload, {
-      headers,
-      withCredentials: true, // Allow cookies
-      jar: cookieJar, // Use cookie jar
-      httpsAgent: new (require("https").Agent)({ rejectUnauthorized: false }), // Optional: bypass SSL issues
-    });
+    const response = await axios.post(url, payload, { headers });
     const balances = response.data?.data || [];
 
     const usdtBalance = balances
