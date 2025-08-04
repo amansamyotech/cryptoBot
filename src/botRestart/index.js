@@ -49,15 +49,16 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
     if (roi >= TRAILING_START_ROI) {
       let newStop;
+      let targetROI;
+      let targetPnL;
+
       if (roi <= 1) {
         // When ROI is 1%, set stop-loss to entry price (break-even)
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
         // For ROI > 1%, trail 1% behind as original
-        const targetROI = roi - 1;
-        const targetPnL = (targetROI / 100) * margin;
-        console.log(`targetPnL`, targetPnL);
-
+        targetROI = roi - 1;
+        targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
           (entryPrice + targetPnL / qty).toFixed(pricePrecision)
         );
@@ -81,6 +82,9 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
       console.log(`oldStop: ${oldStop}`);
       console.log(`roundedCurrent: ${roundedCurrent}`);
+      console.log(`newStop: ${newStop}`);
+      console.log(`targetPnL: ${targetPnL}`);
+      console.log(`targetROI: ${targetROI}`);
 
       if (newStop > oldStop) {
         console.log(
@@ -191,14 +195,15 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
 
     if (roi >= TRAILING_START_ROI) {
       let newStop;
+      let targetROI;
+      let targetPnL;
       if (roi <= 1) {
         // When ROI is 1%, set stop-loss to entry price (break-even)
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
         // For ROI > 1%, trail 1% behind as original
-        const targetROI = roi - 1;
-        const targetPnL = (targetROI / 100) * margin;
-        console.log(`targetPnL`, targetPnL);
+        targetROI = roi - 1;
+        targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
           (entryPrice - targetPnL / qty).toFixed(pricePrecision)
         );
@@ -223,6 +228,9 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       console.log(`oldStop: ${oldStop}`);
       console.log(`roundedStop: ${roundedStop}`);
       console.log(`roundedCurrent: ${roundedCurrent}`);
+      console.log(`newStop: ${newStop}`);
+      console.log(`targetPnL: ${targetPnL}`);
+      console.log(`targetROI: ${targetROI}`);
 
       if (roundedStop < oldStop) {
         console.log(
