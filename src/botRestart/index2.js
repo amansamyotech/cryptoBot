@@ -10,15 +10,15 @@ const binance = new Binance().options({
 });
 const symbols = [
   "XRPUSDT",
-  "SUIUSDT",
-  "BNBUSDT",
-  "1000BONKUSDT",
-  "ADAUSDT",
-  "DOGEUSDT",
-  "LEVERUSDT",
-  "WIFUSDT",
-  "1000FLOKIUSDT",
-  "CKBUSDT",
+  // "SUIUSDT",
+  // "BNBUSDT",
+  // "1000BONKUSDT",
+  // "ADAUSDT",
+  // "DOGEUSDT",
+  // "LEVERUSDT",
+  // "WIFUSDT",
+  // "1000FLOKIUSDT",
+  // "CKBUSDT",
 ];
 
 const interval = "3m";
@@ -66,7 +66,8 @@ function calculateROIPrices(entryPrice, marginUsed, quantity, side) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = decideTradeDirection2(symbol);
+  // const decision = decideTradeDirection2(symbol);
+  const decision = "LONG";
 
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
@@ -308,7 +309,7 @@ async function placeShortOrder(symbol, marginAmount) {
 // 🔁 Main Loop
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 1; // Keep $5.1 reserve
+  const usableBalance = totalBalance - 15; // Keep $5.1 reserve
   console.log(`usableBalance usableBalance usableBalance`, usableBalance);
 
   const maxSpendPerTrade = usableBalance / symbols.length;
