@@ -22,4 +22,5 @@ const symbols = [
   // "1000BONKUSDT",
 ];
 
+
 module.exports = { symbols };
