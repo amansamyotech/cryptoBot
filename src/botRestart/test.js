@@ -413,12 +413,6 @@ setTimeout(async () => {
 
 module.exports = { getUsdtBalance };
 
-
-
-
-
-
-
 // async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
 //   try {
 //     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
