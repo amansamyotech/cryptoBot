@@ -447,8 +447,8 @@ async function decideTradeDirection(symbol) {
     const closePrices = pastCandles5m.map((c) => c.close);
 
     // Using TEMA instead of EMA
-    const tema9 = calculateTEMA(closePrices, 9);
-    const tema15 = calculateTEMA(closePrices, 15);
+    const tema9 = calculateTEMA(closePrices, 15);
+    const tema15 = calculateTEMA(closePrices, 21);
 
     const lastTema9 = tema9[tema9.length - 2];
     const lastTema15 = tema15[tema15.length - 2];

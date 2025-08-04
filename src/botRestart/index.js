@@ -53,10 +53,8 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       let targetPnL;
 
       if (roi <= 1) {
-        // When ROI is 1%, set stop-loss to entry price (break-even)
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
-        // For ROI > 1%, trail 1% behind as original
         targetROI = roi - 1;
         targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
