@@ -373,10 +373,10 @@ async function decideTradeDirection(
       return "HOLD";
     }
 
-    if (isSidewaysMarket(pastCandles5m)) {
-      console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
-      return "HOLD";
-    }
+    // if (isSidewaysMarket(pastCandles5m)) {
+    //   console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
+    //   return "HOLD";
+    // }
 
     const closePrices = pastCandles5m.map((c) => c.close);
     const ema300 = calculateEMA(closePrices, 300);
