@@ -351,6 +351,8 @@ async function placeBuyOrder(symbol, marginAmount) {
     const entryPrice = parseFloat(price);
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
+    console.log(`quantity`,quantity);
+    
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
@@ -431,6 +433,7 @@ async function placeShortOrder(symbol, marginAmount) {
     const entryPrice = parseFloat(price);
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
+    console.log(`quantity`,quantity);
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
