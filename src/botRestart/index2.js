@@ -2,7 +2,6 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { decideTradeWithEma300 } = require("./decideTradeWithEma300");
 const { checkOrders } = require("./orderCheckFun");
-const { getUsdtBalance } = require("./helper/getBalance");
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
@@ -17,7 +16,6 @@ const symbols = [
   "XRPUSDT",
   "SUIUSDT",
   "BNBUSDT",
-  "1000BONKUSDT",
   "ADAUSDT",
   "DOGEUSDT",
   "LEVERUSDT",
@@ -25,6 +23,19 @@ const symbols = [
   "1000FLOKIUSDT",
   "CKBUSDT",
 ];
+
+async function getUsdtBalance() {
+  try {
+    const account = await binance.futuresBalance();
+    const usdtBalance = parseFloat(
+      account.find((asset) => asset.asset === "USDT")?.balance || 0
+    );
+    return usdtBalance;
+  } catch (err) {
+    console.error("Error fetching balance:", err);
+    return 0;
+  }
+}
 
 const interval = "1m";
 const LEVERAGE = 3;
