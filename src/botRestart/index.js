@@ -55,7 +55,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       if (roi <= 1) {
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
-        targetROI = roi - 1.5;
+        targetROI = roi - 1;
         targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
           (entryPrice + targetPnL / qty).toFixed(pricePrecision)
@@ -200,7 +200,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
         // For ROI > 1%, trail 1% behind as original
-        targetROI = roi - 1.5;
+        targetROI = roi - 1;
         targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
           (entryPrice - targetPnL / qty).toFixed(pricePrecision)
