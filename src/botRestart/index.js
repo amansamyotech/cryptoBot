@@ -55,7 +55,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       if (roi <= 1) {
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
-        targetROI = roi - 1;
+        targetROI = roi - 1.5;
         targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
           (entryPrice + targetPnL / qty).toFixed(pricePrecision)
@@ -200,7 +200,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
         // For ROI > 1%, trail 1% behind as original
-        targetROI = roi - 1;
+        targetROI = roi - 1.5;
         targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
           (entryPrice - targetPnL / qty).toFixed(pricePrecision)
@@ -351,15 +351,14 @@ async function placeBuyOrder(symbol, marginAmount) {
     const entryPrice = parseFloat(price);
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
-    console.log(`quantity`,quantity);
-    
+    console.log(`quantity`, quantity);
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
-console.log(`qtyFixed`,qtyFixed);
+    console.log(`qtyFixed`, qtyFixed);
     const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
     const stopLossPrice = parseFloat(
       (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
@@ -433,15 +432,14 @@ async function placeShortOrder(symbol, marginAmount) {
     const entryPrice = parseFloat(price);
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
-    console.log(`quantity`,quantity);
+    console.log(`quantity`, quantity);
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
-    console.log(`qtyFixed`,qtyFixed);
-    
+    console.log(`qtyFixed`, qtyFixed);
 
     const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
     const stopLossPrice = parseFloat(
