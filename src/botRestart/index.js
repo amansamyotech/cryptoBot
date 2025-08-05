@@ -517,7 +517,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 5;
+  const usableBalance = totalBalance - 15;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   if (usableBalance < 6) {
