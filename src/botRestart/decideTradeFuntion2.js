@@ -306,7 +306,7 @@ function isSidewaysMarket(
 
   return isSideways;
 }
-async function decideTradeDirection(symbol) {
+async function decideTradeDirection2(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
     if (pastCandles5m.length < 50) {
@@ -357,4 +357,4 @@ async function decideTradeDirection(symbol) {
     return "HOLD";
   }
 }
-module.exports = { decideTradeDirection };
+module.exports = { decideTradeDirection2 };
