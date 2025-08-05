@@ -15,7 +15,7 @@ const binance = new Binance().options({
 });
 
 const interval = "1m";
-const LEVERAGE = 5;
+const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 1;
 const INITIAL_TRAILING_ROI = 1;
@@ -52,10 +52,10 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       let targetROI;
       let targetPnL;
 
-      if (roi <= 1) {
+      if (roi <= 1.5) {
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
-        targetROI = roi - 1;
+        targetROI = roi - 1.5;
         targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
           (entryPrice + targetPnL / qty).toFixed(pricePrecision)
@@ -195,12 +195,12 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       let newStop;
       let targetROI;
       let targetPnL;
-      if (roi <= 1) {
+      if (roi <= 1.5) {
         // When ROI is 1%, set stop-loss to entry price (break-even)
         newStop = parseFloat(entryPrice.toFixed(pricePrecision));
       } else {
         // For ROI > 1%, trail 1% behind as original
-        targetROI = roi - 1;
+        targetROI = roi - 1.5;
         targetPnL = (targetROI / 100) * margin;
         newStop = parseFloat(
           (entryPrice - targetPnL / qty).toFixed(pricePrecision)
