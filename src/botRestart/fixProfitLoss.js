@@ -1,6 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { decideTradeDirection } = require("./decideTradeFuntion");
+const { symbols } = require("./constent");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
@@ -13,13 +14,13 @@ const binance = new Binance().options({
 });
 
 // ⚙️ Bot Config
-const symbols = [
-  "1000PEPEUSDT",
-  "1000BONKUSDT",
-  "DOGEUSDT",
-  "CKBUSDT",
-  "1000FLOKIUSDT",
-];
+// const symbols = [
+//   "1000PEPEUSDT",
+//   "1000BONKUSDT",
+//   "DOGEUSDT",
+//   "CKBUSDT",
+//   "1000FLOKIUSDT",
+// ];
 const interval = "3m";
 const leverage = 3; // Leverage
 const STOP_LOSS_ROI = -1.5; // -1% ROI for stop loss
