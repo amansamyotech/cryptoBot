@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { decideTradeDirection } = require("./decideTradeFuntion");
 const { checkOrders } = require("./orderCheckFun");
-const { getUsdtBalance } = require("./helper/getBalance");
+// const { getUsdtBalance } = require("./helper/getBalance");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
