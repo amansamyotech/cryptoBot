@@ -321,7 +321,7 @@ async function decideTradeDirection300(symbol) {
 
     const closePrices = pastCandles5m.map((c) => c.close);
 
-    // ✅ Use only TEMA(25)
+    // ✅ Calculate TEMA(12)
     const tema12 = calculateTEMA(closePrices, 25);
     const lastCandle = pastCandles5m[pastCandles5m.length - 2]; // Confirmed candle
     const currentCandle = pastCandles5m[pastCandles5m.length - 1]; // Unconfirmed
@@ -329,35 +329,59 @@ async function decideTradeDirection300(symbol) {
     const lastTema12 = tema12[tema12.length - 2]; // For the previous candle
     const currentTema12 = tema12[tema12.length - 1]; // For the current candle
 
-    // ✅ Angle of the last confirmed candle
+    // ✅ Step 1: First check the angle of the last confirmed candle
     const angle = getCandleAngle(lastCandle);
 
-    // ✅ First check if price is above TEMA
-    if (currentCandle.close > currentTema12) {
-      if (angle >= 90 && angle <= 135) {
-        console.log(`✅ LONG signal for ${symbol}: Angle=${angle.toFixed(2)}°`);
+    // ✅ Step 2: Check if angle indicates LONG direction
+    if (angle >= 90 && angle <= 135) {
+      // Angle suggests LONG - now check TEMA confirmation
+      if (lastCandle.close > lastTema12) {
+        console.log(
+          `✅ LONG signal for ${symbol}: Angle=${angle.toFixed(
+            2
+          )}° (LONG), Last candle closed above TEMA`
+        );
         return "LONG";
+      } else {
+        console.log(
+          `⚠️ LONG angle detected but last candle closed below TEMA for ${symbol}: Angle=${angle.toFixed(
+            2
+          )}°`
+        );
+        return "HOLD";
       }
     }
-
-    // ✅ Then check if price is below TEMA
-    if (currentCandle.close < currentTema12) {
-      if (angle >= 225 && angle <= 280) {
-        console.log(`✅ SHORT signal for ${symbol}: Angle=${angle.toFixed(2)}°`);
+    // ✅ Step 3: Check if angle indicates SHORT direction
+    else if (angle >= 225 && angle <= 280) {
+      // Angle suggests SHORT - now check TEMA confirmation
+      if (lastCandle.close < lastTema12) {
+        console.log(
+          `✅ SHORT signal for ${symbol}: Angle=${angle.toFixed(
+            2
+          )}° (SHORT), Last candle closed below TEMA`
+        );
         return "SHORT";
+      } else {
+        console.log(
+          `⚠️ SHORT angle detected but last candle closed above TEMA for ${symbol}: Angle=${angle.toFixed(
+            2
+          )}°`
+        );
+        return "HOLD";
       }
     }
-
-    // ✅ If none of the conditions are satisfied
-    console.log(
-      `ℹ️ No valid entry signal for ${symbol}: Angle=${angle.toFixed(2)}°, Close=${currentCandle.close}, TEMA=${currentTema12}`
-    );
-    return "HOLD";
-
+    // ✅ Step 4: Angle doesn't indicate clear direction
+    else {
+      console.log(
+        `ℹ️ No valid angle signal for ${symbol}: Angle=${angle.toFixed(
+          2
+        )}° (not in LONG or SHORT range)`
+      );
+      return "HOLD";
+    }
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
-
 module.exports = { decideTradeDirection300 };
