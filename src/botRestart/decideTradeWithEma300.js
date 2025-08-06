@@ -1,5 +1,15 @@
+const Binance = require("node-binance-api");
 const axios = require("axios");
+
+const binance = new Binance().options({
+  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
+  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
+  useServerTime: true,
+  test: false,
+});
+
 const TIMEFRAME_MAIN = "5m";
+const TIMEFRAME_TREND = "15m";
 
 async function getCandles(symbol, interval, limit = 1000) {
   try {
@@ -32,8 +42,8 @@ async function getCandles(symbol, interval, limit = 1000) {
 }
 
 function calculateEMA(prices, period) {
-  const k = 2 / (period + 1);
-  let ema = prices[0];
+  const k = 2 / (period + 1); // Smoothing factor
+  let ema = prices[0]; // Start with the first price
   const emaArray = [ema];
 
   for (let i = 1; i < prices.length; i++) {
@@ -42,6 +52,35 @@ function calculateEMA(prices, period) {
   }
 
   return emaArray;
+}
+
+function calculateTEMA(prices, period) {
+  // First EMA
+  const k = 2 / (period + 1);
+  let ema1 = [prices[0]];
+  for (let i = 1; i < prices.length; i++) {
+    ema1.push(prices[i] * k + ema1[i - 1] * (1 - k));
+  }
+
+  // Second EMA (EMA of EMA)
+  let ema2 = [ema1[0]];
+  for (let i = 1; i < ema1.length; i++) {
+    ema2.push(ema1[i] * k + ema2[i - 1] * (1 - k));
+  }
+
+  // Third EMA (EMA of EMA of EMA)
+  let ema3 = [ema2[0]];
+  for (let i = 1; i < ema2.length; i++) {
+    ema3.push(ema2[i] * k + ema3[i - 1] * (1 - k));
+  }
+
+  // TEMA = (3*EMA1 - 3*EMA2 + EMA3)
+  const tema = [];
+  for (let i = 0; i < prices.length; i++) {
+    tema.push(3 * ema1[i] - 3 * ema2[i] + ema3[i]);
+  }
+
+  return tema;
 }
 
 function getCandleAngle(candle, timeSpan = 300) {
@@ -59,7 +98,6 @@ function getCandleAngle(candle, timeSpan = 300) {
 
   return angle;
 }
-
 function calculateBollingerBands(prices, period = 20, stdDev = 2) {
   const sma = [];
   const std = [];
@@ -180,13 +218,14 @@ function calculateADX(candles, period = 14) {
 function isSidewaysMarket(
   candles,
   lookbackPeriod = 20,
-  thresholdPercent = 0.6
+  thresholdPercent = 0.6 // Tighter for 5m scalping
 ) {
   if (candles.length < lookbackPeriod) {
     console.log("❌ Insufficient candles for sideways analysis");
     return false;
   }
 
+  // Get recent candles
   const recentCandles = candles.slice(-lookbackPeriod);
   const closePrices = recentCandles.map((c) => c.close);
 
@@ -267,11 +306,10 @@ function isSidewaysMarket(
 
   return isSideways;
 }
-
-async function decideTradeWithEma300(symbol) {
+async function decideTradeDirection300(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
-    if (pastCandles5m.length < 300) {
+    if (pastCandles5m.length < 50) {
       console.log("❌ Insufficient candles for analysis");
       return "HOLD";
     }
@@ -282,43 +320,44 @@ async function decideTradeWithEma300(symbol) {
     }
 
     const closePrices = pastCandles5m.map((c) => c.close);
-    const ema300 = calculateEMA(closePrices, 300);
-    const ema9 = calculateEMA(closePrices, 9);
-    const lastCandle = pastCandles5m[pastCandles5m.length - 1];
-    const lastEma300 = ema300[ema300.length - 1];
-    const lastEma9 = ema9[ema9.length - 1];
+
+    // ✅ Use only TEMA(25)
+    const tema12 = calculateTEMA(closePrices, 25);
+    const lastCandle = pastCandles5m[pastCandles5m.length - 2]; // Confirmed candle
+    const currentCandle = pastCandles5m[pastCandles5m.length - 1]; // Unconfirmed
+
+    const lastTema12 = tema12[tema12.length - 2]; // For the previous candle
+    const currentTema12 = tema12[tema12.length - 1]; // For the current candle
+
+    // ✅ Angle of the last confirmed candle
     const angle = getCandleAngle(lastCandle);
 
-    if (
-      lastCandle.close > lastEma300 &&
-      lastCandle.close > lastEma9 &&
-      angle >= 90 &&
-      angle <= 135
-    ) {
-      console.log(
-        `📈 LONG signal for ${symbol}: Close=${lastCandle.close}, EMA300=${lastEma300}, EMA9=${lastEma9}, Angle=${angle}`
-      );
-      return "LONG";
-    } else if (
-      lastCandle.close < lastEma300 &&
-      lastCandle.close < lastEma9 &&
-      angle >= 225 &&
-      angle <= 280
-    ) {
-      console.log(
-        `📉 SHORT signal for ${symbol}: Close=${lastCandle.close}, EMA300=${lastEma300}, EMA9=${lastEma9}, Angle=${angle}`
-      );
-      return "SHORT";
-    } else {
-      console.log(
-        `⏸ HOLD for ${symbol}: Close=${lastCandle.close}, EMA300=${lastEma300}, EMA9=${lastEma9}, Angle=${angle}`
-      );
-      return "HOLD";
+    // ✅ First check if price is above TEMA
+    if (currentCandle.close > currentTema12) {
+      if (angle >= 90 && angle <= 135) {
+        console.log(`✅ LONG signal for ${symbol}: Angle=${angle.toFixed(2)}°`);
+        return "LONG";
+      }
     }
+
+    // ✅ Then check if price is below TEMA
+    if (currentCandle.close < currentTema12) {
+      if (angle >= 225 && angle <= 280) {
+        console.log(`✅ SHORT signal for ${symbol}: Angle=${angle.toFixed(2)}°`);
+        return "SHORT";
+      }
+    }
+
+    // ✅ If none of the conditions are satisfied
+    console.log(
+      `ℹ️ No valid entry signal for ${symbol}: Angle=${angle.toFixed(2)}°, Close=${currentCandle.close}, TEMA=${currentTema12}`
+    );
+    return "HOLD";
+
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
 
-module.exports = { decideTradeWithEma300 };
+module.exports = { decideTradeDirection300 };

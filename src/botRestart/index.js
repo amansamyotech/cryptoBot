@@ -1,6 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { decideTradeDirection } = require("./decideTradeFuntion");
+const { decideTradeDirection300 } = require("./decideTradeWithEma300");
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { symbols } = require("./constent");
@@ -508,7 +509,7 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await decideTradeDirection(symbol);
+  const decision = await decideTradeDirection300(symbol);
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
   } else if (decision === "SHORT") {
