@@ -2,8 +2,8 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 
 const binance = new Binance().options({
-  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
-  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
+  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
   test: false,
 });
@@ -42,8 +42,8 @@ async function getCandles(symbol, interval, limit = 1000) {
 }
 
 function calculateEMA(prices, period) {
-  const k = 2 / (period + 1); // Smoothing factor
-  let ema = prices[0]; // Start with the first price
+  const k = 2 / (period + 1); 
+  let ema = prices[0]; 
   const emaArray = [ema];
 
   for (let i = 1; i < prices.length; i++) {
@@ -55,7 +55,6 @@ function calculateEMA(prices, period) {
 }
 
 function calculateTEMA(prices, period) {
-  // First EMA
   const k = 2 / (period + 1);
   let ema1 = [prices[0]];
   for (let i = 1; i < prices.length; i++) {
@@ -306,7 +305,7 @@ function isSidewaysMarket(
 
   return isSideways;
 }
-async function decideTradeDirection2(symbol) {
+async function decideTradeDirection(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
     if (pastCandles5m.length < 50) {
@@ -357,4 +356,4 @@ async function decideTradeDirection2(symbol) {
     return "HOLD";
   }
 }
-module.exports = { decideTradeDirection2 };
+module.exports = { decideTradeDirection };
