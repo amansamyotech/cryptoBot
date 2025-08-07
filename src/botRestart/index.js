@@ -344,6 +344,23 @@ async function trailStopLoss(symbol) {
 
 async function placeBuyOrder(symbol, marginAmount) {
   try {
+    try {
+      await binance.futuresMarginType(symbol, "ISOLATED");
+      console.log(`[${symbol}] Margin type set to ISOLATED.`);
+    } catch (err) {
+      const msg = err?.body || err?.message || "";
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
+      } else {
+        console.warn(`[${symbol}] Error setting margin type:`, msg);
+      }
+    }
+
     await binance.futuresLeverage(symbol, LEVERAGE);
     console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
 
@@ -425,6 +442,23 @@ async function placeBuyOrder(symbol, marginAmount) {
 
 async function placeShortOrder(symbol, marginAmount) {
   try {
+    try {
+      await binance.futuresMarginType(symbol, "ISOLATED");
+      console.log(`[${symbol}] Margin type set to ISOLATED.`);
+    } catch (err) {
+      const msg = err?.body || err?.message || "";
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
+      } else {
+        console.warn(`[${symbol}] Error setting margin type:`, msg);
+      }
+    }
+
     await binance.futuresLeverage(symbol, LEVERAGE);
     console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
 
