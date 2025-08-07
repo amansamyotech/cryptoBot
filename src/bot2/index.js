@@ -19,7 +19,7 @@ const symbols = [
   "WIFUSDT",
   "CKBUSDT",
   "INJUSDT",
-  "1000FLOKIUSDT"
+  "1000FLOKIUSDT",
 ];
 
 async function getUsdtBalance() {
@@ -580,7 +580,7 @@ setInterval(async () => {
   console.log(`Total Balance: ${totalBalance} USDT`);
   console.log(`Usable Balance: ${usableBalance} USDT`);
   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
-
+if (maxSpendPerTrade >= 1.6) {
   for (const sym of symbols) {
     try {
       const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
@@ -597,7 +597,12 @@ setInterval(async () => {
     } catch (err) {
       console.error(`Error with ${sym}:`, err.message);
     }
-  }
+  }   
+} else {
+    console.log('not enough amount');
+    
+}
+  
 }, 4500);
 
 setInterval(async () => {
