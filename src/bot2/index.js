@@ -549,23 +549,25 @@ setInterval(async () => {
   console.log(`Usable Balance: ${usableBalance} USDT`);
   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
 
-  for (const sym of symbols) {
-    try {
-      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-        symbols: sym,
-      });
+  await Promise.allSettled(
+    symbols.map(async (sym) => {
+      try {
+        const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+          symbols: sym,
+        });
 
-      let status = response?.data?.data.status;
+        let status = response?.data?.data.status;
 
-      if (status == true) {
-        await processSymbol(sym, maxSpendPerTrade);
-      } else {
-        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+        if (status === true) {
+          await processSymbol(sym, maxSpendPerTrade);
+        } else {
+          console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+        }
+      } catch (err) {
+        console.error(`Error with ${sym}:`, err.message);
       }
-    } catch (err) {
-      console.error(`Error with ${sym}:`, err.message);
-    }
-  }
+    })
+  );
 }, 4500);
 
 setInterval(async () => {
