@@ -16,10 +16,10 @@ const binance = new Binance().options({
 const symbols = [
   "XRPUSDT",
   "SUIUSDT",
-  "LEVERUSDT",
   "WIFUSDT",
-  "1000FLOKIUSDT",
   "CKBUSDT",
+  "INJUSDT",
+  "ADAUSDT",
 ];
 
 async function getUsdtBalance() {
