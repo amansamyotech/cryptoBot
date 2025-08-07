@@ -365,6 +365,22 @@ async function trailStopLoss(symbol) {
 
 async function placeBuyOrder(symbol, marginAmount) {
   try {
+    try {
+      await binance.futuresMarginType(symbol, "ISOLATED");
+      console.log(`[${symbol}] Margin type set to ISOLATED.`);
+    } catch (err) {
+      const msg = err?.body || err?.message || "";
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
+      } else {
+        console.warn(`[${symbol}] Error setting margin type:`, msg);
+      }
+    }
     await binance.futuresLeverage(symbol, LEVERAGE);
     console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
 
@@ -445,6 +461,22 @@ async function placeBuyOrder(symbol, marginAmount) {
 
 async function placeShortOrder(symbol, marginAmount) {
   try {
+    try {
+      await binance.futuresMarginType(symbol, "ISOLATED");
+      console.log(`[${symbol}] Margin type set to ISOLATED.`);
+    } catch (err) {
+      const msg = err?.body || err?.message || "";
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
+      } else {
+        console.warn(`[${symbol}] Error setting margin type:`, msg);
+      }
+    }
     await binance.futuresLeverage(symbol, LEVERAGE);
     console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
 
@@ -549,25 +581,23 @@ setInterval(async () => {
   console.log(`Usable Balance: ${usableBalance} USDT`);
   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
 
-  await Promise.allSettled(
-    symbols.map(async (sym) => {
-      try {
-        const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-          symbols: sym,
-        });
+  for (const sym of symbols) {
+    try {
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
 
-        let status = response?.data?.data.status;
+      let status = response?.data?.data.status;
 
-        if (status === true) {
-          await processSymbol(sym, maxSpendPerTrade);
-        } else {
-          console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
-        }
-      } catch (err) {
-        console.error(`Error with ${sym}:`, err.message);
+      if (status == true) {
+        await processSymbol(sym, maxSpendPerTrade);
+      } else {
+        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
       }
-    })
-  );
+    } catch (err) {
+      console.error(`Error with ${sym}:`, err.message);
+    }
+  }
 }, 4500);
 
 setInterval(async () => {
