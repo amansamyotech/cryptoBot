@@ -306,6 +306,27 @@ function isSidewaysMarket(
 
   return isSideways;
 }
+
+function getTEMAangle(temaSeries, timeSpan = 300) {
+  if (temaSeries.length < 2) return null;
+
+  const temaPrev = temaSeries[temaSeries.length - 2];
+  const temaCurr = temaSeries[temaSeries.length - 1];
+  const delta = ((temaCurr - temaPrev) / temaPrev) * 100000;
+  const rawAngleRad = Math.atan(delta / timeSpan);
+  let angle = rawAngleRad * (180 / Math.PI);
+
+  if (temaCurr > temaPrev) {
+    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
+  } else if (temaCurr < temaPrev) {
+    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
+  } else {
+    angle = 180;
+  }
+
+  return angle;
+}
+
 async function decideTradeDirection300(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
@@ -321,67 +342,67 @@ async function decideTradeDirection300(symbol) {
 
     const closePrices = pastCandles5m.map((c) => c.close);
 
-    // ✅ Calculate TEMA(12)
-    const tema12 = calculateTEMA(closePrices, 25);
+    // ✅ Calculate TEMA(15)
+    const tema12 = calculateTEMA(closePrices, 15);
+
     const lastCandle = pastCandles5m[pastCandles5m.length - 2]; // Confirmed candle
-    const currentCandle = pastCandles5m[pastCandles5m.length - 1]; // Unconfirmed
 
-    const lastTema12 = tema12[tema12.length - 2]; // For the previous candle
-    const currentTema12 = tema12[tema12.length - 1]; // For the current candle
+    // ✅ Angle calculations
+    const candleAngle = getCandleAngle(lastCandle);
+    const temaAngle = getTEMAangle(tema12);
 
-    // ✅ Step 1: First check the angle of the last confirmed candle
-    const angle = getCandleAngle(lastCandle);
+    console.log(
+      `📐 Angles for ${symbol}: Candle=${candleAngle.toFixed(
+        2
+      )}°, TEMA=${temaAngle.toFixed(2)}°`
+    );
 
-    // ✅ Step 2: Check if angle indicates LONG direction
-    if (angle >= 90 && angle <= 135) {
-      // Angle suggests LONG - now check TEMA confirmation
+    // ✅ Entry Decision Based on Confluence
+    const lastTema12 = tema12[tema12.length - 2];
+
+    // ✅ LONG ENTRY
+    if (
+      candleAngle >= 90 &&
+      candleAngle <= 145 &&
+      temaAngle >= 90 &&
+      temaAngle <= 145
+    ) {
       if (lastCandle.close > lastTema12) {
-        console.log(
-          `✅ LONG signal for ${symbol}: Angle=${angle.toFixed(
-            2
-          )}° (LONG), Last candle closed above TEMA`
-        );
+        console.log(`✅ LONG signal for ${symbol}`);
         return "LONG";
       } else {
         console.log(
-          `⚠️ LONG angle detected but last candle closed below TEMA for ${symbol}: Angle=${angle.toFixed(
-            2
-          )}°`
+          `⚠️ Angle suggests LONG but candle closed below TEMA (${symbol})`
         );
         return "HOLD";
       }
     }
-    // ✅ Step 3: Check if angle indicates SHORT direction
-    else if (angle >= 225 && angle <= 280) {
-      // Angle suggests SHORT - now check TEMA confirmation
+
+    // ✅ SHORT ENTRY
+    if (
+      candleAngle >= 225 &&
+      candleAngle <= 270 &&
+      temaAngle >= 225 &&
+      temaAngle <= 270
+    ) {
       if (lastCandle.close < lastTema12) {
-        console.log(
-          `✅ SHORT signal for ${symbol}: Angle=${angle.toFixed(
-            2
-          )}° (SHORT), Last candle closed below TEMA`
-        );
+        console.log(`✅ SHORT signal for ${symbol}`);
         return "SHORT";
       } else {
         console.log(
-          `⚠️ SHORT angle detected but last candle closed above TEMA for ${symbol}: Angle=${angle.toFixed(
-            2
-          )}°`
+          `⚠️ Angle suggests SHORT but candle closed above TEMA (${symbol})`
         );
         return "HOLD";
       }
     }
-    // ✅ Step 4: Angle doesn't indicate clear direction
-    else {
-      console.log(
-        `ℹ️ No valid angle signal for ${symbol}: Angle=${angle.toFixed(
-          2
-        )}° (not in LONG or SHORT range)`
-      );
-      return "HOLD";
-    }
+
+    // ✅ Mismatch or unclear
+    console.log(`ℹ️ No confluence in angle for ${symbol}. Decision: HOLD`);
+    return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
+
 module.exports = { decideTradeDirection300 };
