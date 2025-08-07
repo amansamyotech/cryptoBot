@@ -19,7 +19,7 @@ const symbols = [
   "WIFUSDT",
   "CKBUSDT",
   "INJUSDT",
-  "ADAUSDT",
+  "1000FLOKIUSDT"
 ];
 
 async function getUsdtBalance() {
