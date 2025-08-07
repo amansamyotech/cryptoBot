@@ -16,9 +16,6 @@ const binance = new Binance().options({
 const symbols = [
   "XRPUSDT",
   "SUIUSDT",
-  "BNBUSDT",
-  "ADAUSDT",
-  "DOGEUSDT",
   "LEVERUSDT",
   "WIFUSDT",
   "1000FLOKIUSDT",
