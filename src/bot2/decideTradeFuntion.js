@@ -83,12 +83,21 @@ function calculateTEMA(prices, period) {
 }
 
 function getCandleAngle(candle, timeSpanSeconds = 300) {
+  if (!candle || isNaN(candle.close) || isNaN(candle.open)) {
+    console.error("Invalid candle data for angle calculation:", candle);
+    return 0;
+  }
+  const currentPrice = candle.close;
   const priceChange = candle.close - candle.open;
-  const slope = priceChange / timeSpanSeconds;
+  const normalizedPriceChange = (priceChange / currentPrice) * 100;
+  const slope = normalizedPriceChange / timeSpanSeconds;
   const angleRadians = Math.atan(slope);
   const angleDegrees = angleRadians * (180 / Math.PI);
-  console.log(`angleDegrees`,angleDegrees);
-  
+  console.log(
+    `Angle calculated: ${angleDegrees.toFixed(
+      2
+    )}° for priceChange: ${priceChange}, normalized: ${normalizedPriceChange}%`
+  );
   return angleDegrees;
 }
 function calculateBollingerBands(prices, period = 20, stdDev = 2) {
@@ -300,8 +309,6 @@ function isSidewaysMarket(
   return isSideways;
 }
 async function decideTradeDirection(symbol) {
-  console.log('me idher tk a gaya hy');
-  
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
     if (pastCandles5m.length < 50) {
@@ -336,17 +343,15 @@ async function decideTradeDirection(symbol) {
       crossoverCandle = pastCandles5m[pastCandles5m.length - 1];
     }
 
-    console.log(`temaSignal`,temaSignal);
-    
-    // if (!crossoverCandle) return "HOLD";
+    if (!crossoverCandle) return "HOLD";
 
     const angle = getCandleAngle(lastTema9);
     console.log(`angle`,angle);
     
 
-    if (angle >= 15 && temaSignal === "LONG") {
+    if (angle === 15 && temaSignal === "LONG") {
       return "LONG";
-    } else if (angle <= -15 && temaSignal === "SHORT") {
+    } else if (angle == -15 && temaSignal === "SHORT") {
       return "SHORT";
     } else {
       return "HOLD";
