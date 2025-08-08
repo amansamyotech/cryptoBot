@@ -92,7 +92,7 @@ function getCandleAngle(candle, timeSpanSeconds = 300) {
   const normalizedPriceChange = (priceChange / currentPrice) * 100;
   const slope = normalizedPriceChange / timeSpanSeconds;
   const angleRadians = Math.atan(slope);
-  const angleDegrees = angleRadians * (180 / Math.PI);
+  const angleDegrees = angleRadians * (180 / Math.PI) * 1000;
   console.log(
     `Angle calculated: ${angleDegrees.toFixed(
       2
@@ -344,19 +344,15 @@ async function decideTradeDirection(symbol) {
       crossoverCandle = pastCandles5m[pastCandles5m.length - 1];
     }
 
-    
     if (!crossoverCandle) return "HOLD";
-    console.log(`crossoverCandle`,crossoverCandle);
-    
+    console.log(`crossoverCandle`, crossoverCandle);
 
     const angle = getCandleAngle(crossoverCandle);
-    console.log(`angle`,angle);
-    
-    
+    console.log(`angle`, angle);
 
-    if (angle === 15 && temaSignal === "LONG") {
+    if (angle >= 1 && temaSignal === "LONG") {
       return "LONG";
-    } else if (angle == -15 && temaSignal === "SHORT") {
+    } else if (angle <= -1 && temaSignal === "SHORT") {
       return "SHORT";
     } else {
       return "HOLD";
