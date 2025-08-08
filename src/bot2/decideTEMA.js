@@ -345,7 +345,7 @@ async function decideTradeDirection300(symbol) {
     // ✅ Calculate TEMA(15)
     const tema12 = calculateTEMA(closePrices, 15);
 
-    const lastCandle = pastCandles5m[pastCandles5m.length - 2]; // Confirmed candle
+    const lastCandle = pastCandles5m[pastCandles5m.length - 3]; // Confirmed candle
 
     // ✅ Angle calculations
     const candleAngle = getCandleAngle(lastCandle);
