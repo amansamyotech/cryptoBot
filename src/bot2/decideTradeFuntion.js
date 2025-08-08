@@ -87,6 +87,8 @@ function getCandleAngle(candle, timeSpanSeconds = 300) {
   const slope = priceChange / timeSpanSeconds;
   const angleRadians = Math.atan(slope);
   const angleDegrees = angleRadians * (180 / Math.PI);
+  console.log(`angleDegrees`,angleDegrees);
+  
   return angleDegrees;
 }
 function calculateBollingerBands(prices, period = 20, stdDev = 2) {
@@ -332,6 +334,8 @@ async function decideTradeDirection(symbol) {
       crossoverCandle = pastCandles5m[pastCandles5m.length - 1];
     }
 
+    console.log(`temaSignal`,temaSignal);
+    
     if (!crossoverCandle) return "HOLD";
 
     const angle = getCandleAngle(crossoverCandle);
