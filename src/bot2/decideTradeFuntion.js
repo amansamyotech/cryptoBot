@@ -333,7 +333,8 @@ async function decideTradeDirection(symbol) {
     const prevTema15 = tema15[tema15.length - 2];
 
     let temaSignal = "HOLD";
-    let crossoverCandle = null;
+    // let crossoverCandle = null;
+    let crossoverCandle = pastCandles5m[pastCandles5m.length - 1];
 
     if (prevTema9 <= prevTema15 && lastTema9 > lastTema15) {
       temaSignal = "LONG";
@@ -342,9 +343,11 @@ async function decideTradeDirection(symbol) {
       temaSignal = "SHORT";
       crossoverCandle = pastCandles5m[pastCandles5m.length - 1];
     }
-    console.log(`crossoverCandle`,crossoverCandle);
+
     
     if (!crossoverCandle) return "HOLD";
+    console.log(`crossoverCandle`,crossoverCandle);
+    
 
     const angle = getCandleAngle(crossoverCandle);
     console.log(`angle`,angle);
