@@ -338,7 +338,7 @@ async function decideTradeDirection(symbol) {
 
     console.log(`temaSignal`,temaSignal);
     
-    if (!crossoverCandle) return "HOLD";
+    // if (!crossoverCandle) return "HOLD";
 
     const angle = getCandleAngle(lastTema9);
     console.log(`angle`,angle);
