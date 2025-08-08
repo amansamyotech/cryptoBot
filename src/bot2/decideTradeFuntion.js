@@ -300,6 +300,8 @@ function isSidewaysMarket(
   return isSideways;
 }
 async function decideTradeDirection(symbol) {
+  console.log('me idher tk a gaya hy');
+  
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
     if (pastCandles5m.length < 50) {
