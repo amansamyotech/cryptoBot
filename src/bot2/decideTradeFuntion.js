@@ -340,7 +340,7 @@ async function decideTradeDirection(symbol) {
     
     if (!crossoverCandle) return "HOLD";
 
-    const angle = getCandleAngle(crossoverCandle);
+    const angle = getCandleAngle(lastTema9);
     console.log(`angle`,angle);
     
 
