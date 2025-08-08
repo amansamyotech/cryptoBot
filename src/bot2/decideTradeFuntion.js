@@ -42,8 +42,8 @@ async function getCandles(symbol, interval, limit = 1000) {
 }
 
 function calculateEMA(prices, period) {
-  const k = 2 / (period + 1); 
-  let ema = prices[0]; 
+  const k = 2 / (period + 1);
+  let ema = prices[0];
   const emaArray = [ema];
 
   for (let i = 1; i < prices.length; i++) {
@@ -82,20 +82,12 @@ function calculateTEMA(prices, period) {
   return tema;
 }
 
-function getCandleAngle(candle, timeSpan = 300) {
-  const delta = ((candle.close - candle.open) / candle.open) * 100000;
-  const rawAngleRad = Math.atan(delta / timeSpan);
-  let angle = rawAngleRad * (180 / Math.PI);
-
-  if (candle.close > candle.open) {
-    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
-  } else if (candle.close < candle.open) {
-    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
-  } else {
-    angle = 180;
-  }
-
-  return angle;
+function getCandleAngle(candle, timeSpanSeconds = 300) {
+  const priceChange = candle.close - candle.open;
+  const slope = priceChange / timeSpanSeconds;
+  const angleRadians = Math.atan(slope);
+  const angleDegrees = angleRadians * (180 / Math.PI);
+  return angleDegrees;
 }
 function calculateBollingerBands(prices, period = 20, stdDev = 2) {
   const sma = [];
@@ -344,9 +336,9 @@ async function decideTradeDirection(symbol) {
 
     const angle = getCandleAngle(crossoverCandle);
 
-    if (angle >= 90 && angle <= 125 && temaSignal === "LONG") {
+    if (angle >= 15 && temaSignal === "LONG") {
       return "LONG";
-    } else if (angle >= 225 && angle <= 270 && temaSignal === "SHORT") {
+    } else if (angle <= -15 && temaSignal === "SHORT") {
       return "SHORT";
     } else {
       return "HOLD";
