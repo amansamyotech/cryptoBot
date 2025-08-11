@@ -330,7 +330,7 @@ async function decide25TEMA(symbol) {
     const lastTEMA = tema25[tema25.length - 1];
     const prevTEMA = tema25[tema25.length - 2];
 
-    const scaleFactor = 100;
+    const scaleFactor = 1000;
     const slope = ((lastTEMA - prevTEMA) / prevTEMA) * scaleFactor;
     const angleRadians = Math.atan(slope);
     const angleDegrees = angleRadians * (180 / Math.PI);
