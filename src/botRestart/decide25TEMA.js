@@ -306,7 +306,7 @@ function isSidewaysMarket(
 
   return isSideways;
 }
-async function decideTradeDirection(symbol) {
+async function decide25TEMA(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
     if (pastCandles5m.length < 50) {
@@ -330,22 +330,19 @@ async function decideTradeDirection(symbol) {
     const lastTEMA = tema25[tema25.length - 1];
     const prevTEMA = tema25[tema25.length - 2];
 
-    const slope = lastTEMA - prevTEMA;
+    const scaleFactor = 1000;
+    const slope = ((lastTEMA - prevTEMA) / prevTEMA) * scaleFactor;
     const angleRadians = Math.atan(slope);
     const angleDegrees = angleRadians * (180 / Math.PI);
 
     console.log(`📐 TEMA(25) Angle for ${symbol}: ${angleDegrees.toFixed(2)}°`);
 
-    if (angleDegrees > 45) {
-      return "LONG";
-    } else if (angleDegrees < -45) {
-      return "SHORT";
-    } else {
-      return "HOLD";
-    }
+    if (angleDegrees > 20) return "LONG";
+    else if (angleDegrees < -20) return "SHORT";
+    else return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
-module.exports = { decideTradeDirection };
+module.exports = { decide25TEMA };
