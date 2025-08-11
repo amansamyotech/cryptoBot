@@ -330,19 +330,16 @@ async function decide25TEMA(symbol) {
     const lastTEMA = tema25[tema25.length - 1];
     const prevTEMA = tema25[tema25.length - 2];
 
-    const slope = (lastTEMA - prevTEMA) / prevTEMA;
+    const scaleFactor = 100;
+    const slope = ((lastTEMA - prevTEMA) / prevTEMA) * scaleFactor;
     const angleRadians = Math.atan(slope);
     const angleDegrees = angleRadians * (180 / Math.PI);
 
     console.log(`📐 TEMA(25) Angle for ${symbol}: ${angleDegrees.toFixed(2)}°`);
 
-    if (angleDegrees > 45) {
-      return "LONG";
-    } else if (angleDegrees < -45) {
-      return "SHORT";
-    } else {
-      return "HOLD";
-    }
+    if (angleDegrees > 20) return "LONG";
+    else if (angleDegrees < -20) return "SHORT";
+    else return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
