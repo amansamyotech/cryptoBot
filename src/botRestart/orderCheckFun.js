@@ -30,7 +30,7 @@ async function checkOrders(symbol) {
     });
     console.log(`stopLossStatus`, stopLossStatus?.status);
 
-    if (stopLossStatus?.status === "FILLED") {
+    if (stopLossStatus?.status === "FILLED" || stopLossStatus?.status === "EXPIRED") {
       console.log(`Stop loss order filled for ${symbol}`);
 
       const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
