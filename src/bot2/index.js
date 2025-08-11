@@ -1,7 +1,6 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { decideTradeDirection } = require("./decideTradeFuntion");
-// const { decideTradeDirection300 } = require("./decideTEMA");
+const { decide25TEMA } = require("./decide25TEMA");
 const { checkOrders } = require("./orderCheckFun");
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -564,7 +563,7 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await decideTradeDirection(symbol);
+  const decision = await decide25TEMA(symbol);
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
   } else if (decision === "SHORT") {
@@ -586,29 +585,27 @@ setInterval(async () => {
   console.log(`Total Balance: ${totalBalance} USDT`);
   console.log(`Usable Balance: ${usableBalance} USDT`);
   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
-if (maxSpendPerTrade >= 1.6) {
-  for (const sym of symbols) {
-    try {
-      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-        symbols: sym,
-      });
+  if (maxSpendPerTrade >= 1.6) {
+    for (const sym of symbols) {
+      try {
+        const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+          symbols: sym,
+        });
 
-      let status = response?.data?.data.status;
+        let status = response?.data?.data.status;
 
-      if (status == true) {
-        await processSymbol(sym, maxSpendPerTrade);
-      } else {
-        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+        if (status == true) {
+          await processSymbol(sym, maxSpendPerTrade);
+        } else {
+          console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+        }
+      } catch (err) {
+        console.error(`Error with ${sym}:`, err.message);
       }
-    } catch (err) {
-      console.error(`Error with ${sym}:`, err.message);
     }
-  }   
-} else {
-    console.log('not enough amount');
-    
-}
-  
+  } else {
+    console.log("not enough amount");
+  }
 }, 4500);
 
 setInterval(async () => {
