@@ -12,7 +12,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["BNBUSDT"];
+const symbols = ["BNBUSDT","ETHUSDT"];
 
 
 async function getUsdtBalance() {
@@ -29,7 +29,7 @@ async function getUsdtBalance() {
 }
 
 const interval = "1m";
-const LEVERAGE = 3;
+const LEVERAGE = 4;
 const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 1.2;
 const INITIAL_TRAILING_ROI = 1;
@@ -571,13 +571,10 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 5;
+  const usableBalance = totalBalance - 1;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
-  if (usableBalance < 6) {
-    console.log("Not enough balance to trade.");
-    return;
-  }
+  
   console.log(`Total Balance: ${totalBalance} USDT`);
   console.log(`Usable Balance: ${usableBalance} USDT`);
   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
