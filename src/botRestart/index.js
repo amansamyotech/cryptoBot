@@ -585,13 +585,13 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 4500);
+}, 5500);
 
 setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 2500);
+}, 2000);
 
 setInterval(async () => {
   for (const sym of symbols) {
@@ -609,4 +609,4 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 1500);
+}, 1000);
