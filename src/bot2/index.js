@@ -12,7 +12,8 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["BNBUSDT"];
+// const symbols = ["BNBUSDT"];
+const symbols = ["ETHUSDT"];
 
 async function getUsdtBalance() {
   try {
