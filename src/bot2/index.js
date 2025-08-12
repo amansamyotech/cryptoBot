@@ -12,8 +12,8 @@ const binance = new Binance().options({
   test: false,
 });
 
-// const symbols = ["BNBUSDT"];
-const symbols = ["ETHUSDT"];
+const symbols = ["BNBUSDT"];
+
 
 async function getUsdtBalance() {
   try {
@@ -558,15 +558,15 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
-  console.log("decision",decision);
   
-  // if (decision === "LONG") {
-  //   await placeBuyOrder(symbol, maxSpendPerTrade);
-  // } else if (decision === "SHORT") {
-  //   await placeShortOrder(symbol, maxSpendPerTrade);
-  // } else {
-  //   console.log(`No trade signal for ${symbol}`);
-  // }
+  
+  if (decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 setInterval(async () => {

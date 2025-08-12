@@ -255,8 +255,7 @@ async function decide25TEMA(symbol) {
     const slope = ((lastTEMA25 - prevTEMA25) / prevTEMA25) * scaleFactor;
     const angleRadians = Math.atan(slope);
     const angleDegrees = angleRadians * (180 / Math.PI);
-    console.log(`angleDegrees`,angleDegrees);
-    
+    console.log(`angleDegrees`, angleDegrees);
 
     // Decision logic: Based on TEMA(25) position and angle
     let decision = "HOLD";
@@ -265,20 +264,34 @@ async function decide25TEMA(symbol) {
     // Bullish: TEMA(25) > price and angle > 20°
     if (lastTEMA25 > lastPrice && angleDegrees > 40) {
       decision = "LONG";
-      reason = `TEMA(25) (${lastTEMA25.toFixed(2)}) > price (${lastPrice.toFixed(2)}), angle ${angleDegrees.toFixed(2)}° > 20°`;
+      reason = `TEMA(25) (${lastTEMA25.toFixed(
+        2
+      )}) > price (${lastPrice.toFixed(2)}), angle ${angleDegrees.toFixed(
+        2
+      )}° > 20°`;
     }
     // Bearish: TEMA(25) < price and angle < -20°
     else if (lastTEMA25 < lastPrice && angleDegrees < -40) {
       decision = "SHORT";
-      reason = `TEMA(25) (${lastTEMA25.toFixed(2)}) < price (${lastPrice.toFixed(2)}), angle ${angleDegrees.toFixed(2)}° < -20°`;
+      reason = `TEMA(25) (${lastTEMA25.toFixed(
+        2
+      )}) < price (${lastPrice.toFixed(2)}), angle ${angleDegrees.toFixed(
+        2
+      )}° < -20°`;
     }
     // Neutral: Otherwise
     else {
-      reason = `TEMA(25) (${lastTEMA25.toFixed(2)}) and angle (${angleDegrees.toFixed(2)}°) do not meet LONG/SHORT criteria`;
+      reason = `TEMA(25) (${lastTEMA25.toFixed(
+        2
+      )}) and angle (${angleDegrees.toFixed(
+        2
+      )}°) do not meet LONG/SHORT criteria`;
     }
 
     console.log(
-      `📐 TEMA(25) for ${symbol}: ${lastTEMA25.toFixed(2)}, Angle: ${angleDegrees.toFixed(2)}°, Decision: ${decision} (${reason})`
+      `📐 TEMA(25) for ${symbol}: ${lastTEMA25.toFixed(
+        2
+      )}, Angle: ${angleDegrees.toFixed(2)}°, Decision: ${decision} (${reason})`
     );
 
     return decision;
