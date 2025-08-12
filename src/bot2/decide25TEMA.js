@@ -262,7 +262,7 @@ async function decide25TEMA(symbol) {
     let reason = "";
 
     // Bullish: TEMA(25) > price and angle > 20°
-    if (lastTEMA25 > lastPrice && angleDegrees > 40) {
+    if (lastTEMA25 > lastPrice && angleDegrees > 35) {
       decision = "LONG";
       reason = `TEMA(25) (${lastTEMA25.toFixed(
         2
@@ -271,7 +271,7 @@ async function decide25TEMA(symbol) {
       )}° > 20°`;
     }
     // Bearish: TEMA(25) < price and angle < -20°
-    else if (lastTEMA25 < lastPrice && angleDegrees < -40) {
+    else if (lastTEMA25 < lastPrice && angleDegrees < -35) {
       decision = "SHORT";
       reason = `TEMA(25) (${lastTEMA25.toFixed(
         2
