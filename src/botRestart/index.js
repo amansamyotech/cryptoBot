@@ -103,6 +103,8 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
           const order = await binance.futuresOrderStatus(symbol, {
             orderId,
           });
+          console.log(`order`,order);
+          
           orderExists =
             order && order.status !== "CANCELED" && order.status !== "FILLED";
         } catch (err) {
@@ -114,7 +116,9 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
         if (orderExists) {
           try {
-            await binance.futuresCancel(symbol, orderId);
+            const orderCancel = await binance.futuresCancel(symbol, orderId);
+            console.log(`orderCancel`,orderCancel);
+            
           } catch (err) {
             console.warn(
               `[${symbol}] Failed to cancel order ${orderId}:`,
@@ -251,6 +255,8 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
           const order = await binance.futuresOrderStatus(symbol, {
             orderId,
           });
+          console.log(`order`,order);
+          
           orderExists =
             order && order.status !== "CANCELED" && order.status !== "FILLED";
         } catch (err) {
@@ -262,7 +268,8 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
 
         if (orderExists) {
           try {
-            await binance.futuresCancel(symbol, orderId);
+            const orderCancel = await binance.futuresCancel(symbol, orderId);
+            console.log(`orderCancel`,orderCancel);
           } catch (err) {
             console.warn(
               `[${symbol}] Failed to cancel order ${orderId}:`,
