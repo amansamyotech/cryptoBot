@@ -261,31 +261,25 @@ async function decide25TEMA(symbol) {
     let decision = "HOLD";
     let reason = "";
 
-    // Bullish: TEMA(25) > price and angle > 20°
-    if (lastTEMA25 > lastPrice && angleDegrees > 35) {
+    if (lastTEMA25 < lastPrice && angleDegrees > 35) {
       decision = "LONG";
-      reason = `TEMA(25) (${lastTEMA25.toFixed(
+      reason = `Price (${lastPrice.toFixed(
         2
-      )}) > price (${lastPrice.toFixed(2)}), angle ${angleDegrees.toFixed(
+      )}) > TEMA(25) (${lastTEMA25.toFixed(
         2
-      )}° > 20°`;
-    }
-    // Bearish: TEMA(25) < price and angle < -20°
-    else if (lastTEMA25 < lastPrice && angleDegrees < -35) {
+      )}) and angle ${angleDegrees.toFixed(2)}° > 35°`;
+    } else if (lastTEMA25 > lastPrice && angleDegrees < -35) {
       decision = "SHORT";
-      reason = `TEMA(25) (${lastTEMA25.toFixed(
+      reason = `Price (${lastPrice.toFixed(
         2
-      )}) < price (${lastPrice.toFixed(2)}), angle ${angleDegrees.toFixed(
+      )}) < TEMA(25) (${lastTEMA25.toFixed(
         2
-      )}° < -20°`;
-    }
-    // Neutral: Otherwise
-    else {
-      reason = `TEMA(25) (${lastTEMA25.toFixed(
+      )}) and angle ${angleDegrees.toFixed(2)}° < -35°`;
+    } else {
+      decision = "HOLD";
+      reason = `Conditions not met. TEMA(25): ${lastTEMA25.toFixed(
         2
-      )}) and angle (${angleDegrees.toFixed(
-        2
-      )}°) do not meet LONG/SHORT criteria`;
+      )}, Price: ${lastPrice.toFixed(2)}, Angle: ${angleDegrees.toFixed(2)}°`;
     }
 
     console.log(
