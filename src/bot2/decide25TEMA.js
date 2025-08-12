@@ -9,19 +9,12 @@ const binance = new Binance().options({
 });
 
 const TIMEFRAME_MAIN = "5m";
-const TIMEFRAME_TREND = "15m";
 
 async function getCandles(symbol, interval, limit = 1000) {
   try {
     const res = await axios.get(
       `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
     );
-    if (!res.data || !Array.isArray(res.data)) {
-      console.error(
-        `❌ Invalid response from axios for ${symbol} - ${interval}`
-      );
-      return [];
-    }
     return res.data
       .map((c) => ({
         openTime: c[0],
@@ -42,8 +35,8 @@ async function getCandles(symbol, interval, limit = 1000) {
 }
 
 function calculateEMA(prices, period) {
-  const k = 2 / (period + 1); // Smoothing factor
-  let ema = prices[0]; // Start with the first price
+  const k = 2 / (period + 1);
+  let ema = prices[0];
   const emaArray = [ema];
 
   for (let i = 1; i < prices.length; i++) {
@@ -55,26 +48,25 @@ function calculateEMA(prices, period) {
 }
 
 function calculateTEMA(prices, period) {
-  // First EMA
   const k = 2 / (period + 1);
-  let ema1 = [prices[0]];
+  const ema1 = [prices[0]];
+  const ema2 = [];
+  const ema3 = [];
+
   for (let i = 1; i < prices.length; i++) {
     ema1.push(prices[i] * k + ema1[i - 1] * (1 - k));
   }
 
-  // Second EMA (EMA of EMA)
-  let ema2 = [ema1[0]];
+  ema2.push(ema1[0]);
   for (let i = 1; i < ema1.length; i++) {
     ema2.push(ema1[i] * k + ema2[i - 1] * (1 - k));
   }
 
-  // Third EMA (EMA of EMA of EMA)
-  let ema3 = [ema2[0]];
+  ema3.push(ema2[0]);
   for (let i = 1; i < ema2.length; i++) {
     ema3.push(ema2[i] * k + ema3[i - 1] * (1 - k));
   }
 
-  // TEMA = (3*EMA1 - 3*EMA2 + EMA3)
   const tema = [];
   for (let i = 0; i < prices.length; i++) {
     tema.push(3 * ema1[i] - 3 * ema2[i] + ema3[i]);
@@ -83,48 +75,10 @@ function calculateTEMA(prices, period) {
   return tema;
 }
 
-function getCandleAngle(candle, timeSpan = 300) {
-  const delta = ((candle.close - candle.open) / candle.open) * 100000;
-  const rawAngleRad = Math.atan(delta / timeSpan);
-  let angle = rawAngleRad * (180 / Math.PI);
-
-  if (candle.close > candle.open) {
-    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
-  } else if (candle.close < candle.open) {
-    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
-  } else {
-    angle = 180;
-  }
-
-  return angle;
-}
-function calculateBollingerBands(prices, period = 20, stdDev = 2) {
-  const sma = [];
-  const std = [];
-  const upperBand = [];
-  const lowerBand = [];
-
-  for (let i = period - 1; i < prices.length; i++) {
-    const slice = prices.slice(i - period + 1, i + 1);
-    const mean = slice.reduce((sum, p) => sum + p, 0) / period;
-    sma.push(mean);
-
-    const variance =
-      slice.reduce((sum, p) => sum + Math.pow(p - mean, 2), 0) / period;
-    const standardDeviation = Math.sqrt(variance);
-    std.push(standardDeviation);
-
-    upperBand.push(mean + stdDev * standardDeviation);
-    lowerBand.push(mean - stdDev * standardDeviation);
-  }
-
-  return { sma, upperBand, lowerBand };
-}
-
 function calculateADX(candles, period = 14) {
-  let plusDM = [];
-  let minusDM = [];
-  let tr = [];
+  const plusDM = [],
+    minusDM = [],
+    tr = [];
 
   for (let i = 1; i < candles.length; i++) {
     const high = candles[i].high;
@@ -136,213 +90,202 @@ function calculateADX(candles, period = 14) {
     const upMove = high - prevHigh;
     const downMove = prevLow - low;
 
-    const dmPlus = upMove > downMove && upMove > 0 ? upMove : 0;
-    const dmMinus = downMove > upMove && downMove > 0 ? downMove : 0;
+    plusDM.push(upMove > downMove && upMove > 0 ? upMove : 0);
+    minusDM.push(downMove > upMove && downMove > 0 ? downMove : 0);
 
     const trValue = Math.max(
       high - low,
       Math.abs(high - prevClose),
       Math.abs(low - prevClose)
     );
-
-    plusDM.push(dmPlus);
-    minusDM.push(dmMinus);
     tr.push(trValue);
   }
 
-  // Smooth the values
-  const smoothPeriod = period;
-  let smoothedPlusDM = [];
-  let smoothedMinusDM = [];
-  let smoothedTR = [];
+  const smoothedPlusDM = [],
+    smoothedMinusDM = [],
+    smoothedTR = [];
 
-  for (let i = smoothPeriod - 1; i < plusDM.length; i++) {
-    if (i === smoothPeriod - 1) {
+  for (let i = period - 1; i < plusDM.length; i++) {
+    if (i === period - 1) {
       smoothedPlusDM.push(
-        plusDM
-          .slice(i - smoothPeriod + 1, i + 1)
-          .reduce((sum, val) => sum + val, 0)
+        plusDM.slice(i - period + 1, i + 1).reduce((a, b) => a + b)
       );
       smoothedMinusDM.push(
-        minusDM
-          .slice(i - smoothPeriod + 1, i + 1)
-          .reduce((sum, val) => sum + val, 0)
+        minusDM.slice(i - period + 1, i + 1).reduce((a, b) => a + b)
       );
-      smoothedTR.push(
-        tr.slice(i - smoothPeriod + 1, i + 1).reduce((sum, val) => sum + val, 0)
-      );
+      smoothedTR.push(tr.slice(i - period + 1, i + 1).reduce((a, b) => a + b));
     } else {
       smoothedPlusDM.push(
-        (smoothedPlusDM[smoothedPlusDM.length - 1] * (smoothPeriod - 1) +
-          plusDM[i]) /
-          smoothPeriod
+        (smoothedPlusDM.at(-1) * (period - 1) + plusDM[i]) / period
       );
       smoothedMinusDM.push(
-        (smoothedMinusDM[smoothedMinusDM.length - 1] * (smoothPeriod - 1) +
-          minusDM[i]) /
-          smoothPeriod
+        (smoothedMinusDM.at(-1) * (period - 1) + minusDM[i]) / period
       );
-      smoothedTR.push(
-        (smoothedTR[smoothedTR.length - 1] * (smoothPeriod - 1) + tr[i]) /
-          smoothPeriod
-      );
+      smoothedTR.push((smoothedTR.at(-1) * (period - 1) + tr[i]) / period);
     }
   }
 
-  // Calculate DI+ and DI-
   const plusDI = smoothedPlusDM.map((dm, i) => (dm / smoothedTR[i]) * 100);
   const minusDI = smoothedMinusDM.map((dm, i) => (dm / smoothedTR[i]) * 100);
-
-  // Calculate DX and ADX
   const dx = plusDI.map(
     (pdi, i) => (Math.abs(pdi - minusDI[i]) / (pdi + minusDI[i])) * 100
   );
+
   const adx = [];
-  for (let i = smoothPeriod - 1; i < dx.length; i++) {
-    if (i === smoothPeriod - 1) {
+  for (let i = period - 1; i < dx.length; i++) {
+    if (i === period - 1) {
       adx.push(
-        dx
-          .slice(i - smoothPeriod + 1, i + 1)
-          .reduce((sum, val) => sum + val, 0) / smoothPeriod
+        dx.slice(i - period + 1, i + 1).reduce((a, b) => a + b) / period
       );
     } else {
-      adx.push(
-        (adx[adx.length - 1] * (smoothPeriod - 1) + dx[i]) / smoothPeriod
-      );
+      adx.push((adx.at(-1) * (period - 1) + dx[i]) / period);
     }
   }
 
   return adx;
 }
 
+function calculateBollingerBands(prices, period = 20, stdDev = 2) {
+  const sma = [],
+    upperBand = [],
+    lowerBand = [];
+
+  for (let i = period - 1; i < prices.length; i++) {
+    const slice = prices.slice(i - period + 1, i + 1);
+    const mean = slice.reduce((a, b) => a + b) / period;
+    const variance =
+      slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period;
+    const sd = Math.sqrt(variance);
+
+    sma.push(mean);
+    upperBand.push(mean + stdDev * sd);
+    lowerBand.push(mean - stdDev * sd);
+  }
+
+  return { sma, upperBand, lowerBand };
+}
+
 function isSidewaysMarket(
   candles,
   lookbackPeriod = 20,
-  thresholdPercent = 0.6 // Tighter for 5m scalping
+  thresholdPercent = 0.6
 ) {
-  if (candles.length < lookbackPeriod) {
-    console.log("❌ Insufficient candles for sideways analysis");
-    return false;
-  }
+  if (candles.length < lookbackPeriod) return false;
 
-  // Get recent candles
-  const recentCandles = candles.slice(-lookbackPeriod);
-  const closePrices = recentCandles.map((c) => c.close);
+  const recent = candles.slice(-lookbackPeriod);
+  const closePrices = recent.map((c) => c.close);
+  const highs = recent.map((c) => c.high);
+  const lows = recent.map((c) => c.low);
+  const currentPrice = candles.at(-1).close;
 
-  // 1. Price Range Check
-  const highs = recentCandles.map((c) => c.high);
-  const lows = recentCandles.map((c) => c.low);
-  const highestHigh = Math.max(...highs);
-  const lowestLow = Math.min(...lows);
-  const currentPrice = candles[candles.length - 1].close;
-  const priceRange = ((highestHigh - lowestLow) / currentPrice) * 100;
-
-  // 2. Volatility Check (tighter for 5m)
+  const priceRange =
+    ((Math.max(...highs) - Math.min(...lows)) / currentPrice) * 100;
   const recentVolatility =
-    recentCandles.slice(-5).reduce((sum, candle) => {
-      return sum + Math.abs((candle.high - candle.low) / candle.close) * 100;
-    }, 0) / 5;
+    recent
+      .slice(-5)
+      .reduce((sum, c) => sum + Math.abs((c.high - c.low) / c.close) * 100, 0) /
+    5;
 
-  // 3. EMA Convergence Check
   const ema5 = calculateEMA(closePrices, 5);
   const ema15 = calculateEMA(closePrices, 15);
-  const lastEma5 = ema5[ema5.length - 1];
-  const lastEma15 = ema15[ema15.length - 1];
+  const lastEma5 = ema5.at(-1);
+  const lastEma15 = ema15.at(-1);
   const emaConvergence = Math.abs((lastEma5 - lastEma15) / currentPrice) * 100;
 
-  // 4. Oscillation Check
   const avgEma = (lastEma5 + lastEma15) / 2;
-  let priceAboveEma = 0;
-  let priceBelowEma = 0;
-  recentCandles.slice(-10).forEach((candle) => {
-    if (candle.close > avgEma) priceAboveEma++;
-    else priceBelowEma++;
-  });
-  const oscillationRatio = Math.min(priceAboveEma, priceBelowEma) / 10;
+  const osc = recent.slice(-10).reduce((count, c) => {
+    return c.close > avgEma ? count + 1 : count;
+  }, 0);
+  const oscillationRatio = Math.min(osc, 10 - osc) / 10;
 
-  // 5. Bollinger Bands Check
-  const bb = calculateBollingerBands(closePrices, 20, 2);
-  const lastPrice = closePrices[closePrices.length - 1];
-  const lastUpperBand = bb.upperBand[bb.upperBand.length - 1];
-  const lastLowerBand = bb.lowerBand[bb.lowerBand.length - 1];
-  const bbWidth = ((lastUpperBand - lastLowerBand) / lastPrice) * 100;
-  const priceWithinBands =
-    lastPrice <= lastUpperBand && lastPrice >= lastLowerBand;
+  const bb = calculateBollingerBands(closePrices);
+  const lastUpper = bb.upperBand.at(-1);
+  const lastLower = bb.lowerBand.at(-1);
+  const bbWidth = ((lastUpper - lastLower) / currentPrice) * 100;
 
-  // 6. ADX Check (low ADX indicates no trend)
-  const adx = calculateADX(recentCandles, 14);
-  const lastAdx = adx[adx.length - 1];
+  const adx = calculateADX(recent);
+  const lastAdx = adx.at(-1);
 
-  // 7. Consolidation Pattern Check (doji-like candles)
-  const recentCandlesShort = recentCandles.slice(-5);
-  const dojiCount = recentCandlesShort.filter((c) => {
-    const bodySize = Math.abs(c.close - c.open) / c.open;
-    const totalRange = (c.high - c.low) / c.open;
-    return bodySize <= 0.001 && totalRange >= 0.002; // Small body, reasonable range
+  const dojiCount = recent.slice(-5).filter((c) => {
+    const body = Math.abs(c.close - c.open) / c.open;
+    const range = (c.high - c.low) / c.open;
+    return body <= 0.001 && range >= 0.002;
   }).length;
 
-  // Enhanced Sideways Criteria
-  const isSideways =
-    priceRange <= thresholdPercent && // Tighter range
-    emaConvergence <= 0.25 && // Tighter EMA convergence
-    recentVolatility <= 0.3 && // Lower volatility for 5m
-    oscillationRatio >= 0.4 && // Stronger oscillation
-    bbWidth <= 1.0 && // Narrow Bollinger Bands
-    priceWithinBands && // Price within bands
-    lastAdx <= 20 && // Low ADX (no trend)
-    dojiCount >= 2; // At least 2 doji-like candles
-
-  if (isSideways) {
-    console.log(
-      `📊 Sideways market detected for 5m timeframe: ` +
-        `Range=${priceRange.toFixed(2)}%, ` +
-        `EMA convergence=${emaConvergence.toFixed(3)}%, ` +
-        `Volatility=${recentVolatility.toFixed(2)}%, ` +
-        `BB Width=${bbWidth.toFixed(2)}%, ` +
-        `ADX=${lastAdx.toFixed(2)}, ` +
-        `Doji Count=${dojiCount}`
-    );
-  }
-
-  return isSideways;
+  return (
+    priceRange <= thresholdPercent &&
+    emaConvergence <= 0.25 &&
+    recentVolatility <= 0.3 &&
+    oscillationRatio >= 0.4 &&
+    bbWidth <= 1.0 &&
+    candles.at(-1).close <= lastUpper &&
+    candles.at(-1).close >= lastLower &&
+    lastAdx <= 20 &&
+    dojiCount >= 2
+  );
 }
+
 async function decide25TEMA(symbol) {
   try {
-    const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
-    if (pastCandles5m.length < 50) {
+    const candles = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
+    if (candles.length < 50) {
       console.log("❌ Insufficient candles for analysis");
       return "HOLD";
     }
 
-    if (isSidewaysMarket(pastCandles5m)) {
+    if (isSidewaysMarket(candles)) {
       console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
       return "HOLD";
     }
 
-    const closePrices = pastCandles5m.map((c) => c.close);
-    const tema25 = calculateTEMA(closePrices, 25);
+    const closes = candles.map((c) => c.close);
+    const tema25 = calculateTEMA(closes, 25);
 
     if (tema25.length < 2) {
-      console.log("❌ Not enough TEMA data");
+      console.log("❌ Insufficient TEMA data");
       return "HOLD";
     }
 
-    const lastTEMA = tema25[tema25.length - 1];
-    const prevTEMA = tema25[tema25.length - 2];
+    const lastPrice = closes.at(-1);
+    const lastTEMA25 = tema25.at(-1);
+    const prevTEMA25 = tema25.at(-2);
 
-    const scaleFactor = 1000;
-    const slope = ((lastTEMA - prevTEMA) / prevTEMA) * scaleFactor;
+    // Calculate angle of TEMA(25)
+    const scaleFactor = 1000; // Sensitivity for angle calculation
+    const slope = ((lastTEMA25 - prevTEMA25) / prevTEMA25) * scaleFactor;
     const angleRadians = Math.atan(slope);
     const angleDegrees = angleRadians * (180 / Math.PI);
+    console.log(`angleDegrees`,angleDegrees);
+    
 
-    console.log(`📐 TEMA(25) Angle for ${symbol}: ${angleDegrees.toFixed(2)}°`);
+    // Decision logic: Based on TEMA(25) position and angle
+    let decision = "HOLD";
+    let reason = "";
 
-    if (angleDegrees > 20) return "LONG";
-    else if (angleDegrees < -20) return "SHORT";
-    else return "HOLD";
+    // Bullish: TEMA(25) > price and angle > 20°
+    if (lastTEMA25 > lastPrice && angleDegrees > 40) {
+      decision = "LONG";
+      reason = `TEMA(25) (${lastTEMA25.toFixed(2)}) > price (${lastPrice.toFixed(2)}), angle ${angleDegrees.toFixed(2)}° > 20°`;
+    }
+    // Bearish: TEMA(25) < price and angle < -20°
+    else if (lastTEMA25 < lastPrice && angleDegrees < -40) {
+      decision = "SHORT";
+      reason = `TEMA(25) (${lastTEMA25.toFixed(2)}) < price (${lastPrice.toFixed(2)}), angle ${angleDegrees.toFixed(2)}° < -20°`;
+    }
+    // Neutral: Otherwise
+    else {
+      reason = `TEMA(25) (${lastTEMA25.toFixed(2)}) and angle (${angleDegrees.toFixed(2)}°) do not meet LONG/SHORT criteria`;
+    }
+
+    console.log(
+      `📐 TEMA(25) for ${symbol}: ${lastTEMA25.toFixed(2)}, Angle: ${angleDegrees.toFixed(2)}°, Decision: ${decision} (${reason})`
+    );
+
+    return decision;
   } catch (err) {
-    console.error(`❌ Decision error for ${symbol}:`, err.message);
+    console.error(`❌ Error in decide25TEMA for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
+
 module.exports = { decide25TEMA };
