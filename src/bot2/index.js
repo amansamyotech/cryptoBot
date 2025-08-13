@@ -12,7 +12,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["BNBUSDT" , "XRPUSDT","ADAUSDT",];
+const symbols = ["BNBUSDT", "XRPUSDT", "ADAUSDT"];
 
 async function getUsdtBalance() {
   try {
@@ -110,11 +110,15 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
           )}%)`
         );
         let orderId = parseInt(stopLossOrderId);
+        console.log(`orderId`, orderId);
+
         let orderExists = false;
         try {
           const order = await binance.futuresOrderStatus(symbol, {
             orderId,
           });
+          console.log(`order`, order);
+
           orderExists =
             order && order.status !== "CANCELED" && order.status !== "FILLED";
         } catch (err) {
@@ -126,7 +130,8 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
         if (orderExists) {
           try {
-            await binance.futuresCancel(symbol, orderId);
+            const cancelOrder = await binance.futuresCancel(symbol, orderId);
+            console.log(`cancelOrder`, cancelOrder);
           } catch (err) {
             console.warn(
               `[${symbol}] Failed to cancel order ${orderId}:`,
@@ -258,11 +263,13 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
           )}%)`
         );
         let orderId = parseInt(stopLossOrderId);
+        console.log(`orderId`, orderId);
         let orderExists = false;
         try {
           const order = await binance.futuresOrderStatus(symbol, {
             orderId,
           });
+          console.log(`order`, order);
           orderExists =
             order && order.status !== "CANCELED" && order.status !== "FILLED";
         } catch (err) {
@@ -274,7 +281,8 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
 
         if (orderExists) {
           try {
-            await binance.futuresCancel(symbol, orderId);
+            const cancelOrder = await binance.futuresCancel(symbol, orderId);
+            console.log(`cancelOrder`, cancelOrder);
           } catch (err) {
             console.warn(
               `[${symbol}] Failed to cancel order ${orderId}:`,
