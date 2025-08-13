@@ -385,126 +385,31 @@
 
 // // module.exports = { decideTradeDirection };
 
-// const Binance = require("node-binance-api");
+const Binance = require("node-binance-api");
 
-// const binance = new Binance().options({
-//   APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
-//   APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
-//   useServerTime: true,
-//   test: false,
-// });
+const binance = new Binance().options({
+  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
+  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
+  useServerTime: true,
+  test: false,
+});
 
-// async function getUsdtBalance() {
-//   try {
-//     const account = await binance.futuresBalance();
-//     const usdtBalance = parseFloat(
-//       account.find((asset) => asset.asset === "USDT")?.balance || 0
-//     );
-//     return usdtBalance;
-//   } catch (err) {
-//     console.error("Error fetching balance:", err);
-//     return 0;
-//   }
-// }
-// setTimeout(async () => {
-//   const balance = await getUsdtBalance();
-//   console.log(`balance`, balance);
-// }, 1000);
-
-// module.exports = { getUsdtBalance };
-
-// // async function decideTradeDirection(symbol, candles5m, candles15m, candleIndex) {
-// //   try {
-// //     const pastCandles5m = candles5m.slice(0, candleIndex + 1);
-
-// //     if (pastCandles5m.length < 15) return "HOLD";
-
-// //     if (isSidewaysMarket(pastCandles5m)) {
-// //       return "HOLD";
-// //     }
-
-// //     const closePrices = pastCandles5m.map((c) => c.close);
-
-// //     // Using TEMA instead of EMA
-// //     const tema9 = calculateTEMA(closePrices, 9);
-// //     const tema15 = calculateTEMA(closePrices, 15);
-
-// //     const lastTema9 = tema9[tema9.length - 2];
-// //     const lastTema15 = tema15[tema15.length - 2];
-// //     const prevTema9 = tema9[tema9.length - 3];
-// //     const prevTema15 = tema15[tema15.length - 3];
-
-// //     let temaSignal = "HOLD";
-// //     let crossoverCandle = null;
-
-// //     if (prevTema9 <= prevTema15 && lastTema9 > lastTema15) {
-// //       temaSignal = "LONG";
-// //       crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
-// //     } else if (prevTema9 >= prevTema15 && lastTema9 < lastTema15) {
-// //       temaSignal = "SHORT";
-// //       crossoverCandle = pastCandles5m[pastCandles5m.length - 2];
-// //     }
-
-// //     if (!crossoverCandle) return "HOLD";
-
-// //     const angle = getCandleAngle(crossoverCandle);
-
-// //     // Modified angle conditions (45° threshold)
-// //     if (angle >= 45 && angle <= 135 && temaSignal === "LONG") {
-// //       return "LONG";
-// //     } else if (angle >= 225 && angle <= 315 && temaSignal === "SHORT") {
-// //       return "SHORT";
-// //     } else {
-// //       return "HOLD";
-// //     }
-// //   } catch (err) {
-// //     console.error(❌ Decision error for ${symbol}:, err.message);
-// //     return "HOLD";
-// //   }
-// // }
-
-
-
-
-async function getTEMA25Angle(closes) {
-    if (closes.length < 27) {
-        throw new Error("Not enough data for TEMA(25)");
-    }
-
-    // Calculate TEMA(25)
-    const tema = await new Promise((resolve, reject) => {
-        tulind.indicators.tema.indicator([closes], [25], (err, results) => {
-            if (err) reject(err);
-            else resolve(results[0]);
-        });
-    });
-
-    // Last two TEMA values
-    const lastTEMA = tema[tema.length - 1];
-    const prevTEMA = tema[tema.length - 2];
-
-    // Calculate slope (rise/run)
-    const rise = lastTEMA - prevTEMA;
-    const run = 1; // 1 candle difference
-    const slope = rise / run;
-
-    // Convert slope to angle in degrees
-    const angleRadians = Math.atan(slope);
-    const angleDegrees = angleRadians * (180 / Math.PI);
-
-    return angleDegrees;
+async function getUsdtBalance() {
+  try {
+    const account = await binance.futuresBalance();
+    const usdtBalance = parseFloat(
+      account.find((asset) => asset.asset === "USDT")?.balance || 0
+    );
+    return usdtBalance;
+  } catch (err) {
+    console.error("Error fetching balance:", err);
+    return 0;
+  }
 }
+setTimeout(async () => {
+  const balance = await getUsdtBalance();
+  console.log(`balance`, balance);
+}, 1000);
 
-// Example usage
-(async () => {
-    const closes = [/* array of recent close prices */];
-    const angle = await getTEMA25Angle(closes);
+module.exports = { getUsdtBalance };
 
-    if (angle > 45) {
-        console.log("📈 Long Signal (Angle:", angle.toFixed(2), ")");
-    } else if (angle < -45) {
-        console.log("📉 Short Signal (Angle:", angle.toFixed(2), ")");
-    } else {
-        console.log("⏳ No Trade (Angle:", angle.toFixed(2), ")");
-    }
-})();
