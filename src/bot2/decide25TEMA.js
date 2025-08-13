@@ -2,8 +2,8 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 
 const binance = new Binance().options({
-  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
-  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
+  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
   useServerTime: true,
   test: false,
 });
@@ -261,14 +261,14 @@ async function decide25TEMA(symbol) {
     let decision = "HOLD";
     let reason = "";
 
-    if (lastTEMA25 < lastPrice && angleDegrees > 35) {
+    if (lastTEMA25 < lastPrice && angleDegrees > 40) {
       decision = "LONG";
       reason = `Price (${lastPrice.toFixed(
         2
       )}) > TEMA(25) (${lastTEMA25.toFixed(
         2
       )}) and angle ${angleDegrees.toFixed(2)}° > 35°`;
-    } else if (lastTEMA25 > lastPrice && angleDegrees < -35) {
+    } else if (lastTEMA25 > lastPrice && angleDegrees < -40) {
       decision = "SHORT";
       reason = `Price (${lastPrice.toFixed(
         2

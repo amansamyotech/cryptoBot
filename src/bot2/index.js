@@ -1,7 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { decide25TEMA } = require("./decide25TEMA");
-const { checkOrders } = require("./orderCheckFun");
+const { checkOrders } = require("./orderCheck2Fun");
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
@@ -30,8 +30,7 @@ async function getUsdtBalance() {
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
-// const TRAILING_START_ROI = 1.2;
-const TRAILING_START_ROI = 0.2;
+const TRAILING_START_ROI = 1.2;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
@@ -605,7 +604,7 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 5500);
+}, 4500);
 
 setInterval(async () => {
   for (const sym of symbols) {

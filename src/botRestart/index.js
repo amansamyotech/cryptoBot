@@ -592,7 +592,7 @@ setInterval(async () => {
       console.error(`Error with ${sym}:`, err.message);
     }
   }
-}, 5500);
+}, 4500);
 
 setInterval(async () => {
   for (const sym of symbols) {
