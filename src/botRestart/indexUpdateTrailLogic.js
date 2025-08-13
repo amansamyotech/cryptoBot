@@ -5,6 +5,7 @@ const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { symbols } = require("./constent");
 const { decide25TEMA } = require("./decide25TEMA");
+const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
