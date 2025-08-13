@@ -13,7 +13,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["BNBUSDT", "XRPUSDT", "ADAUSDT"];
+const symbols = ["BNBUSDT", "XRPUSDT", "ADAUSDT" , "SOLUSDT",];
 
 async function getUsdtBalance() {
   try {
