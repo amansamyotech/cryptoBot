@@ -17,15 +17,15 @@ async function checkOrders(symbol) {
     const { found } = response.data?.data;
     if (!found) {
       console.log(
-        `No active trade found for ${symbol}. `
+        `No active trade found for ${symbol}. Cancelling all orders...`
       );
 
-      // try {
-      //   const cancelResult = await binance.futuresCancelAll(symbol);
-      //   console.log(`All orders cancelled for ${symbol}:`, cancelResult);
-      // } catch (cancelError) {
-      //   console.error(`Failed to cancel orders for ${symbol}:`, cancelError);
-      // }
+      try {
+        const cancelResult = await binance.futuresCancelAll(symbol);
+        console.log(`All orders cancelled for ${symbol}:`, cancelResult);
+      } catch (cancelError) {
+        console.error(`Failed to cancel orders for ${symbol}:`, cancelError);
+      }
 
       return;
     }

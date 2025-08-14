@@ -10,7 +10,7 @@ const symbols = [
   // "IOTAUSDT",
   // "TRXUSDT",
   "SOLUSDT",
-  "TONUSDT", 
+  // "TONUSDT", 
   "TAOUSDT",
   // "CKBUSDT",
   // "XRPUSDT",
