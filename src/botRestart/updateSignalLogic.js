@@ -337,7 +337,7 @@ async function updateSignalLogic(symbol) {
 
     const { angleDeg } = computeTemaAngle(tema25, 2, false);
 
-    const ANGLE_THRESHOLD = 10; // degrees
+    const ANGLE_THRESHOLD = 30; // degrees
     const PRICE_BUFFER_PCT = 0.02; // 0.02% price buffer to avoid noise
 
     const aboveTema = lastPrice > lastTEMA25 * (1 + PRICE_BUFFER_PCT / 100);
