@@ -18,7 +18,7 @@ const binance = new Binance().options({
 
 const interval = "1m";
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -2;
+const STOP_LOSS_ROI = -3;
 const TRAILING_START_ROI = 1.2;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;

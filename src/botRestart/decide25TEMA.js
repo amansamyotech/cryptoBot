@@ -165,10 +165,37 @@ function calculateBollingerBands(prices, period = 20, stdDev = 2) {
   return { sma, upperBand, lowerBand };
 }
 
+function calculateATR(candles, period = 14) {
+  const tr = [];
+  for (let i = 1; i < candles.length; i++) {
+    const high = candles[i].high;
+    const low = candles[i].low;
+    const prevClose = candles[i - 1].close;
+    const trValue = Math.max(
+      high - low,
+      Math.abs(high - prevClose),
+      Math.abs(low - prevClose)
+    );
+    tr.push(trValue);
+  }
+
+  const atr = [];
+  for (let i = period - 1; i < tr.length; i++) {
+    if (i === period - 1) {
+      atr.push(
+        tr.slice(i - period + 1, i + 1).reduce((a, b) => a + b) / period
+      );
+    } else {
+      atr.push((atr.at(-1) * (period - 1) + tr[i]) / period);
+    }
+  }
+  return atr;
+}
+
 function isSidewaysMarket(
   candles,
   lookbackPeriod = 20,
-  thresholdPercent = 0.6
+  thresholdPercent = 0.4 // Stricter price range
 ) {
   if (candles.length < lookbackPeriod) return false;
 
@@ -176,52 +203,77 @@ function isSidewaysMarket(
   const closePrices = recent.map((c) => c.close);
   const highs = recent.map((c) => c.high);
   const lows = recent.map((c) => c.low);
+  const volumes = recent.map((c) => c.volume);
   const currentPrice = candles.at(-1).close;
 
+  // Stricter price range check
   const priceRange =
     ((Math.max(...highs) - Math.min(...lows)) / currentPrice) * 100;
+
+  // Lower volatility threshold
   const recentVolatility =
     recent
       .slice(-5)
       .reduce((sum, c) => sum + Math.abs((c.high - c.low) / c.close) * 100, 0) /
     5;
 
+  // Stricter EMA convergence
   const ema5 = calculateEMA(closePrices, 5);
   const ema15 = calculateEMA(closePrices, 15);
   const lastEma5 = ema5.at(-1);
   const lastEma15 = ema15.at(-1);
   const emaConvergence = Math.abs((lastEma5 - lastEma15) / currentPrice) * 100;
 
+  // Oscillation around average EMA
   const avgEma = (lastEma5 + lastEma15) / 2;
   const osc = recent.slice(-10).reduce((count, c) => {
     return c.close > avgEma ? count + 1 : count;
   }, 0);
   const oscillationRatio = Math.min(osc, 10 - osc) / 10;
 
+  // Stricter Bollinger Bands width
   const bb = calculateBollingerBands(closePrices);
   const lastUpper = bb.upperBand.at(-1);
   const lastLower = bb.lowerBand.at(-1);
   const bbWidth = ((lastUpper - lastLower) / currentPrice) * 100;
 
+  // Lower ADX threshold
   const adx = calculateADX(recent);
   const lastAdx = adx.at(-1);
 
+  // Increased Doji requirement
   const dojiCount = recent.slice(-5).filter((c) => {
     const body = Math.abs(c.close - c.open) / c.open;
     const range = (c.high - c.low) / c.open;
     return body <= 0.001 && range >= 0.002;
   }).length;
 
+  // ATR check
+  const atr = calculateATR(recent);
+  const lastAtr = atr.at(-1);
+  const atrPercent = (lastAtr / currentPrice) * 100;
+
+  // Volume stability check
+  const avgVolume = volumes.reduce((a, b) => a + b) / volumes.length;
+  const recentVolumeTrend =
+    volumes.slice(-5).reduce((sum, v, i) => {
+      if (i === 0) return 0;
+      return sum + Math.abs(v - volumes[i - 1]);
+    }, 0) / 4;
+  const volumeStability = recentVolumeTrend / avgVolume < 0.5; // Volume changes less than 50% of average
+
   return (
-    priceRange <= thresholdPercent &&
-    emaConvergence <= 0.25 &&
-    recentVolatility <= 0.3 &&
-    oscillationRatio >= 0.4 &&
-    bbWidth <= 1.0 &&
+    priceRange <= thresholdPercent && // 0.4% instead of 0.6%
+    emaConvergence <= 0.15 && // Stricter: 0.15% instead of 0.25%
+    recentVolatility <= 0.2 && // Stricter: 0.2% instead of 0.3%
+    oscillationRatio >= 0.5 && // Stricter: 0.5 instead of 0.4
+    bbWidth <= 0.7 && // Stricter: 0.7% instead of 1.0%
     candles.at(-1).close <= lastUpper &&
     candles.at(-1).close >= lastLower &&
-    lastAdx <= 20 &&
-    dojiCount >= 2
+    lastAdx <= 15 && // Stricter: 15 instead of 20
+    dojiCount >= 3 && // Stricter: 3 instead of 2
+    atrPercent <= 0.3 && // New: ATR less than 0.3% of price
+    volumeStability // New: Stable volume
   );
 }
 

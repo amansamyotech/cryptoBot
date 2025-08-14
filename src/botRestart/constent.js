@@ -10,7 +10,7 @@ const symbols = [
   "IOTAUSDT",
   // "TRXUSDT",
   "SOLUSDT",
-  "TONUSDT",
+  "TONUSDT", 
   "TAOUSDT",
   "CKBUSDT",
   // "XRPUSDT",
@@ -20,5 +20,7 @@ const symbols = [
   // "1000PEPEUSDT",
   // "1000BONKUSDT",
 ];
+
+
 
 module.exports = { symbols };
