@@ -22,4 +22,4 @@
 
 const symbols = ["BNBUSDT", "SOLUSDT", "INJUSDT", "XRPUSDT", "NEARUSDT"];
 
-// module.exports = { symbols };
+module.exports = { symbols };
