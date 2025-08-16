@@ -224,9 +224,9 @@ function isSidewaysMarket(
 
   // Logging for debugging
   console.log({
-    priceRange: priceRange.toFixed(2) + "%",
-    lastAdx: lastAdx.toFixed(2),
-    bbWidth: bbWidth.toFixed(2) + "%",
+    priceRange: priceRange + "%",
+    lastAdx: lastAdx,
+    bbWidth: bbWidth + "%",
     isSideways:
       priceRange <= thresholdPercent &&
       lastAdx <= adxThreshold &&
