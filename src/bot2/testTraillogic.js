@@ -825,13 +825,13 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 10;
+  const usableBalance = totalBalance - 1;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
   console.log(`Usable Balance: ${usableBalance} USDT`);
   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
-  if (maxSpendPerTrade >= 1.6) {
+  if (maxSpendPerTrade >= 1.5) {
     for (const sym of symbols) {
       try {
         const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
