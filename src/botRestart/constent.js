@@ -22,7 +22,6 @@
 
 const symbols = [
   "SOLUSDT", 
-  "AVAXUSDT",
   "XRPUSDT", 
   "ADAUSDT", 
   "DOGEUSDT", 
