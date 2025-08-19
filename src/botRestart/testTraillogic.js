@@ -992,6 +992,10 @@
 
 
 
+
+
+//aman
+
 const Binance = require("node-binance-api");
 const axios = require("axios");
 
@@ -1010,10 +1014,10 @@ const binance = new Binance().options({
 });
 
 const interval = "1m";
-const TIMEFRAME_MAIN = "3m";
+const TIMEFRAME_MAIN = "3m"; // From decide25TEMA.js
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
-const MIN_ROI = 1; // New constant for minimum ROI threshold
+const MINIMUM_ROI = 1; // Minimum ROI to maintain after reaching it
 
 // Function to fetch candles (from decide25TEMA.js)
 async function getCandles(symbol, interval, limit = 50) {
@@ -1040,8 +1044,15 @@ async function getCandles(symbol, interval, limit = 50) {
   }
 }
 
-// Stop Loss and Take Profit function based on ROI and TEMA crossover
-function stopLossTakeProfit(position, entryPrice, currentPrice, tema15, tema25) {
+// Stop Loss and Take Profit function based on TEMA and ROI
+function stopLossTakeProfit(
+  position,
+  entryPrice,
+  currentPrice,
+  tema15,
+  tema25,
+  hasReachedMinROI
+) {
   // Calculate ROI
   let roi;
   if (position === "LONG") {
@@ -1052,30 +1063,28 @@ function stopLossTakeProfit(position, entryPrice, currentPrice, tema15, tema25) 
     return "HOLD"; // Invalid position, do nothing
   }
 
-  // Exit immediately if ROI < 1%
-  if (roi < MIN_ROI) {
-    return "EXIT"; // Exit if ROI drops below 1%
+  // If trade has reached 1% ROI at any point, exit if ROI drops below 1%
+  if (hasReachedMinROI && roi < MINIMUM_ROI) {
+    return "EXIT"; // Exit immediately if ROI falls below 1%
   }
 
-  // If ROI >= 1%, exit only on TEMA crossover
-  if (position === "LONG") {
-    if (tema15 > tema25) {
-      return "HOLD"; // Keep LONG position open while TEMA15 > TEMA25
-    } else {
-      return "EXIT"; // Exit on reverse crossover (TEMA15 <= TEMA25)
-    }
-  } else if (position === "SHORT") {
-    if (tema15 < tema25) {
-      return "HOLD"; // Keep SHORT position open while TEMA15 < TEMA25
-    } else {
-      return "EXIT"; // Exit on reverse crossover (TEMA15 >= TEMA25)
+  // TEMA crossover logic for TP, only exit if ROI is at least 1%
+  if (roi >= MINIMUM_ROI) {
+    if (position === "LONG") {
+      if (tema15 <= tema25) {
+        return "EXIT"; // Exit on reverse crossover (TEMA15 <= TEMA25) with ROI >= 1%
+      }
+    } else if (position === "SHORT") {
+      if (tema15 >= tema25) {
+        return "EXIT"; // Exit on reverse crossover (TEMA15 >= TEMA25) with ROI >= 1%
+      }
     }
   }
 
-  return "HOLD"; // Default to holding if conditions are unclear
+  return "HOLD"; // Default to holding if conditions are not met
 }
 
-async function checkExitForLong(symbol, tradeDetails, currentPrice) {
+async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
     const {
       stopLossOrderId,
@@ -1085,6 +1094,7 @@ async function checkExitForLong(symbol, tradeDetails, currentPrice) {
       stopLossPrice: oldStopLoss,
       marginUsed,
       leverage,
+      hasReachedMinROI = false, // Default to false if not set
     } = tradeDetails;
 
     const entryPrice = parseFloat(longTimePrice);
@@ -1096,8 +1106,19 @@ async function checkExitForLong(symbol, tradeDetails, currentPrice) {
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = qty.toFixed(quantityPrecision);
+
+    // Check if ROI has reached 1% for the first time
+    let updatedHasReachedMinROI = hasReachedMinROI;
+    if (roi >= MINIMUM_ROI && !hasReachedMinROI) {
+      updatedHasReachedMinROI = true;
+      await axios.put(`${API_ENDPOINT}${objectId}`, {
+        data: { hasReachedMinROI: true },
+      });
+      console.log(`[${symbol}] LONG trade reached ${MINIMUM_ROI}% ROI. Tracking minimum ROI.`);
+    }
 
     // Fetch candles and calculate TEMA15 and TEMA25
     const candles = await getCandles(symbol, TIMEFRAME_MAIN, 50);
@@ -1113,17 +1134,20 @@ async function checkExitForLong(symbol, tradeDetails, currentPrice) {
     const lastTEMA15 = tema15[tema15.length - 1];
     const lastTEMA25 = tema25[tema25.length - 1];
 
-    // Check SL/TP conditions
+    // Check TEMA-based SL/TP conditions with ROI check
     const action = stopLossTakeProfit(
       "LONG",
       entryPrice,
       currentPrice,
       lastTEMA15,
-      lastTEMA25
+      lastTEMA25,
+      updatedHasReachedMinROI
     );
     if (action === "EXIT") {
-      const reason = roi < MIN_ROI ? "ROI below 1%" : "TEMA crossover detected";
-      console.log(`[${symbol}] LONG ${reason}. Closing position. ROI: ${roi.toFixed(2)}%`);
+      const reason = updatedHasReachedMinROI && roi < MINIMUM_ROI
+        ? `ROI dropped below ${MINIMUM_ROI}%`
+        : `TEMA crossover detected with ROI ${roi.toFixed(2)}%`;
+      console.log(`[${symbol}] LONG exiting: ${reason}.`);
 
       try {
         // Cancel existing stop loss
@@ -1148,7 +1172,7 @@ async function checkExitForLong(symbol, tradeDetails, currentPrice) {
 
         // Close position
         await binance.futuresMarketSell(symbol, qtyFixed, { reduceOnly: true });
-        console.log(`[${symbol}] LONG position closed.`);
+        console.log(`[${symbol}] LONG position closed: ${reason}.`);
 
         // Update DB to reflect closed trade
         await axios.put(`${API_ENDPOINT}${objectId}`, {
@@ -1156,27 +1180,30 @@ async function checkExitForLong(symbol, tradeDetails, currentPrice) {
             stopLossPrice: null,
             stopLossOrderId: null,
             isProfit: roi > 0,
-            isActive: false, // Mark trade as closed
+            isActive: false,
+            hasReachedMinROI: false,
           },
         });
         console.log(`[${symbol}] LONG trade closed in DB.`);
+        return;
       } catch (closeErr) {
         console.error(
           `[${symbol}] Error closing LONG position:`,
           closeErr.message
         );
+        return;
       }
-    } else {
-      console.log(
-        `[${symbol}] LONG ROI ${roi.toFixed(2)}% — Holding position.`
-      );
     }
+
+    console.log(
+      `[${symbol}] LONG ROI ${roi.toFixed(2)}% — Holding. Has reached ${MINIMUM_ROI}%: ${updatedHasReachedMinROI}`
+    );
   } catch (err) {
-    console.error(`[${symbol}] Error checking LONG exit:`, err.message);
+    console.error(`[${symbol}] Error in LONG stop-loss logic:`, err.message);
   }
 }
 
-async function checkExitForShort(symbol, tradeDetails, currentPrice) {
+async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
   try {
     const {
       stopLossOrderId,
@@ -1186,6 +1213,7 @@ async function checkExitForShort(symbol, tradeDetails, currentPrice) {
       stopLossPrice: oldStopLoss,
       marginUsed,
       leverage,
+      hasReachedMinROI = false, // Default to false if not set
     } = tradeDetails;
 
     const entryPrice = parseFloat(shortTimeCurrentPrice);
@@ -1197,8 +1225,19 @@ async function checkExitForShort(symbol, tradeDetails, currentPrice) {
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = qty.toFixed(quantityPrecision);
+
+    // Check if ROI has reached 1% for the first time
+    let updatedHasReachedMinROI = hasReachedMinROI;
+    if (roi >= MINIMUM_ROI && !hasReachedMinROI) {
+      updatedHasReachedMinROI = true;
+      await axios.put(`${API_ENDPOINT}${objectId}`, {
+        data: { hasReachedMinROI: true },
+      });
+      console.log(`[${symbol}] SHORT trade reached ${MINIMUM_ROI}% ROI. Tracking minimum ROI.`);
+    }
 
     // Fetch candles and calculate TEMA15 and TEMA25
     const candles = await getCandles(symbol, TIMEFRAME_MAIN, 50);
@@ -1214,17 +1253,20 @@ async function checkExitForShort(symbol, tradeDetails, currentPrice) {
     const lastTEMA15 = tema15[tema15.length - 1];
     const lastTEMA25 = tema25[tema25.length - 1];
 
-    // Check SL/TP conditions
+    // Check TEMA-based SL/TP conditions with ROI check
     const action = stopLossTakeProfit(
       "SHORT",
       entryPrice,
       currentPrice,
       lastTEMA15,
-      lastTEMA25
+      lastTEMA25,
+      updatedHasReachedMinROI
     );
     if (action === "EXIT") {
-      const reason = roi < MIN_ROI ? "ROI below 1%" : "TEMA crossover detected";
-      console.log(`[${symbol}] SHORT ${reason}. Closing position. ROI: ${roi.toFixed(2)}%`);
+      const reason = updatedHasReachedMinROI && roi < MINIMUM_ROI
+        ? `ROI dropped below ${MINIMUM_ROI}%`
+        : `TEMA crossover detected with ROI ${roi.toFixed(2)}%`;
+      console.log(`[${symbol}] SHORT exiting: ${reason}.`);
 
       try {
         // Cancel existing stop loss
@@ -1249,7 +1291,7 @@ async function checkExitForShort(symbol, tradeDetails, currentPrice) {
 
         // Close position
         await binance.futuresMarketBuy(symbol, qtyFixed, { reduceOnly: true });
-        console.log(`[${symbol}] SHORT position closed.`);
+        console.log(`[${symbol}] SHORT position closed: ${reason}.`);
 
         // Update DB to reflect closed trade
         await axios.put(`${API_ENDPOINT}${objectId}`, {
@@ -1257,27 +1299,30 @@ async function checkExitForShort(symbol, tradeDetails, currentPrice) {
             stopLossPrice: null,
             stopLossOrderId: null,
             isProfit: roi > 0,
-            isActive: false, // Mark trade as closed
+            isActive: false,
+            hasReachedMinROI: false,
           },
         });
         console.log(`[${symbol}] SHORT trade closed in DB.`);
+        return;
       } catch (closeErr) {
         console.error(
           `[${symbol}] Error closing SHORT position:`,
           closeErr.message
         );
+        return;
       }
-    } else {
-      console.log(
-        `[${symbol}] SHORT ROI ${roi.toFixed(2)}% — Holding position.`
-      );
     }
+
+    console.log(
+      `[${symbol}] SHORT ROI ${roi.toFixed(2)}% — Holding. Has reached ${MINIMUM_ROI}%: ${updatedHasReachedMinROI}`
+    );
   } catch (err) {
-    console.error(`[${symbol}] Error checking SHORT exit:`, err.message);
+    console.error(`[${symbol}] Error in SHORT stop-loss logic:`, err.message);
   }
 }
 
-async function checkPositionExit(symbol) {
+async function trailStopLoss(symbol) {
   try {
     const priceMap = await binance.futuresPrices();
     const currentPrice = parseFloat(priceMap[symbol]);
@@ -1292,15 +1337,15 @@ async function checkPositionExit(symbol) {
     const { side } = tradeDetails;
 
     if (side === "LONG") {
-      await checkExitForLong(symbol, tradeDetails, currentPrice);
+      await trailStopLossForLong(symbol, tradeDetails, currentPrice);
     } else if (side === "SHORT") {
-      await checkExitForShort(symbol, tradeDetails, currentPrice);
+      await trailStopLossForShort(symbol, tradeDetails, currentPrice);
     } else {
       console.log(`[${symbol}] Unknown position side: ${side}`);
     }
   } catch (err) {
     console.error(
-      `[${symbol}] Error in main position exit check:`,
+      `[${symbol}] Error in main trailing stop-loss function:`,
       err.message
     );
   }
@@ -1362,6 +1407,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
+      hasReachedMinROI: false, // Initialize flag
     };
 
     console.log(`buyOrderDetails`, buyOrderDetails);
@@ -1392,6 +1438,7 @@ async function placeBuyOrder(symbol, marginAmount) {
     const details = {
       stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
+      hasReachedMinROI: false,
     };
     console.log(`details`, details);
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
@@ -1458,6 +1505,7 @@ async function placeShortOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
+      hasReachedMinROI: false, // Initialize flag
     };
 
     console.log(`shortOrderDetails`, shortOrderDetails);
@@ -1488,6 +1536,7 @@ async function placeShortOrder(symbol, marginAmount) {
     const details = {
       stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
+      hasReachedMinROI: false,
     };
 
     console.log(`details`, details);
@@ -1563,7 +1612,7 @@ setInterval(async () => {
       if (status === false) {
         // Trade open (your logic: false means open trade)
         if (isProcessing[sym]) {
-          console.log(`[${sym}] Skipping exit check — already processing.`);
+          console.log(`[${sym}] Skipping trailing — already processing.`);
           continue;
         }
         isProcessing[sym] = true;
@@ -1572,12 +1621,12 @@ setInterval(async () => {
         const positions = await binance.futuresPositionRisk({ symbol: sym });
         const pos = positions.find((p) => p.symbol === sym);
         if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
-          console.log(`[${sym}] Position already closed. Skipping exit check.`);
+          console.log(`[${sym}] Position already closed. Skipping trailing.`);
           // Optionally: Update DB to close trade, but assume checkOrders handles
           continue;
         }
 
-        await checkPositionExit(sym);
+        await trailStopLoss(sym);
       }
     } catch (err) {
       console.error(`Error with ${sym}:`, err.message);
