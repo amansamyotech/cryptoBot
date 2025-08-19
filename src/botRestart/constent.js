@@ -22,7 +22,7 @@
 
 const symbols = [
   "SOLUSDT", 
-  "AVAXUSDT",
+  "INJUSDT",
   "XRPUSDT", 
   "ADAUSDT", 
   "DOGEUSDT", 
