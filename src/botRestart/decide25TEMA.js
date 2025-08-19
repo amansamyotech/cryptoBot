@@ -310,4 +310,4 @@ async function decide25TEMA(symbol) {
   }
 }
 
-module.exports = { decide25TEMA };
+module.exports = { decide25TEMA , calculateTEMA , calculateATR};

@@ -4,7 +4,8 @@ const axios = require("axios");
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { symbols } = require("./constent");
-const { decide25TEMA } = require("./decide25TEMA");
+const { decide25TEMA, calculateATR, calculateTEMA } = require("./decide25TEMA");
+
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
@@ -18,55 +19,75 @@ const binance = new Binance().options({
 
 const interval = "1m";
 const LEVERAGE = 3;
-const FIXED_STOP_LOSS_ROI = -1; // 1% SL
-const FIXED_TAKE_PROFIT_ROI = 2; // 2% TP
-const TRAILING_TP_START_ROI = 2; // Start trailing TP after 2% profit
-const ATR_PERIOD = 14; // 14-period ATR
-const USE_ATR_STOP_LOSS = false; // Toggle for ATR-based SL (set to true to enable)
+const STOP_LOSS_ROI = -2;
+const TRAILING_START_ROI = 1.1;
+const INITIAL_TRAILING_ROI = 1;
+const ROI_STEP = 1;
 
-async function calculateATR(symbol, period = ATR_PERIOD) {
-  try {
-    const candles = await binance.futuresCandles(symbol, interval, { limit: period + 1 });
-    let trSum = 0;
-    for (let i = 1; i < candles.length; i++) {
-      const high = parseFloat(candles[i][2]);
-      const low = parseFloat(candles[i][3]);
-      const prevClose = parseFloat(candles[i - 1][4]);
-      const tr = Math.max(
-        high - low,
-        Math.abs(high - prevClose),
-        Math.abs(low - prevClose)
-      );
-      trSum += tr;
+function stopLossTakeProfit(
+  position,
+  entryPrice,
+  currentPrice,
+  atrValue,
+  tema15,
+  tema25
+) {
+  if (!["LONG", "SHORT"].includes(position)) {
+    throw new Error("Invalid position type");
+  }
+
+  // Calculate ROI based on position type
+  let roi;
+  if (position === "LONG") {
+    roi = ((currentPrice - entryPrice) / entryPrice) * 100;
+  } else {
+    // SHORT
+    roi = ((entryPrice - currentPrice) / entryPrice) * 100;
+  }
+
+  // Stop Loss Logic: ATR-based, capped at max -2% ROI loss
+  const multiplier = 2; // Adjust as needed
+  const atrSlDistance = atrValue * multiplier;
+  let atrSlRoi = -(atrSlDistance / entryPrice) * 100; // Negative ROI for SL
+  const effectiveSlRoi = Math.max(atrSlRoi, -2); // Cap at -2%
+
+  if (roi <= effectiveSlRoi) {
+    return "EXIT"; // Exit due to Stop Loss
+  }
+
+  // Take Profit Logic: Only activate if ROI > +1%
+  if (roi > 1) {
+    let shouldHold = false;
+    if (position === "LONG") {
+      shouldHold = tema15 > tema25;
+    } else {
+      // SHORT
+      shouldHold = tema15 < tema25;
     }
-    const atr = trSum / period;
-    return atr;
-  } catch (err) {
-    console.error(`[${symbol}] Error calculating ATR:`, err.message);
-    return null;
+
+    if (!shouldHold) {
+      return "EXIT"; // Exit due to reverse TEMA crossover
+    }
   }
+
+  return "HOLD";
 }
 
-async function checkRedCandles(symbol, count = 2) {
-  try {
-    const candles = await binance.futuresCandles(symbol, interval, { limit: count });
-    return candles.every(candle => parseFloat(candle[4]) < parseFloat(candle[1])); // Close < Open
-  } catch (err) {
-    console.error(`[${symbol}] Error checking red candles:`, err.message);
-    return false;
-  }
-}
-
-async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
+async function trailStopLossForLong(
+  symbol,
+  tradeDetails,
+  currentPrice,
+  atrValue,
+  tema15,
+  tema25
+) {
   try {
     const {
       stopLossOrderId,
-      takeProfitOrderId,
       objectId,
       LongTimeCoinPrice: { $numberDecimal: longTimePrice },
       quantity,
       stopLossPrice: oldStopLoss,
-      takeProfitPrice,
       marginUsed,
       leverage,
     } = tradeDetails;
@@ -79,128 +100,174 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
     const pnl = (currentPrice - entryPrice) * qty;
     const roi = (pnl / margin) * 100;
 
+    // Check SL/TP conditions first
+    const slTpDecision = stopLossTakeProfit(
+      "LONG",
+      entryPrice,
+      currentPrice,
+      atrValue,
+      tema15,
+      tema25
+    );
+    if (slTpDecision === "EXIT") {
+      console.log(
+        `[${symbol}] SL/TP triggered: Closing LONG position (ROI: ${roi.toFixed(
+          2
+        )}%)`
+      );
+      try {
+        await binance.futuresCancelAll(symbol); // Cancel all open orders
+        await binance.futuresMarketSell(
+          symbol,
+          qty.toFixed(tradeDetails.quantityPrecision),
+          { reduceOnly: true }
+        );
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: { status: "CLOSED" },
+        });
+        console.log(`[${symbol}] LONG position closed due to SL/TP.`);
+      } catch (err) {
+        console.error(
+          `[${symbol}] Error closing LONG position: ${err.message}`
+        );
+      }
+      return;
+    }
+
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = qty.toFixed(quantityPrecision);
 
-    // Handle Trailing Take-Profit
-    if (roi >= TRAILING_TP_START_ROI) {
-      const isTwoRedCandles = await checkRedCandles(symbol);
-      if (isTwoRedCandles) {
-        console.log(`[${symbol}] LONG: 2 red candles detected after ${roi.toFixed(2)}% ROI. Closing position.`);
-        await binance.futuresMarketSell(symbol, qtyFixed, { reduceOnly: true });
-        await axios.put(`${API_ENDPOINT}${objectId}`, { data: { status: "CLOSED" } });
-        console.log(`[${symbol}] LONG position closed due to trailing TP.`);
-        return;
-      }
+    if (roi >= TRAILING_START_ROI) {
+      const targetROI = roi - 1;
+      const targetPnL = (targetROI / 100) * margin;
+      const newStop = parseFloat(
+        (entryPrice + targetPnL / qty).toFixed(pricePrecision)
+      );
 
-      // Optional ATR-based trailing TP
-      if (USE_ATR_STOP_LOSS) {
-        const atr = await calculateATR(symbol);
-        if (atr) {
-          const newTakeProfit = parseFloat((currentPrice - atr * 2).toFixed(pricePrecision));
-          if (!takeProfitPrice || newTakeProfit > parseFloat(takeProfitPrice)) {
-            console.log(`[${symbol}] LONG: Updating ATR-based TP to ${newTakeProfit}`);
-            if (takeProfitOrderId) {
-              try {
-                await binance.futuresCancel(symbol, takeProfitOrderId);
-              } catch (err) {
-                console.warn(`[${symbol}] Failed to cancel TP order ${takeProfitOrderId}: ${err.message}`);
-              }
-            }
-            const tpOrder = await binance.futuresOrder(
-              "TAKE_PROFIT_MARKET",
-              "SELL",
-              symbol,
-              qtyFixed,
-              null,
-              { stopPrice: newTakeProfit, reduceOnly: true, timeInForce: "GTC" }
-            );
-            await axios.put(`${API_ENDPOINT}${objectId}`, {
-              data: { takeProfitPrice: newTakeProfit, takeProfitOrderId: tpOrder.orderId },
-            });
-            console.log(`[${symbol}] LONG: New ATR-based TP order placed: ${tpOrder.orderId}`);
-          }
-        }
-      }
-    }
-
-    // Handle Stop-Loss (Fixed or ATR-based)
-    let newStop;
-    if (USE_ATR_STOP_LOSS) {
-      const atr = await calculateATR(symbol);
-      if (atr) {
-        newStop = parseFloat((entryPrice - atr * 2).toFixed(pricePrecision));
-      } else {
-        newStop = oldStop; // Fallback to old stop if ATR fails
-      }
-    } else {
-      newStop = parseFloat((entryPrice * (1 + FIXED_STOP_LOSS_ROI / 100)).toFixed(pricePrecision));
-    }
-
-    if (roi >= TRAILING_TP_START_ROI && newStop > oldStop) {
       const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
       if (newStop >= roundedCurrent) {
-        console.warn(`[${symbol}] Skipping SL update — newStop (${newStop}) >= currentPrice (${roundedCurrent})`);
+        console.warn(
+          `[${symbol}] Skipping SL update — newStop (${newStop}) >= currentPrice (${roundedCurrent})`
+        );
         return;
       }
 
-      // Cleanup existing STOP_MARKET SELL orders
-      let openOrders;
-      try {
-        openOrders = await binance.futuresOpenOrders(symbol);
-        for (const order of openOrders) {
-          if (order.type === "STOP_MARKET" && order.side === "SELL" && order.reduceOnly) {
-            try {
-              await binance.futuresCancel(symbol, order.orderId);
-            } catch (cancelErr) {
-              if (cancelErr.code === -2011 || cancelErr.code === -1102) {
-                console.log(`[${symbol}] Order ${order.orderId} already gone (${cancelErr.code}). Skipping.`);
-              } else {
-                console.warn(`[${symbol}] Failed to clean up ${order.orderId}: ${cancelErr.message}`);
+      console.log(`oldStop: ${oldStop}`);
+      console.log(`roundedCurrent: ${roundedCurrent}`);
+      console.log(`newStop: ${newStop}`);
+      console.log(`targetPnL: ${targetPnL}`);
+      console.log(`targetROI: ${targetROI}`);
+
+      if (newStop > oldStop) {
+        console.log(
+          `[${symbol}] LONG ROI ${roi.toFixed(
+            2
+          )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI.toFixed(
+            2
+          )}%)`
+        );
+
+        let openOrders;
+        try {
+          openOrders = await binance.futuresOpenOrders(symbol);
+          console.log(
+            `[${symbol}] Open orders before cleanup: ${openOrders.length}`
+          );
+          for (const order of openOrders) {
+            if (
+              order.type === "STOP_MARKET" &&
+              order.side === "SELL" &&
+              order.reduceOnly
+            ) {
+              console.log(
+                `[${symbol}] Attempting to clean up order ${order.orderId}`
+              );
+              try {
+                await binance.futuresCancel(symbol, order.orderId);
+                console.log(
+                  `[${symbol}] Cleaned up orphan STOP_MARKET order ${order.orderId}`
+                );
+              } catch (cancelErr) {
+                if (cancelErr.code === -2011 || cancelErr.code === -1102) {
+                  console.log(
+                    `[${symbol}] Order ${order.orderId} already gone (${cancelErr.code}). Skipping.`
+                  );
+                } else {
+                  console.warn(
+                    `[${symbol}] Failed to clean up ${order.orderId}: ${cancelErr.message}`
+                  );
+                }
               }
             }
           }
-        }
-      } catch (err) {
-        console.warn(`[${symbol}] Failed to fetch open orders: ${err.message}`);
-      }
-
-      // Cancel old stop loss (if exists)
-      if (stopLossOrderId) {
-        try {
-          await binance.futuresCancel(symbol, stopLossOrderId);
-          console.log(`[${symbol}] Canceled old stop order ${stopLossOrderId}`);
         } catch (err) {
-          if (err.code === -2011 || err.code === -1102) {
-            console.log(`[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`);
-          } else {
-            console.warn(`[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`);
-          }
+          console.warn(
+            `[${symbol}] Failed to fetch open orders: ${err.message}`
+          );
         }
-      }
 
-      // Place new stop loss
-      const tickSize = Math.pow(10, -pricePrecision);
-      const buffer = tickSize * 5;
-      const adjustedStop = parseFloat((newStop - buffer).toFixed(pricePrecision));
-      let stopLossOrder;
-      try {
-        stopLossOrder = await binance.futuresOrder(
-          "STOP_MARKET",
-          "SELL",
-          symbol,
-          qtyFixed,
-          null,
-          { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
+        let orderExists = false;
+        if (stopLossOrderId) {
+          console.log(
+            `[${symbol}] Checking status of old stop order ${stopLossOrderId}`
+          );
+          try {
+            const order = await binance.futuresOrderStatus(symbol, {
+              orderId: stopLossOrderId,
+            });
+            orderExists =
+              order && order.status !== "CANCELED" && order.status !== "FILLED";
+          } catch (err) {
+            if (err.code === -2011 || err.code === -1102) {
+              console.log(
+                `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`
+              );
+            } else {
+              console.warn(
+                `[${symbol}] Failed to fetch order ${stopLossOrderId}: ${err.message}`
+              );
+            }
+          }
+
+          if (orderExists) {
+            console.log(
+              `[${symbol}] Attempting to cancel old stop order ${stopLossOrderId}`
+            );
+            try {
+              await binance.futuresCancel(symbol, stopLossOrderId);
+              console.log(
+                `[${symbol}] Canceled old stop order ${stopLossOrderId}`
+              );
+            } catch (err) {
+              if (err.code === -2011 || err.code === -1102) {
+                console.log(
+                  `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`
+                );
+              } else {
+                console.warn(
+                  `[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`
+                );
+              }
+            }
+          }
+        } else {
+          console.warn(
+            `[${symbol}] No stopLossOrderId provided. Skipping cancellation.`
+          );
+        }
+
+        const tickSize = Math.pow(10, -pricePrecision);
+        const buffer = tickSize * 5;
+        const adjustedStop = parseFloat(
+          (newStop - buffer).toFixed(pricePrecision)
         );
-        console.log(`[${symbol}] New stop order placed: ${stopLossOrder.orderId}`);
-      } catch (placeErr) {
-        if (placeErr.code === -4045) {
-          console.warn(`[${symbol}] Hit max stop limit (-4045). Canceling all and retrying.`);
-          await binance.futuresCancelAll(symbol);
+        console.log(`adjustedStop: ${adjustedStop}`);
+
+        let stopLossOrder;
+        try {
           stopLossOrder = await binance.futuresOrder(
             "STOP_MARKET",
             "SELL",
@@ -209,39 +276,76 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
             null,
             { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
           );
-          console.log(`[${symbol}] Retry succeeded: New stop order ${stopLossOrder.orderId}`);
-        } else {
-          throw placeErr;
+          console.log(
+            `[${symbol}] New stop order placed: ${stopLossOrder.orderId}`
+          );
+        } catch (placeErr) {
+          if (placeErr.code === -4045) {
+            console.warn(
+              `[${symbol}] Hit max stop limit (-4045). Canceling all and retrying.`
+            );
+            await binance.futuresCancelAll(symbol);
+            stopLossOrder = await binance.futuresOrder(
+              "STOP_MARKET",
+              "SELL",
+              symbol,
+              qtyFixed,
+              null,
+              { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
+            );
+            console.log(
+              `[${symbol}] Retry succeeded: New stop order ${stopLossOrder.orderId}`
+            );
+          } else if (placeErr.code === -2011 || placeErr.code === -1102) {
+            console.warn(
+              `[${symbol}] Place failed (${placeErr.code}). Skipping this update.`
+            );
+            return;
+          } else {
+            throw placeErr;
+          }
         }
-      }
 
-      // Update DB
-      await axios.put(`${API_ENDPOINT}${objectId}`, {
-        data: {
-          stopLossPrice: newStop,
-          stopLossOrderId: stopLossOrder.orderId,
-          isProfit: roi > 0,
-        },
-      });
-      console.log(`[${symbol}] LONG Stop Loss updated successfully.`);
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: {
+            stopLossPrice: newStop,
+            stopLossOrderId: stopLossOrder.orderId,
+            isProfit: true,
+          },
+        });
+        console.log(`[${symbol}] LONG Stop Loss updated successfully.`);
+      } else {
+        console.log(
+          `[${symbol}] LONG ROI ${roi.toFixed(2)}% — SL unchanged (${oldStop}).`
+        );
+      }
     } else {
-      console.log(`[${symbol}] LONG ROI ${roi.toFixed(2)}% — SL unchanged (${oldStop}).`);
+      console.log(
+        `[${symbol}] LONG ROI ${roi.toFixed(
+          2
+        )}% — Below ${TRAILING_START_ROI}%, no trailing yet.`
+      );
     }
   } catch (err) {
     console.error(`[${symbol}] Error trailing LONG stop-loss:`, err.message);
   }
 }
 
-async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
+async function trailStopLossForShort(
+  symbol,
+  tradeDetails,
+  currentPrice,
+  atrValue,
+  tema15,
+  tema25
+) {
   try {
     const {
       stopLossOrderId,
-      takeProfitOrderId,
       objectId,
       ShortTimeCurrentPrice: { $numberDecimal: shortTimeCurrentPrice },
       quantity,
       stopLossPrice: oldStopLoss,
-      takeProfitPrice,
       marginUsed,
       leverage,
     } = tradeDetails;
@@ -254,128 +358,177 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
     const pnl = (entryPrice - currentPrice) * qty;
     const roi = (pnl / margin) * 100;
 
+    // Check SL/TP conditions first
+    const slTpDecision = stopLossTakeProfit(
+      "SHORT",
+      entryPrice,
+      currentPrice,
+      atrValue,
+      tema15,
+      tema25
+    );
+    if (slTpDecision === "EXIT") {
+      console.log(
+        `[${symbol}] SL/TP triggered: Closing SHORT position (ROI: ${roi.toFixed(
+          2
+        )}%)`
+      );
+      try {
+        await binance.futuresCancelAll(symbol);
+        await binance.futuresMarketBuy(
+          symbol,
+          qty.toFixed(tradeDetails.quantityPrecision),
+          { reduceOnly: true }
+        );
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: { status: "CLOSED" },
+        });
+        console.log(`[${symbol}] SHORT position closed due to SL/TP.`);
+      } catch (err) {
+        console.error(
+          `[${symbol}] Error closing SHORT position: ${err.message}`
+        );
+      }
+      return;
+    }
+
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = qty.toFixed(quantityPrecision);
 
-    // Handle Trailing Take-Profit
-    if (roi >= TRAILING_TP_START_ROI) {
-      const isTwoRedCandles = await checkRedCandles(symbol);
-      if (isTwoRedCandles) {
-        console.log(`[${symbol}] SHORT: 2 red candles detected after ${roi.toFixed(2)}% ROI. Closing position.`);
-        await binance.futuresMarketBuy(symbol, qtyFixed, { reduceOnly: true });
-        await axios.put(`${API_ENDPOINT}${objectId}`, { data: { status: "CLOSED" } });
-        console.log(`[${symbol}] SHORT position closed due to trailing TP.`);
-        return;
-      }
+    if (roi >= TRAILING_START_ROI) {
+      const targetROI = roi - 1;
+      const targetPnL = (targetROI / 100) * margin;
+      const newStop = parseFloat(
+        (entryPrice - targetPnL / qty).toFixed(pricePrecision)
+      );
 
-      // Optional ATR-based trailing TP
-      if (USE_ATR_STOP_LOSS) {
-        const atr = await calculateATR(symbol);
-        if (atr) {
-          const newTakeProfit = parseFloat((currentPrice + atr * 2).toFixed(pricePrecision));
-          if (!takeProfitPrice || newTakeProfit < parseFloat(takeProfitPrice)) {
-            console.log(`[${symbol}] SHORT: Updating ATR-based TP to ${newTakeProfit}`);
-            if (takeProfitOrderId) {
-              try {
-                await binance.futuresCancel(symbol, takeProfitOrderId);
-              } catch (err) {
-                console.warn(`[${symbol}] Failed to cancel TP order ${takeProfitOrderId}: ${err.message}`);
-              }
-            }
-            const tpOrder = await binance.futuresOrder(
-              "TAKE_PROFIT_MARKET",
-              "BUY",
-              symbol,
-              qtyFixed,
-              null,
-              { stopPrice: newTakeProfit, reduceOnly: true, timeInForce: "GTC" }
-            );
-            await axios.put(`${API_ENDPOINT}${objectId}`, {
-              data: { takeProfitPrice: newTakeProfit, takeProfitOrderId: tpOrder.orderId },
-            });
-            console.log(`[${symbol}] SHORT: New ATR-based TP order placed: ${tpOrder.orderId}`);
-          }
-        }
-      }
-    }
-
-    // Handle Stop-Loss (Fixed or ATR-based)
-    let newStop;
-    if (USE_ATR_STOP_LOSS) {
-      const atr = await calculateATR(symbol);
-      if (atr) {
-        newStop = parseFloat((entryPrice + atr * 2).toFixed(pricePrecision));
-      } else {
-        newStop = oldStop; // Fallback to old stop if ATR fails
-      }
-    } else {
-      newStop = parseFloat((entryPrice * (1 - FIXED_STOP_LOSS_ROI / 100)).toFixed(pricePrecision));
-    }
-
-    if (roi >= TRAILING_TP_START_ROI && newStop < oldStop) {
+      const roundedStop = parseFloat(newStop.toFixed(pricePrecision));
       const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
-      if (newStop <= roundedCurrent) {
-        console.warn(`[${symbol}] Skipping SL update — newStop (${newStop}) <= currentPrice (${roundedCurrent})`);
+
+      if (roundedStop <= roundedCurrent) {
+        console.warn(
+          `[${symbol}] Skipping SL update — newStop (${roundedStop}) <= currentPrice (${roundedCurrent})`
+        );
         return;
       }
 
-      // Cleanup existing STOP_MARKET BUY orders
-      let openOrders;
-      try {
-        openOrders = await binance.futuresOpenOrders(symbol);
-        for (const order of openOrders) {
-          if (order.type === "STOP_MARKET" && order.side === "BUY" && order.reduceOnly) {
-            try {
-              await binance.futuresCancel(symbol, order.orderId);
-            } catch (cancelErr) {
-              if (cancelErr.code === -2011 || cancelErr.code === -1102) {
-                console.log(`[${symbol}] Order ${order.orderId} already gone (${cancelErr.code}). Skipping.`);
-              } else {
-                console.warn(`[${symbol}] Failed to clean up ${order.orderId}: ${cancelErr.message}`);
+      console.log(`oldStop: ${oldStop}`);
+      console.log(`roundedStop: ${roundedStop}`);
+      console.log(`roundedCurrent: ${roundedCurrent}`);
+      console.log(`newStop: ${newStop}`);
+      console.log(`targetPnL: ${targetPnL}`);
+      console.log(`targetROI: ${targetROI}`);
+
+      if (roundedStop < oldStop) {
+        console.log(
+          `[${symbol}] SHORT ROI ${roi.toFixed(
+            2
+          )}% → Updating SL from ${oldStop} to ${roundedStop} (Target ROI: ${targetROI.toFixed(
+            2
+          )}%)`
+        );
+
+        let openOrders;
+        try {
+          openOrders = await binance.futuresOpenOrders(symbol);
+          console.log(
+            `[${symbol}] Open orders before cleanup: ${openOrders.length}`
+          );
+          for (const order of openOrders) {
+            if (
+              order.type === "STOP_MARKET" &&
+              order.side === "BUY" &&
+              order.reduceOnly
+            ) {
+              console.log(
+                `[${symbol}] Attempting to clean up order ${order.orderId}`
+              );
+              try {
+                await binance.futuresCancel(symbol, order.orderId);
+                console.log(
+                  `[${symbol}] Cleaned up orphan STOP_MARKET order ${order.orderId}`
+                );
+              } catch (cancelErr) {
+                if (cancelErr.code === -2011 || cancelErr.code === -1102) {
+                  console.log(
+                    `[${symbol}] Order ${order.orderId} already gone (${cancelErr.code}). Skipping.`
+                  );
+                } else {
+                  console.warn(
+                    `[${symbol}] Failed to clean up ${order.orderId}: ${cancelErr.message}`
+                  );
+                }
               }
             }
           }
-        }
-      } catch (err) {
-        console.warn(`[${symbol}] Failed to fetch open orders: ${err.message}`);
-      }
-
-      // Cancel old stop loss (if exists)
-      if (stopLossOrderId) {
-        try {
-          await binance.futuresCancel(symbol, stopLossOrderId);
-          console.log(`[${symbol}] Canceled old stop order ${stopLossOrderId}`);
         } catch (err) {
-          if (err.code === -2011 || err.code === -1102) {
-            console.log(`[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`);
-          } else {
-            console.warn(`[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`);
-          }
+          console.warn(
+            `[${symbol}] Failed to fetch open orders: ${err.message}`
+          );
         }
-      }
 
-      // Place new stop loss
-      const tickSize = Math.pow(10, -pricePrecision);
-      const buffer = tickSize * 5;
-      const adjustedStop = parseFloat((newStop + buffer).toFixed(pricePrecision));
-      let stopLossOrder;
-      try {
-        stopLossOrder = await binance.futuresOrder(
-          "STOP_MARKET",
-          "BUY",
-          symbol,
-          qtyFixed,
-          null,
-          { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
+        let orderExists = false;
+        if (stopLossOrderId) {
+          console.log(
+            `[${symbol}] Checking status of old stop order ${stopLossOrderId}`
+          );
+          try {
+            const order = await binance.futuresOrderStatus(symbol, {
+              orderId: stopLossOrderId,
+            });
+            orderExists =
+              order && order.status !== "CANCELED" && order.status !== "FILLED";
+          } catch (err) {
+            if (err.code === -2011 || err.code === -1102) {
+              console.log(
+                `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`
+              );
+            } else {
+              console.warn(
+                `[${symbol}] Failed to fetch order ${stopLossOrderId}: ${err.message}`
+              );
+            }
+          }
+
+          if (orderExists) {
+            console.log(
+              `[${symbol}] Attempting to cancel old stop order ${stopLossOrderId}`
+            );
+            try {
+              await binance.futuresCancel(symbol, stopLossOrderId);
+              console.log(
+                `[${symbol}] Canceled old stop order ${stopLossOrderId}`
+              );
+            } catch (err) {
+              if (err.code === -2011 || err.code === -1102) {
+                console.log(
+                  `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`
+                );
+              } else {
+                console.warn(
+                  `[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`
+                );
+              }
+            }
+          }
+        } else {
+          console.warn(
+            `[${symbol}] No stopLossOrderId provided. Skipping cancellation.`
+          );
+        }
+
+        const tickSize = Math.pow(10, -pricePrecision);
+        const buffer = tickSize * 5;
+        const adjustedStop = parseFloat(
+          (roundedStop + buffer).toFixed(pricePrecision)
         );
-        console.log(`[${symbol}] New stop order placed: ${stopLossOrder.orderId}`);
-      } catch (placeErr) {
-        if (placeErr.code === -4045) {
-          console.warn(`[${symbol}] Hit max stop limit (-4045). Canceling all and retrying.`);
-          await binance.futuresCancelAll(symbol);
+        console.log(`adjustedStop: ${adjustedStop}`);
+
+        let stopLossOrder;
+        try {
           stopLossOrder = await binance.futuresOrder(
             "STOP_MARKET",
             "BUY",
@@ -384,23 +537,57 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
             null,
             { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
           );
-          console.log(`[${symbol}] Retry succeeded: New stop order ${stopLossOrder.orderId}`);
-        } else {
-          throw placeErr;
+          console.log(
+            `[${symbol}] New stop order placed: ${stopLossOrder.orderId}`
+          );
+        } catch (placeErr) {
+          if (placeErr.code === -4045) {
+            console.warn(
+              `[${symbol}] Hit max stop limit (-4045). Canceling all and retrying.`
+            );
+            await binance.futuresCancelAll(symbol);
+            stopLossOrder = await binance.futuresOrder(
+              "STOP_MARKET",
+              "BUY",
+              symbol,
+              qtyFixed,
+              null,
+              { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
+            );
+            console.log(
+              `[${symbol}] Retry succeeded: New stop order ${stopLossOrder.orderId}`
+            );
+          } else if (placeErr.code === -2011 || placeErr.code === -1102) {
+            console.warn(
+              `[${symbol}] Place failed (${placeErr.code}). Skipping this update.`
+            );
+            return;
+          } else {
+            throw placeErr;
+          }
         }
-      }
 
-      // Update DB
-      await axios.put(`${API_ENDPOINT}${objectId}`, {
-        data: {
-          stopLossPrice: newStop,
-          stopLossOrderId: stopLossOrder.orderId,
-          isProfit: roi > 0,
-        },
-      });
-      console.log(`[${symbol}] SHORT Stop Loss updated successfully.`);
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: {
+            stopLossPrice: roundedStop,
+            stopLossOrderId: stopLossOrder.orderId,
+            isProfit: true,
+          },
+        });
+        console.log(`[${symbol}] SHORT Stop Loss updated successfully.`);
+      } else {
+        console.log(
+          `[${symbol}] SHORT ROI ${roi.toFixed(
+            2
+          )}% — SL unchanged (${oldStop}). New stop ${roundedStop} is not better than current.`
+        );
+      }
     } else {
-      console.log(`[${symbol}] SHORT ROI ${roi.toFixed(2)}% — SL unchanged (${oldStop}).`);
+      console.log(
+        `[${symbol}] SHORT ROI ${roi.toFixed(
+          2
+        )}% — Below ${TRAILING_START_ROI}%, no trailing yet.`
+      );
     }
   } catch (err) {
     console.error(`[${symbol}] Error trailing SHORT stop-loss:`, err.message);
@@ -421,15 +608,40 @@ async function trailStopLoss(symbol) {
 
     const { side } = tradeDetails;
 
+    // Fetch ATR and TEMA values (assumed to be available in decide25TEMA module)
+    const klines = await binance.futuresCandles(symbol, interval, {
+      limit: 50,
+    });
+    const atrValue = await calculateATR(symbol, 14); // Assuming 14-period ATR
+    const tema15 = await calculateTEMA(symbol, 15); // 15-period TEMA
+    const tema25 = await calculateTEMA(symbol, 25); // 25-period TEMA
+
     if (side === "LONG") {
-      await trailStopLossForLong(symbol, tradeDetails, currentPrice);
+      await trailStopLossForLong(
+        symbol,
+        tradeDetails,
+        currentPrice,
+        atrValue,
+        tema15,
+        tema25
+      );
     } else if (side === "SHORT") {
-      await trailStopLossForShort(symbol, tradeDetails, currentPrice);
+      await trailStopLossForShort(
+        symbol,
+        tradeDetails,
+        currentPrice,
+        atrValue,
+        tema15,
+        tema25
+      );
     } else {
       console.log(`[${symbol}] Unknown position side: ${side}`);
     }
   } catch (err) {
-    console.error(`[${symbol}] Error in main trailing stop-loss function:`, err.message);
+    console.error(
+      `[${symbol}] Error in main trailing stop-loss function:`,
+      err.message
+    );
   }
 }
 
@@ -440,8 +652,13 @@ async function placeBuyOrder(symbol, marginAmount) {
       console.log(`[${symbol}] Margin type set to ISOLATED.`);
     } catch (err) {
       const msg = err?.body || err?.message || "";
-      if (msg.includes("No need to change") || msg.includes("margin type cannot be changed")) {
-        console.log(`[${symbol}] Margin type already ISOLATED or cannot be changed right now.`);
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
       } else {
         console.warn(`[${symbol}] Error setting margin type:`, msg);
       }
@@ -460,28 +677,17 @@ async function placeBuyOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    let stopLossPrice, takeProfitPrice;
-    if (USE_ATR_STOP_LOSS) {
-      const atr = await calculateATR(symbol);
-      if (atr) {
-        stopLossPrice = parseFloat((entryPrice - atr * 2).toFixed(pricePrecision));
-        takeProfitPrice = parseFloat((entryPrice + atr * 4).toFixed(pricePrecision)); // 2:1 risk/reward
-      } else {
-        stopLossPrice = parseFloat((entryPrice * (1 + FIXED_STOP_LOSS_ROI / 100)).toFixed(pricePrecision));
-        takeProfitPrice = parseFloat((entryPrice * (1 + FIXED_TAKE_PROFIT_ROI / 100)).toFixed(pricePrecision));
-      }
-    } else {
-      stopLossPrice = parseFloat((entryPrice * (1 + FIXED_STOP_LOSS_ROI / 100)).toFixed(pricePrecision));
-      takeProfitPrice = parseFloat((entryPrice * (1 + FIXED_TAKE_PROFIT_ROI / 100)).toFixed(pricePrecision));
-    }
+    const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
+    const stopLossPrice = parseFloat(
+      (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
+    );
 
     console.log(`LONG Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    console.log(`Stop Loss Price: ${stopLossPrice} (${FIXED_STOP_LOSS_ROI}% ROI)`);
-    console.log(`Take Profit Price: ${takeProfitPrice} (${FIXED_TAKE_PROFIT_ROI}% ROI)`);
+    console.log(`Stop Loss Price: ${stopLossPrice} (${STOP_LOSS_ROI}% ROI)`);
 
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
@@ -495,13 +701,14 @@ async function placeBuyOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
-      stopLossPrice,
-      takeProfitPrice,
+      quantityPrecision, // Store for use in SL/TP
     };
 
     console.log(`buyOrderDetails`, buyOrderDetails);
 
-    const tradeResponse = await axios.post(API_ENDPOINT, { data: buyOrderDetails });
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: buyOrderDetails,
+    });
     console.log(`Trade Response:`, tradeResponse?.data);
 
     const tradeId = tradeResponse.data._id;
@@ -511,28 +718,25 @@ async function placeBuyOrder(symbol, marginAmount) {
       symbol,
       qtyFixed,
       null,
-      { stopPrice: stopLossPrice, reduceOnly: true, timeInForce: "GTC" }
+      {
+        stopPrice: stopLossPrice,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
     );
-    const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT_MARKET",
-      "SELL",
-      symbol,
-      qtyFixed,
-      null,
-      { stopPrice: takeProfitPrice, reduceOnly: true, timeInForce: "GTC" }
+    console.log(
+      `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
-
-    console.log(`Stop Loss set at ${stopLossPrice} for ${symbol} (${FIXED_STOP_LOSS_ROI}% ROI)`);
-    console.log(`Take Profit set at ${takeProfitPrice} for ${symbol} (${FIXED_TAKE_PROFIT_ROI}% ROI)`);
+    console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
 
     const details = {
-      stopLossPrice,
+      stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
-      takeProfitPrice,
-      takeProfitOrderId: takeProfitOrder.orderId,
     };
     console.log(`details`, details);
-    await axios.put(`${API_ENDPOINT}${tradeId}`, { data: details });
+    await axios.put(`${API_ENDPOINT}${tradeId}`, {
+      data: details,
+    });
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
   }
@@ -545,8 +749,13 @@ async function placeShortOrder(symbol, marginAmount) {
       console.log(`[${symbol}] Margin type set to ISOLATED.`);
     } catch (err) {
       const msg = err?.body || err?.message || "";
-      if (msg.includes("No need to change") || msg.includes("margin type cannot be changed")) {
-        console.log(`[${symbol}] Margin type already ISOLATED or cannot be changed right now.`);
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
       } else {
         console.warn(`[${symbol}] Error setting margin type:`, msg);
       }
@@ -565,28 +774,17 @@ async function placeShortOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    let stopLossPrice, takeProfitPrice;
-    if (USE_ATR_STOP_LOSS) {
-      const atr = await calculateATR(symbol);
-      if (atr) {
-        stopLossPrice = parseFloat((entryPrice + atr * 2).toFixed(pricePrecision));
-        takeProfitPrice = parseFloat((entryPrice - atr * 4).toFixed(pricePrecision)); // 2:1 risk/reward
-      } else {
-        stopLossPrice = parseFloat((entryPrice * (1 - FIXED_STOP_LOSS_ROI / 100)).toFixed(pricePrecision));
-        takeProfitPrice = parseFloat((entryPrice * (1 - FIXED_TAKE_PROFIT_ROI / 100)).toFixed(pricePrecision));
-      }
-    } else {
-      stopLossPrice = parseFloat((entryPrice * (1 - FIXED_STOP_LOSS_ROI / 100)).toFixed(pricePrecision));
-      takeProfitPrice = parseFloat((entryPrice * (1 - FIXED_TAKE_PROFIT_ROI / 100)).toFixed(pricePrecision));
-    }
+    const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
+    const stopLossPrice = parseFloat(
+      (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
+    );
 
     console.log(`SHORT Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    console.log(`Stop Loss Price: ${stopLossPrice} (${FIXED_STOP_LOSS_ROI}% ROI)`);
-    console.log(`Take Profit Price: ${takeProfitPrice} (${FIXED_TAKE_PROFIT_ROI}% ROI)`);
+    console.log(`Stop Loss Price: ${stopLossPrice} (${STOP_LOSS_ROI}% ROI)`);
 
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
@@ -600,13 +798,14 @@ async function placeShortOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
-      stopLossPrice,
-      takeProfitPrice,
+      quantityPrecision, // Store for use in SL/TP
     };
 
     console.log(`shortOrderDetails`, shortOrderDetails);
 
-    const tradeResponse = await axios.post(API_ENDPOINT, { data: shortOrderDetails });
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: shortOrderDetails,
+    });
     console.log(`Trade Response:`, tradeResponse?.data);
 
     const tradeId = tradeResponse.data._id;
@@ -617,30 +816,26 @@ async function placeShortOrder(symbol, marginAmount) {
       symbol,
       qtyFixed,
       null,
-      { stopPrice: stopLossPrice, reduceOnly: true, timeInForce: "GTC" }
+      {
+        stopPrice: stopLossPrice,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
     );
-    const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT_MARKET",
-      "BUY",
-      symbol,
-      qtyFixed,
-      null,
-      { stopPrice: takeProfitPrice, reduceOnly: true, timeInForce: "GTC" }
+    console.log(
+      `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
-
-    console.log(`Stop Loss set at ${stopLossPrice} for ${symbol} (${FIXED_STOP_LOSS_ROI}% ROI)`);
-    console.log(`Take Profit set at ${takeProfitPrice} for ${symbol} (${FIXED_TAKE_PROFIT_ROI}% ROI)`);
 
     const details = {
-      stopLossPrice,
+      stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
-      takeProfitPrice,
-      takeProfitOrderId: takeProfitOrder.orderId,
     };
 
     console.log(`details`, details);
 
-    await axios.put(`${API_ENDPOINT}${tradeId}`, { data: details });
+    await axios.put(`${API_ENDPOINT}${tradeId}`, {
+      data: details,
+    });
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
   }
@@ -660,7 +855,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 10;
+  const usableBalance = totalBalance - 5;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
@@ -669,7 +864,10 @@ setInterval(async () => {
   if (maxSpendPerTrade >= 1.6) {
     for (const sym of symbols) {
       try {
-        const response = await axios.post(`${API_ENDPOINT}check-symbols`, { symbols: sym });
+        const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+          symbols: sym,
+        });
+
         let status = response?.data?.data.status;
 
         if (status == true) {
@@ -695,7 +893,10 @@ setInterval(async () => {
 setInterval(async () => {
   for (const sym of symbols) {
     try {
-      const response = await axios.post(`${API_ENDPOINT}check-symbols`, { symbols: sym });
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
+
       let status = response?.data?.data.status;
 
       if (status === false) {

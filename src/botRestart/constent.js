@@ -20,6 +20,6 @@
 //   "1000BONKUSDT",
 // ];
 
-const symbols = ["BNBUSDT", "SOLUSDT", "INJUSDT", "XRPUSDT", "NEARUSDT"];
+const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "NEARUSDT"];
 
 module.exports = { symbols };
