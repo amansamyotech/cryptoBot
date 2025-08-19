@@ -19,9 +19,10 @@ const binance = new Binance().options({
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
-const TRAILING_START_ROI = 1.1;
+const TRAILING_START_ROI = 1.2;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
+
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
     const {
@@ -704,7 +705,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 10;
+  const usableBalance = totalBalance - 3;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
@@ -731,13 +732,13 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 5000);
+}, 4500);
 
 setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 2500);
+}, 2000);
 
 setInterval(async () => {
   for (const sym of symbols) {
@@ -773,4 +774,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 1500);
+}, 1000);
