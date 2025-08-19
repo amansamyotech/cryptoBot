@@ -22,10 +22,11 @@
 
 const symbols = [
   "SOLUSDT", 
+  "AVAXUSDT",
   "XRPUSDT", 
   "ADAUSDT", 
   "DOGEUSDT", 
-  "SHIBUSDT", 
+   
 ];
 
 module.exports = { symbols };
