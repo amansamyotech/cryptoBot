@@ -282,14 +282,14 @@ async function decide25TEMA(symbol) {
         2
       )}) > TEMA(25) (${lastTEMA25.toFixed(
         2
-      )}) and angle ${angleDegrees.toFixed(2)}° > 35°`;
+      )}) and angle ${angleDegrees.toFixed(2)}° > 40°`;
     } else if (lastTEMA25 > lastPrice && angleDegrees < -40) {
       decision = "SHORT";
       reason = `Price (${lastPrice.toFixed(
         2
       )}) < TEMA(25) (${lastTEMA25.toFixed(
         2
-      )}) and angle ${angleDegrees.toFixed(2)}° < -35°`;
+      )}) and angle ${angleDegrees.toFixed(2)}° < -40°`;
     } else {
       decision = "HOLD";
       reason = `Conditions not met. TEMA(25): ${lastTEMA25.toFixed(

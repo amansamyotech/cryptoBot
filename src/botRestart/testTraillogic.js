@@ -4,9 +4,7 @@ const axios = require("axios");
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { symbols } = require("./constent");
-const { decide25TEMA, calculateATR, calculateTEMA } = require("./decide25TEMA");
-
-const isProcessing = {};
+const { calculateTEMA, decide25TEMA } = require("./decide25TEMA");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
@@ -18,69 +16,80 @@ const binance = new Binance().options({
 });
 
 const interval = "1m";
+const TIMEFRAME_MAIN = "3m"; // From decide25TEMA.js
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 1.1;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
+// Function to fetch candles (from decide25TEMA.js)
+async function getCandles(symbol, interval, limit = 50) {
+  try {
+    const res = await axios.get(
+      `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+    );
+    return res.data
+      .map((c) => ({
+        openTime: c[0],
+        open: parseFloat(c[1]),
+        high: parseFloat(c[2]),
+        low: parseFloat(c[3]),
+        close: parseFloat(c[4]),
+        volume: parseFloat(c[5]),
+      }))
+      .filter((c) => !isNaN(c.close));
+  } catch (err) {
+    console.error(
+      `❌ Error fetching candles for ${symbol} (${interval}):`,
+      err.message
+    );
+    return [];
+  }
+}
+
+// Stop Loss and Take Profit function based on TEMA and ROI
 function stopLossTakeProfit(
   position,
   entryPrice,
   currentPrice,
-  atrValue,
   tema15,
   tema25
 ) {
-  if (!["LONG", "SHORT"].includes(position)) {
-    throw new Error("Invalid position type");
-  }
-
-  // Calculate ROI based on position type
+  // Calculate ROI
   let roi;
   if (position === "LONG") {
     roi = ((currentPrice - entryPrice) / entryPrice) * 100;
-  } else {
-    // SHORT
+  } else if (position === "SHORT") {
     roi = ((entryPrice - currentPrice) / entryPrice) * 100;
+  } else {
+    return "HOLD"; // Invalid position, do nothing
   }
 
-  // Stop Loss Logic: ATR-based, capped at max -2% ROI loss
-  const multiplier = 2; // Adjust as needed
-  const atrSlDistance = atrValue * multiplier;
-  let atrSlRoi = -(atrSlDistance / entryPrice) * 100; // Negative ROI for SL
-  const effectiveSlRoi = Math.max(atrSlRoi, -2); // Cap at -2%
-
-  if (roi <= effectiveSlRoi) {
-    return "EXIT"; // Exit due to Stop Loss
+  // Check if ROI is at least +1%
+  if (roi < 1) {
+    return "HOLD"; // ROI below +1%, keep position open
   }
 
-  // Take Profit Logic: Only activate if ROI > +1%
-  if (roi > 1) {
-    let shouldHold = false;
-    if (position === "LONG") {
-      shouldHold = tema15 > tema25;
+  // TEMA crossover logic for TP and SL
+  if (position === "LONG") {
+    if (tema15 > tema25) {
+      return "HOLD"; // Keep LONG position open while TEMA15 > TEMA25
     } else {
-      // SHORT
-      shouldHold = tema15 < tema25;
+      return "EXIT"; // Exit on reverse crossover (TEMA15 <= TEMA25)
     }
-
-    if (!shouldHold) {
-      return "EXIT"; // Exit due to reverse TEMA crossover
+  } else if (position === "SHORT") {
+    if (tema15 < tema25) {
+      return "HOLD"; // Keep SHORT position open while TEMA15 < TEMA25
+    } else {
+      return "EXIT"; // Exit on reverse crossover (TEMA15 >= TEMA25)
     }
   }
 
-  return "HOLD";
+  return "HOLD"; // Default to holding if conditions are unclear
 }
 
-async function trailStopLossForLong(
-  symbol,
-  tradeDetails,
-  currentPrice,
-  atrValue,
-  tema15,
-  tema25
-) {
+async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
     const {
       stopLossOrderId,
@@ -100,48 +109,86 @@ async function trailStopLossForLong(
     const pnl = (currentPrice - entryPrice) * qty;
     const roi = (pnl / margin) * 100;
 
-    // Check SL/TP conditions first
-    const slTpDecision = stopLossTakeProfit(
-      "LONG",
-      entryPrice,
-      currentPrice,
-      atrValue,
-      tema15,
-      tema25
-    );
-    if (slTpDecision === "EXIT") {
-      console.log(
-        `[${symbol}] SL/TP triggered: Closing LONG position (ROI: ${roi.toFixed(
-          2
-        )}%)`
-      );
-      try {
-        await binance.futuresCancelAll(symbol); // Cancel all open orders
-        await binance.futuresMarketSell(
-          symbol,
-          qty.toFixed(tradeDetails.quantityPrecision),
-          { reduceOnly: true }
-        );
-        await axios.put(`${API_ENDPOINT}${objectId}`, {
-          data: { status: "CLOSED" },
-        });
-        console.log(`[${symbol}] LONG position closed due to SL/TP.`);
-      } catch (err) {
-        console.error(
-          `[${symbol}] Error closing LONG position: ${err.message}`
-        );
-      }
-      return;
-    }
-
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = qty.toFixed(quantityPrecision);
 
+    // Fetch candles and calculate TEMA15 and TEMA25
+    const candles = await getCandles(symbol, TIMEFRAME_MAIN, 50);
+    if (candles.length < 50) {
+      console.log(
+        `[${symbol}] Insufficient candles for TEMA calculation. Holding.`
+      );
+      return;
+    }
+    const closes = candles.map((c) => c.close);
+    const tema15 = calculateTEMA(closes, 15);
+    const tema25 = calculateTEMA(closes, 25);
+    const lastTEMA15 = tema15[tema15.length - 1];
+    const lastTEMA25 = tema25[tema25.length - 1];
+
+    // Check TEMA-based SL/TP conditions
+    const action = stopLossTakeProfit(
+      "LONG",
+      entryPrice,
+      currentPrice,
+      lastTEMA15,
+      lastTEMA25
+    );
+    if (action === "EXIT") {
+      console.log(
+        `[${symbol}] LONG TEMA crossover detected. Closing position.`
+      );
+      try {
+        // Cancel existing stop loss
+        if (stopLossOrderId) {
+          try {
+            await binance.futuresCancel(symbol, stopLossOrderId);
+            console.log(
+              `[${symbol}] Canceled old stop order ${stopLossOrderId}`
+            );
+          } catch (err) {
+            if (err.code === -2011 || err.code === -1102) {
+              console.log(
+                `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}).`
+              );
+            } else {
+              console.warn(
+                `[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`
+              );
+            }
+          }
+        }
+
+        // Close position
+        await binance.futuresMarketSell(symbol, qtyFixed, { reduceOnly: true });
+        console.log(`[${symbol}] LONG position closed due to TEMA crossover.`);
+
+        // Update DB to reflect closed trade
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: {
+            stopLossPrice: null,
+            stopLossOrderId: null,
+            isProfit: roi > 0,
+            isActive: false, // Mark trade as closed
+          },
+        });
+        console.log(`[${symbol}] LONG trade closed in DB.`);
+        return;
+      } catch (closeErr) {
+        console.error(
+          `[${symbol}] Error closing LONG position:`,
+          closeErr.message
+        );
+        return;
+      }
+    }
+
+    // Trailing Stop Loss Logic (only if not exiting)
     if (roi >= TRAILING_START_ROI) {
-      const targetROI = roi - 1;
+      const targetROI = roi - ROI_STEP;
       const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
         (entryPrice + targetPnL / qty).toFixed(pricePrecision)
@@ -170,6 +217,7 @@ async function trailStopLossForLong(
           )}%)`
         );
 
+        // Cleanup existing STOP_MARKET SELL orders
         let openOrders;
         try {
           openOrders = await binance.futuresOpenOrders(symbol);
@@ -209,6 +257,7 @@ async function trailStopLossForLong(
           );
         }
 
+        // Cancel old stop loss (if it exists)
         let orderExists = false;
         if (stopLossOrderId) {
           console.log(
@@ -259,6 +308,7 @@ async function trailStopLossForLong(
           );
         }
 
+        // Place new stop loss
         const tickSize = Math.pow(10, -pricePrecision);
         const buffer = tickSize * 5;
         const adjustedStop = parseFloat(
@@ -300,12 +350,13 @@ async function trailStopLossForLong(
             console.warn(
               `[${symbol}] Place failed (${placeErr.code}). Skipping this update.`
             );
-            return;
+            return; // Don't update DB
           } else {
-            throw placeErr;
+            throw placeErr; // Other errors bubble up
           }
         }
 
+        // Update DB only if successful
         await axios.put(`${API_ENDPOINT}${objectId}`, {
           data: {
             stopLossPrice: newStop,
@@ -331,14 +382,7 @@ async function trailStopLossForLong(
   }
 }
 
-async function trailStopLossForShort(
-  symbol,
-  tradeDetails,
-  currentPrice,
-  atrValue,
-  tema15,
-  tema25
-) {
+async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
   try {
     const {
       stopLossOrderId,
@@ -358,48 +402,86 @@ async function trailStopLossForShort(
     const pnl = (entryPrice - currentPrice) * qty;
     const roi = (pnl / margin) * 100;
 
-    // Check SL/TP conditions first
-    const slTpDecision = stopLossTakeProfit(
-      "SHORT",
-      entryPrice,
-      currentPrice,
-      atrValue,
-      tema15,
-      tema25
-    );
-    if (slTpDecision === "EXIT") {
-      console.log(
-        `[${symbol}] SL/TP triggered: Closing SHORT position (ROI: ${roi.toFixed(
-          2
-        )}%)`
-      );
-      try {
-        await binance.futuresCancelAll(symbol);
-        await binance.futuresMarketBuy(
-          symbol,
-          qty.toFixed(tradeDetails.quantityPrecision),
-          { reduceOnly: true }
-        );
-        await axios.put(`${API_ENDPOINT}${objectId}`, {
-          data: { status: "CLOSED" },
-        });
-        console.log(`[${symbol}] SHORT position closed due to SL/TP.`);
-      } catch (err) {
-        console.error(
-          `[${symbol}] Error closing SHORT position: ${err.message}`
-        );
-      }
-      return;
-    }
-
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = qty.toFixed(quantityPrecision);
 
+    // Fetch candles and calculate TEMA15 and TEMA25
+    const candles = await getCandles(symbol, TIMEFRAME_MAIN, 50);
+    if (candles.length < 50) {
+      console.log(
+        `[${symbol}] Insufficient candles for TEMA calculation. Holding.`
+      );
+      return;
+    }
+    const closes = candles.map((c) => c.close);
+    const tema15 = calculateTEMA(closes, 15);
+    const tema25 = calculateTEMA(closes, 25);
+    const lastTEMA15 = tema15[tema15.length - 1];
+    const lastTEMA25 = tema25[tema25.length - 1];
+
+    // Check TEMA-based SL/TP conditions
+    const action = stopLossTakeProfit(
+      "SHORT",
+      entryPrice,
+      currentPrice,
+      lastTEMA15,
+      lastTEMA25
+    );
+    if (action === "EXIT") {
+      console.log(
+        `[${symbol}] SHORT TEMA crossover detected. Closing position.`
+      );
+      try {
+        // Cancel existing stop loss
+        if (stopLossOrderId) {
+          try {
+            await binance.futuresCancel(symbol, stopLossOrderId);
+            console.log(
+              `[${symbol}] Canceled old stop order ${stopLossOrderId}`
+            );
+          } catch (err) {
+            if (err.code === -2011 || err.code === -1102) {
+              console.log(
+                `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}).`
+              );
+            } else {
+              console.warn(
+                `[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`
+              );
+            }
+          }
+        }
+
+        // Close position
+        await binance.futuresMarketBuy(symbol, qtyFixed, { reduceOnly: true });
+        console.log(`[${symbol}] SHORT position closed due to TEMA crossover.`);
+
+        // Update DB to reflect closed trade
+        await axios.put(`${API_ENDPOINT}${objectId}`, {
+          data: {
+            stopLossPrice: null,
+            stopLossOrderId: null,
+            isProfit: roi > 0,
+            isActive: false, // Mark trade as closed
+          },
+        });
+        console.log(`[${symbol}] SHORT trade closed in DB.`);
+        return;
+      } catch (closeErr) {
+        console.error(
+          `[${symbol}] Error closing SHORT position:`,
+          closeErr.message
+        );
+        return;
+      }
+    }
+
+    // Trailing Stop Loss Logic (only if not exiting)
     if (roi >= TRAILING_START_ROI) {
-      const targetROI = roi - 1;
+      const targetROI = roi - ROI_STEP;
       const targetPnL = (targetROI / 100) * margin;
       const newStop = parseFloat(
         (entryPrice - targetPnL / qty).toFixed(pricePrecision)
@@ -431,6 +513,7 @@ async function trailStopLossForShort(
           )}%)`
         );
 
+        // Cleanup existing STOP_MARKET BUY orders
         let openOrders;
         try {
           openOrders = await binance.futuresOpenOrders(symbol);
@@ -470,6 +553,7 @@ async function trailStopLossForShort(
           );
         }
 
+        // Cancel old stop loss (if it exists)
         let orderExists = false;
         if (stopLossOrderId) {
           console.log(
@@ -520,6 +604,7 @@ async function trailStopLossForShort(
           );
         }
 
+        // Place new stop loss
         const tickSize = Math.pow(10, -pricePrecision);
         const buffer = tickSize * 5;
         const adjustedStop = parseFloat(
@@ -561,12 +646,13 @@ async function trailStopLossForShort(
             console.warn(
               `[${symbol}] Place failed (${placeErr.code}). Skipping this update.`
             );
-            return;
+            return; // Don't update DB
           } else {
-            throw placeErr;
+            throw placeErr; // Other errors bubble up
           }
         }
 
+        // Update DB only if successful
         await axios.put(`${API_ENDPOINT}${objectId}`, {
           data: {
             stopLossPrice: roundedStop,
@@ -608,32 +694,10 @@ async function trailStopLoss(symbol) {
 
     const { side } = tradeDetails;
 
-    // Fetch ATR and TEMA values (assumed to be available in decide25TEMA module)
-    const klines = await binance.futuresCandles(symbol, interval, {
-      limit: 50,
-    });
-    const atrValue = await calculateATR(symbol, 14); // Assuming 14-period ATR
-    const tema15 = await calculateTEMA(symbol, 15); // 15-period TEMA
-    const tema25 = await calculateTEMA(symbol, 25); // 25-period TEMA
-
     if (side === "LONG") {
-      await trailStopLossForLong(
-        symbol,
-        tradeDetails,
-        currentPrice,
-        atrValue,
-        tema15,
-        tema25
-      );
+      await trailStopLossForLong(symbol, tradeDetails, currentPrice);
     } else if (side === "SHORT") {
-      await trailStopLossForShort(
-        symbol,
-        tradeDetails,
-        currentPrice,
-        atrValue,
-        tema15,
-        tema25
-      );
+      await trailStopLossForShort(symbol, tradeDetails, currentPrice);
     } else {
       console.log(`[${symbol}] Unknown position side: ${side}`);
     }
@@ -701,7 +765,6 @@ async function placeBuyOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
-      quantityPrecision, // Store for use in SL/TP
     };
 
     console.log(`buyOrderDetails`, buyOrderDetails);
@@ -798,7 +861,6 @@ async function placeShortOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
-      quantityPrecision, // Store for use in SL/TP
     };
 
     console.log(`shortOrderDetails`, shortOrderDetails);
@@ -855,7 +917,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 5;
+  const usableBalance = totalBalance - 10;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
@@ -890,6 +952,8 @@ setInterval(async () => {
   }
 }, 2500);
 
+const isProcessing = {};
+
 setInterval(async () => {
   for (const sym of symbols) {
     try {
@@ -900,16 +964,19 @@ setInterval(async () => {
       let status = response?.data?.data.status;
 
       if (status === false) {
+        // Trade open (your logic: false means open trade)
         if (isProcessing[sym]) {
           console.log(`[${sym}] Skipping trailing — already processing.`);
           continue;
         }
         isProcessing[sym] = true;
 
+        // Confirm position is open (sync with DB)
         const positions = await binance.futuresPositionRisk({ symbol: sym });
         const pos = positions.find((p) => p.symbol === sym);
         if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
           console.log(`[${sym}] Position already closed. Skipping trailing.`);
+          // Optionally: Update DB to close trade, but assume checkOrders handles
           continue;
         }
 
