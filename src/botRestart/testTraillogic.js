@@ -23,9 +23,9 @@ const TRAILING_START_ROI = 1.1;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
-// New constants for the 1.5% → 1% profit logic
-const BREAKEVEN_TRIGGER_ROI = 1.5; // When to move stop to 1% profit
-const BREAKEVEN_TARGET_ROI = 1.0;   // Where to set the stop loss
+
+const BREAKEVEN_TRIGGER_ROI = 1.5;
+const BREAKEVEN_TARGET_ROI = 1.0; 
 
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
@@ -37,7 +37,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       stopLossPrice: oldStopLoss,
       marginUsed,
       leverage,
-      isBreakevenSet = false, // New field to track if breakeven is already set
+      isBreakevenSet = false, 
     } = tradeDetails;
 
     const entryPrice = parseFloat(longTimePrice);
@@ -56,7 +56,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
     console.log(`[${symbol}] LONG Current ROI: ${roi.toFixed(2)}%`);
 
-    // NEW LOGIC: Check if we need to set breakeven stop at 1% profit
+    
     if (roi >= BREAKEVEN_TRIGGER_ROI && !isBreakevenSet) {
       console.log(`[${symbol}] 🎯 BREAKEVEN TRIGGER: ROI ${roi.toFixed(2)}% >= ${BREAKEVEN_TRIGGER_ROI}%`);
       
@@ -75,7 +75,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
 
       console.log(`[${symbol}] 🔄 Setting breakeven stop loss at ${breakevenStop} (${BREAKEVEN_TARGET_ROI}% profit)`);
 
-      // Cleanup existing STOP_MARKET SELL orders
+      
       let openOrders;
       try {
         openOrders = await binance.futuresOpenOrders(symbol);

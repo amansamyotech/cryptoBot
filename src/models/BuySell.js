@@ -10,6 +10,7 @@ const BuySellSchema = new Schema(
     placeOrderId: {
       type: String,
     },
+
     quantity: {
       type: String,
     },
@@ -20,6 +21,10 @@ const BuySellSchema = new Schema(
       type: String,
     },
     isProfit: {
+      type: Boolean,
+      default: false,
+    },
+    isBreakevenSet: {
       type: Boolean,
       default: false,
     },
