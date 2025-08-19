@@ -995,7 +995,6 @@
 
 
 //aman
-
 const Binance = require("node-binance-api");
 const axios = require("axios");
 
@@ -1018,6 +1017,7 @@ const TIMEFRAME_MAIN = "3m"; // From decide25TEMA.js
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
 const MINIMUM_ROI = 1; // Minimum ROI to maintain after reaching it
+const TRAIL_TRIGGER_ROI = 1.5; // ROI to trigger trailing SL to MINIMUM_ROI level
 
 // Function to fetch candles (from decide25TEMA.js)
 async function getCandles(symbol, interval, limit = 50) {
@@ -1063,11 +1063,6 @@ function stopLossTakeProfit(
     return "HOLD"; // Invalid position, do nothing
   }
 
-  // If trade has reached 1% ROI at any point, exit if ROI drops below 1%
-  if (hasReachedMinROI && roi < MINIMUM_ROI) {
-    return "EXIT"; // Exit immediately if ROI falls below 1%
-  }
-
   // TEMA crossover logic for TP, only exit if ROI is at least 1%
   if (roi >= MINIMUM_ROI) {
     if (position === "LONG") {
@@ -1110,14 +1105,61 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = qty.toFixed(quantityPrecision);
 
-    // Check if ROI has reached 1% for the first time
+    // Check if ROI has reached 1.5% for the first time, trail SL to 1% ROI level
     let updatedHasReachedMinROI = hasReachedMinROI;
-    if (roi >= MINIMUM_ROI && !hasReachedMinROI) {
+    if (roi >= TRAIL_TRIGGER_ROI && !hasReachedMinROI) {
       updatedHasReachedMinROI = true;
+
+      // Calculate new stop loss price for 1% ROI
+      const minROIPnL = (MINIMUM_ROI / 100) * margin;
+      const newStopLossPrice = parseFloat(
+        (entryPrice + minROIPnL / qty).toFixed(pricePrecision)
+      );
+
+      // Cancel existing stop loss
+      if (stopLossOrderId) {
+        try {
+          await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
+          console.log(`[${symbol}] Canceled old stop order ${stopLossOrderId}`);
+        } catch (err) {
+          if (err.code === -2011 || err.code === -1102) {
+            console.log(
+              `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}).`
+            );
+          } else {
+            console.warn(
+              `[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`
+            );
+          }
+        }
+      }
+
+      // Place new stop loss order at 1% ROI level
+      const newStopLossOrder = await binance.futuresOrder(
+        "STOP_MARKET",
+        "SELL",
+        symbol,
+        qtyFixed,
+        null,
+        {
+          stopPrice: newStopLossPrice,
+          reduceOnly: true,
+          timeInForce: "GTC",
+        }
+      );
+      console.log(
+        `[${symbol}] Trailed stop loss to ${newStopLossPrice} (1% ROI level).`
+      );
+
+      // Update DB
       await axios.put(`${API_ENDPOINT}${objectId}`, {
-        data: { hasReachedMinROI: true },
+        data: {
+          hasReachedMinROI: true,
+          stopLossPrice: newStopLossPrice,
+          stopLossOrderId: newStopLossOrder.orderId,
+        },
       });
-      console.log(`[${symbol}] LONG trade reached ${MINIMUM_ROI}% ROI. Tracking minimum ROI.`);
+      console.log(`[${symbol}] LONG trade reached ${TRAIL_TRIGGER_ROI}% ROI. Trailed SL and tracking.`);
     }
 
     // Fetch candles and calculate TEMA15 and TEMA25
@@ -1144,16 +1186,14 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       updatedHasReachedMinROI
     );
     if (action === "EXIT") {
-      const reason = updatedHasReachedMinROI && roi < MINIMUM_ROI
-        ? `ROI dropped below ${MINIMUM_ROI}%`
-        : `TEMA crossover detected with ROI ${roi.toFixed(2)}%`;
+      const reason = `TEMA crossover detected with ROI ${roi.toFixed(2)}%`;
       console.log(`[${symbol}] LONG exiting: ${reason}.`);
 
       try {
         // Cancel existing stop loss
         if (stopLossOrderId) {
           try {
-            await binance.futuresCancel(symbol, stopLossOrderId);
+            await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
             console.log(
               `[${symbol}] Canceled old stop order ${stopLossOrderId}`
             );
@@ -1196,7 +1236,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
     }
 
     console.log(
-      `[${symbol}] LONG ROI ${roi.toFixed(2)}% — Holding. Has reached ${MINIMUM_ROI}%: ${updatedHasReachedMinROI}`
+      `[${symbol}] LONG ROI ${roi.toFixed(2)}% — Holding. Has reached trail trigger: ${updatedHasReachedMinROI}`
     );
   } catch (err) {
     console.error(`[${symbol}] Error in LONG stop-loss logic:`, err.message);
@@ -1229,14 +1269,61 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = qty.toFixed(quantityPrecision);
 
-    // Check if ROI has reached 1% for the first time
+    // Check if ROI has reached 1.5% for the first time, trail SL to 1% ROI level
     let updatedHasReachedMinROI = hasReachedMinROI;
-    if (roi >= MINIMUM_ROI && !hasReachedMinROI) {
+    if (roi >= TRAIL_TRIGGER_ROI && !hasReachedMinROI) {
       updatedHasReachedMinROI = true;
+
+      // Calculate new stop loss price for 1% ROI
+      const minROIPnL = (MINIMUM_ROI / 100) * margin;
+      const newStopLossPrice = parseFloat(
+        (entryPrice - minROIPnL / qty).toFixed(pricePrecision)
+      );
+
+      // Cancel existing stop loss
+      if (stopLossOrderId) {
+        try {
+          await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
+          console.log(`[${symbol}] Canceled old stop order ${stopLossOrderId}`);
+        } catch (err) {
+          if (err.code === -2011 || err.code === -1102) {
+            console.log(
+              `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}).`
+            );
+          } else {
+            console.warn(
+              `[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`
+            );
+          }
+        }
+      }
+
+      // Place new stop loss order at 1% ROI level
+      const newStopLossOrder = await binance.futuresOrder(
+        "STOP_MARKET",
+        "BUY",
+        symbol,
+        qtyFixed,
+        null,
+        {
+          stopPrice: newStopLossPrice,
+          reduceOnly: true,
+          timeInForce: "GTC",
+        }
+      );
+      console.log(
+        `[${symbol}] Trailed stop loss to ${newStopLossPrice} (1% ROI level).`
+      );
+
+      // Update DB
       await axios.put(`${API_ENDPOINT}${objectId}`, {
-        data: { hasReachedMinROI: true },
+        data: {
+          hasReachedMinROI: true,
+          stopLossPrice: newStopLossPrice,
+          stopLossOrderId: newStopLossOrder.orderId,
+        },
       });
-      console.log(`[${symbol}] SHORT trade reached ${MINIMUM_ROI}% ROI. Tracking minimum ROI.`);
+      console.log(`[${symbol}] SHORT trade reached ${TRAIL_TRIGGER_ROI}% ROI. Trailed SL and tracking.`);
     }
 
     // Fetch candles and calculate TEMA15 and TEMA25
@@ -1263,16 +1350,14 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       updatedHasReachedMinROI
     );
     if (action === "EXIT") {
-      const reason = updatedHasReachedMinROI && roi < MINIMUM_ROI
-        ? `ROI dropped below ${MINIMUM_ROI}%`
-        : `TEMA crossover detected with ROI ${roi.toFixed(2)}%`;
+      const reason = `TEMA crossover detected with ROI ${roi.toFixed(2)}%`;
       console.log(`[${symbol}] SHORT exiting: ${reason}.`);
 
       try {
         // Cancel existing stop loss
         if (stopLossOrderId) {
           try {
-            await binance.futuresCancel(symbol, stopLossOrderId);
+            await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
             console.log(
               `[${symbol}] Canceled old stop order ${stopLossOrderId}`
             );
@@ -1315,7 +1400,7 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
     }
 
     console.log(
-      `[${symbol}] SHORT ROI ${roi.toFixed(2)}% — Holding. Has reached ${MINIMUM_ROI}%: ${updatedHasReachedMinROI}`
+      `[${symbol}] SHORT ROI ${roi.toFixed(2)}% — Holding. Has reached trail trigger: ${updatedHasReachedMinROI}`
     );
   } catch (err) {
     console.error(`[${symbol}] Error in SHORT stop-loss logic:`, err.message);
