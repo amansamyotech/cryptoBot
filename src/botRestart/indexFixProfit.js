@@ -18,7 +18,7 @@ const binance = new Binance().options({
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
-const TAKE_PROFIT_ROI = 1.5;
+const TAKE_PROFIT_ROI = 2;
 
 async function placeBuyOrder(symbol, marginAmount) {
   try {
