@@ -15,7 +15,7 @@ const binance = new Binance().options({
 });
 
 // const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"];
-const symbols = ["INJUSDT", ];
+const symbols = ["INJUSDT"];
 
 async function getUsdtBalance() {
   try {
@@ -80,10 +80,8 @@ async function getTEMAValues(symbol) {
 
     // Get the latest TEMA values
     const latestTEMA15 = tema15[tema15.length - 1];
-    console.log(`latestTEMA15`, latestTEMA15);
 
     const latestTEMA21 = tema21[tema21.length - 1];
-    console.log(`latestTEMA21`, latestTEMA21);
 
     return {
       tema15: latestTEMA15,
@@ -476,13 +474,13 @@ async function placeShortOrder(symbol, marginAmount) {
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
 
-  //   if (decision === "LONG") {
-  //     await placeBuyOrder(symbol, maxSpendPerTrade);
-  //   } else if (decision === "SHORT") {
-  //     await placeShortOrder(symbol, maxSpendPerTrade);
-  //   } else {
-  //     console.log(`No trade signal for ${symbol}`);
-  //   }
+  if (decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 // Main trading interval
@@ -505,7 +503,6 @@ setInterval(async () => {
 
         if (status == true) {
           await processSymbol(sym, maxSpendPerTrade);
-          await getTEMAValues(sym);
         } else {
           console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
         }
