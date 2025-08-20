@@ -48,7 +48,7 @@ function calculateEMA(prices, period) {
 }
 
 
-function calculateTEMA(prices, period) {
+async function calculateTEMA(prices, period) {
   const k = 2 / (period + 1);
   const ema1 = [prices[0]];
   const ema2 = [];
@@ -72,8 +72,6 @@ function calculateTEMA(prices, period) {
   for (let i = 0; i < prices.length; i++) {
     tema.push(3 * ema1[i] - 3 * ema2[i] + ema3[i]);
   }
-
-  console.log(`tema decide funtion`,tema);
   
   return tema;
 }

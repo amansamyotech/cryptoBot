@@ -40,10 +40,10 @@ async function getTEMAValues(symbol) {
 
     const closes = klines.map((k) => parseFloat(k[4]));
 
-    const tema15 = calculateTEMA(closes, 15);
+    const tema15 = await calculateTEMA(closes, 15);
     console.log(`tema15`,tema15);
     
-    const tema21 = calculateTEMA(closes, 21);
+    const tema21 = await calculateTEMA(closes, 21);
     console.log(`tema21`,tema21);
 
     if (tema15.length === 0 || tema21.length === 0) {
