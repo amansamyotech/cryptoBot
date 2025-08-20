@@ -14,8 +14,8 @@ const binance = new Binance().options({
   test: false,
 });
 
-// const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"];
-const symbols = ["INJUSDT"];
+const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"];
+
 
 async function getUsdtBalance() {
   try {
@@ -513,7 +513,7 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 500);
+}, 2000);
 
 // Profit management and exit monitoring interval - INCREASED FREQUENCY FOR REAL-TIME ROI MONITORING
 setInterval(async () => {
@@ -562,4 +562,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 500); // Reduced interval to 500ms for more real-time ROI monitoring
+}, 1000); // Reduced interval to 500ms for more real-time ROI monitoring
