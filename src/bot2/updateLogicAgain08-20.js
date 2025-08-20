@@ -60,7 +60,7 @@ async function getCandles(symbol, interval, limit = 1000) {
 
 async function getTEMAValues(symbol) {
   try {
-    const candles = await getCandles(symbol, "3m", 1000);
+    const candles = await getCandles(symbol, "1m", 1000);
     if (candles.length < 50) {
       console.log("❌ Insufficient candles for analysis");
       return "HOLD";
