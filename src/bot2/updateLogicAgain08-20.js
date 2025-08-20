@@ -16,7 +16,6 @@ const binance = new Binance().options({
 
 const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"];
 
-
 async function getUsdtBalance() {
   try {
     const account = await binance.futuresBalance();
@@ -513,7 +512,7 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 3000);
+}, 4000);
 
 // Profit management and exit monitoring interval - INCREASED FREQUENCY FOR REAL-TIME ROI MONITORING
 setInterval(async () => {
@@ -562,4 +561,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 1000); // Reduced interval to 500ms for more real-time ROI monitoring
+}, 1500); // Reduced interval to 500ms for more real-time ROI monitoring
