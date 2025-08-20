@@ -20,6 +20,10 @@ const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
 const TAKE_PROFIT_ROI = 2;
 
+function roundToTickSize(price, tickSize) {
+  return Math.round(price / tickSize) * tickSize;
+}
+
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     try {
