@@ -513,7 +513,7 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 2000);
+}, 3000);
 
 // Profit management and exit monitoring interval - INCREASED FREQUENCY FOR REAL-TIME ROI MONITORING
 setInterval(async () => {
