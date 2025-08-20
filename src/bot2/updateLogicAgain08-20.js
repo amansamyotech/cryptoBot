@@ -69,10 +69,8 @@ async function getTEMAValues(symbol) {
     const closes = candles.map((c) => c.close);
 
     const tema15 = calculateTEMA(closes, 15);
-    console.log(`tema15`, tema15);
 
     const tema21 = calculateTEMA(closes, 21);
-    console.log(`tema21`, tema21);
 
     if (tema15.length === 0 || tema21.length === 0) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA`);
