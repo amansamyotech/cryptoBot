@@ -36,6 +36,9 @@ const BuySellSchema = new Schema(
     stopLossOrderId: {
       type: String,
     },
+    takeProfitOrderId: {
+      type: String,
+    },
     takeProfitPrice: {
       type: String,
     },

@@ -276,14 +276,14 @@ async function decide25TEMA(symbol) {
     let decision = "HOLD";
     let reason = "";
 
-    if (lastTEMA25 < lastPrice && angleDegrees > 40) {
+    if (lastTEMA25 < lastPrice && angleDegrees > 35) {
       decision = "LONG";
       reason = `Price (${lastPrice.toFixed(
         2
       )}) > TEMA(25) (${lastTEMA25.toFixed(
         2
       )}) and angle ${angleDegrees.toFixed(2)}° > 30°`;
-    } else if (lastTEMA25 > lastPrice && angleDegrees < -40) {
+    } else if (lastTEMA25 > lastPrice && angleDegrees < -35) {
       decision = "SHORT";
       reason = `Price (${lastPrice.toFixed(
         2
@@ -310,4 +310,4 @@ async function decide25TEMA(symbol) {
   }
 }
 
-module.exports = { decide25TEMA , calculateTEMA , calculateATR};
+module.exports = { decide25TEMA, calculateTEMA, calculateATR };
