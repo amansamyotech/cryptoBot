@@ -10,9 +10,9 @@ const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
 // Use environment variables for API keys
 const binance = new Binance().options({
-  APIKEY: process.env.BINANCE_API_KEY || "your_api_key_here",
-  APISECRET: process.env.BINANCE_API_SECRET || "your_api_secret_here",
-  useServerTime: true,
+    APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
+  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
+useServerTime: true,
   test: false,
 });
 
