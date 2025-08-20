@@ -73,6 +73,8 @@ function calculateTEMA(prices, period) {
     tema.push(3 * ema1[i] - 3 * ema2[i] + ema3[i]);
   }
 
+  console.log(`tema decide funtion`,tema);
+  
   return tema;
 }
 
