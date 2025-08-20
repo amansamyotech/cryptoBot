@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { TEMA } = require("technicalindicators");
 const { checkOrders } = require("./orderCheckFun");
-const { decide25TEMA ,calculateTEMA} = require("./decide25TEMA");
+const { decide25TEMA, calculateTEMA } = require("./decide25TEMA");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -188,10 +188,12 @@ async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
         console.log(`[${symbol}] TEMA crossover detected - closing position`);
 
         // Cancel existing stop loss orders first
-        await cancelExistingStopOrders(symbol);
+        const data = await cancelExistingStopOrders(symbol);
+        console.log("cancelExistingStopOrders", data);
 
         // Close position with market order
-        await closePosition(symbol, tradeDetails);
+        const data2 = await closePosition(symbol, tradeDetails);
+        console.log("cancelExistingStopOrders", data2);
       }
     }
   } catch (err) {
