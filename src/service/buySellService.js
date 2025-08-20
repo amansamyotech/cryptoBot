@@ -64,6 +64,7 @@ const getDetailsWithSymbol = async (symbol) => {
         marginUsed: trade.marginUsed,
         isBreakevenSet: trade.isBreakevenSet,
         isProfit: trade.isProfit,
+        stopLossCancelled : trade.stopLossCancelled,
       };
       //get open trades
       return { symbol, tradeDetails, found: true };

@@ -24,6 +24,10 @@ const BuySellSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    stopLossCancelled: {
+      type: Boolean,
+      default: false,
+    },
     isBreakevenSet: {
       type: Boolean,
       default: false,
