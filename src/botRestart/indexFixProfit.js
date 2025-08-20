@@ -288,7 +288,7 @@ async function getAvailableSymbols(symbols) {
         symbols: sym,
       });
       const status = response?.data?.data.status;
-      if (status === false) {
+      if (status === true) {
         availableSymbols.push(sym);
       } else {
         console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
@@ -342,7 +342,7 @@ setInterval(async () => {
         const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
           symbols: sym,
         });
-        if (response?.data?.data.status === false) {
+        if (response?.data?.data.status === true) {
           await processSymbol(sym, maxSpendPerTrade);
         } else {
           console.log(`Trade opened for ${sym} during processing. Skipping.`);
