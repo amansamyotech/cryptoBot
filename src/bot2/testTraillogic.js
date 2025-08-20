@@ -44,20 +44,20 @@ async function getTEMAValues(symbol) {
 
     // Calculate TEMA 15 and TEMA 25
     const tema15 = TEMA.calculate({ period: 15, values: closes });
-    const tema25 = TEMA.calculate({ period: 25, values: closes });
+    const tema21 = TEMA.calculate({ period: 21, values: closes });
 
-    if (tema15.length === 0 || tema25.length === 0) {
+    if (tema15.length === 0 || tema21.length === 0) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA`);
       return null;
     }
 
     // Get the latest TEMA values
     const latestTEMA15 = tema15[tema15.length - 1];
-    const latestTEMA25 = tema25[tema25.length - 1];
+    const latestTEMA21 = tema21[tema21.length - 1];
 
     return {
       tema15: latestTEMA15,
-      tema25: latestTEMA25,
+      tema21: latestTEMA21,
     };
   } catch (error) {
     console.error(`Error getting TEMA values for ${symbol}:`, error.message);
@@ -71,14 +71,14 @@ async function checkTEMACrossover(symbol, side) {
     const temaValues = await getTEMAValues(symbol);
     if (!temaValues) return false;
 
-    const { tema15, tema25 } = temaValues;
+    const { tema15, tema21 } = temaValues;
 
-    // For LONG positions: exit when TEMA15 crosses below TEMA25
-    // For SHORT positions: exit when TEMA15 crosses above TEMA25
+    // For LONG positions: exit when TEMA15 crosses below TEMA21
+    // For SHORT positions: exit when TEMA15 crosses above TEMA21
     if (side === "LONG") {
-      return tema15 < tema25; // TEMA15 below TEMA25 - bearish crossover
+      return tema15 < tema21; // TEMA15 below TEMA21 - bearish crossover
     } else if (side === "SHORT") {
-      return tema15 > tema25; // TEMA15 above TEMA25 - bullish crossover
+      return tema15 > tema21; // TEMA15 above TEMA21 - bullish crossover
     }
 
     return false;
