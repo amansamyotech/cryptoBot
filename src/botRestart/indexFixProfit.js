@@ -4,7 +4,7 @@ const axios = require("axios");
 const { orderCheckFunForFix } = require("./orderCheckFunForFix");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { symbols } = require("./constent");
-const { decide25TEMA } = require("./decide25TEMA");
+const { decide25TemaFIx } = require("./decide25TemaFIx");
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
@@ -173,16 +173,21 @@ async function placeShortOrder(symbol, marginAmount) {
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
+    const tickSize = parseFloat(
+      symbolInfo.filters.find((f) => f.filterType === "PRICE_FILTER").tickSize
+    );
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
     const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
-    const stopLossPrice = parseFloat(
-      (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
+    let stopLossPrice = entryPrice - stopLossPnL / quantity;
+    stopLossPrice = parseFloat(
+      roundToTickSize(stopLossPrice, tickSize).toFixed(pricePrecision)
     );
 
     const takeProfitPnL = (TAKE_PROFIT_ROI / 100) * marginAmount;
-    const takeProfitPrice = parseFloat(
-      (entryPrice - takeProfitPnL / quantity).toFixed(pricePrecision)
+    let takeProfitPrice = entryPrice - takeProfitPnL / quantity;
+    takeProfitPrice = parseFloat(
+      roundToTickSize(takeProfitPrice, tickSize).toFixed(pricePrecision)
     );
 
     console.log(`SHORT Order Details for ${symbol}:`);
@@ -208,8 +213,6 @@ async function placeShortOrder(symbol, marginAmount) {
       leverage: LEVERAGE,
       positionValue: positionValue,
     };
-
-    console.log(`shortOrderDetails`, shortOrderDetails);
 
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: shortOrderDetails,
@@ -258,8 +261,6 @@ async function placeShortOrder(symbol, marginAmount) {
       takeProfitOrderId: takeProfitOrder.orderId,
     };
 
-    console.log(`details`, details);
-
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
       data: details,
     });
@@ -267,9 +268,8 @@ async function placeShortOrder(symbol, marginAmount) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
   }
 }
-
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await decide25TEMA(symbol);
+  const decision = await decide25TemaFIx(symbol);
 
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
@@ -280,39 +280,85 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 }
 
-setInterval(async () => {
-  const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6;
-  const maxSpendPerTrade = usableBalance / symbols.length;
+async function getAvailableSymbols(symbols) {
+  const availableSymbols = [];
+  for (const sym of symbols) {
+    try {
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
+      const status = response?.data?.data.status;
+      if (status === false) {
+        availableSymbols.push(sym);
+      } else {
+        console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+      }
+    } catch (err) {
+      console.error(`Error checking status for ${sym}:`, err.message);
+    }
+  }
+  return availableSymbols;
+}
 
-  console.log(`Total Balance: ${totalBalance} USDT`);
-  console.log(`Usable Balance: ${usableBalance} USDT`);
-  console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
-  if (maxSpendPerTrade >= 1.6) {
-    for (const sym of symbols) {
+setInterval(async () => {
+  try {
+    const totalBalance = await getUsdtBalance();
+    const usableBalance = totalBalance - 5; // Reserve 6 USDT
+    console.log(`Total Balance: ${totalBalance} USDT`);
+    console.log(`Usable Balance: ${usableBalance} USDT`);
+
+    // Get symbols without open trades
+    const availableSymbols = await getAvailableSymbols(symbols);
+    if (availableSymbols.length === 0) {
+      console.log("No symbols available for trading (all have open trades).");
+      return;
+    }
+
+    // Calculate max spend per trade based on available symbols
+    const maxSpendPerTrade = usableBalance / availableSymbols.length;
+    console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
+
+    if (maxSpendPerTrade < MINIMUM_BALANCE_PER_TRADE) {
+      console.log(
+        `Insufficient balance for trading. Required per trade: ${MINIMUM_BALANCE_PER_TRADE} USDT`
+      );
+      return;
+    }
+
+    // Process symbols sequentially
+    for (const sym of availableSymbols) {
       try {
+        // Recheck balance before each trade
+        const currentBalance = await getUsdtBalance();
+        const currentUsableBalance = currentBalance - 6;
+        if (currentUsableBalance < maxSpendPerTrade) {
+          console.log(
+            `Insufficient balance for ${sym}. Available: ${currentUsableBalance} USDT`
+          );
+          continue;
+        }
+
+        // Recheck trade status to avoid race conditions
         const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
           symbols: sym,
         });
-
-        let status = response?.data?.data.status;
-
-        if (status == true) {
+        if (response?.data?.data.status === false) {
           await processSymbol(sym, maxSpendPerTrade);
         } else {
-          console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+          console.log(`Trade opened for ${sym} during processing. Skipping.`);
         }
       } catch (err) {
-        console.error(`Error with ${sym}:`, err.message);
+        console.error(`Error processing ${sym}:`, err.message);
       }
     }
-  } else {
-    console.log("not enough amount");
+  } catch (err) {
+    console.error("Error in main trading loop:", err.message);
   }
-}, 4500);
+}, 4000); // Increased interval to 10 seconds to reduce overlap
 
+// Keep the order check interval
 setInterval(async () => {
   for (const sym of symbols) {
     await orderCheckFunForFix(sym);
   }
-}, 2000);
+}, 6000);

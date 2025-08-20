@@ -29,25 +29,38 @@ async function orderCheckFunForFix(symbol) {
 
     console.log(`objectId:`, objectId);
 
-    if (!stopLossOrderId || !takeProfitOrderId) {
+    if (!stopLossOrderId && !takeProfitOrderId) {
       console.log(`No order IDs found for ${symbol}`);
       return;
     }
 
-    // Get initial order statuses
-    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: stopLossOrderId,
-    });
+    // Check stop-loss order status if it exists
+    let stopLossStatus = null;
+    if (stopLossOrderId) {
+      stopLossStatus = await binance.futuresOrderStatus(symbol, {
+        orderId: stopLossOrderId,
+      });
+    }
 
-    const takeProfitStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: takeProfitOrderId,
-    });
+    // Check take-profit order status if it exists
+    let takeProfitStatus = null;
+    if (takeProfitOrderId) {
+      takeProfitStatus = await binance.futuresOrderStatus(symbol, {
+        orderId: takeProfitOrderId,
+      });
+    }
 
     const stopLossOrderStatus = stopLossStatus?.status;
     const takeProfitOrderStatus = takeProfitStatus?.status;
 
-    console.log(`Stop Loss Status for ${symbol}:`, stopLossOrderStatus);
-    console.log(`Take Profit Status for ${symbol}:`, takeProfitOrderStatus);
+    console.log(
+      `Stop Loss Status for ${symbol}:`,
+      stopLossOrderStatus || "N/A"
+    );
+    console.log(
+      `Take Profit Status for ${symbol}:`,
+      takeProfitOrderStatus || "N/A"
+    );
 
     const isStopLossFilled = stopLossOrderStatus === "FILLED";
     const isTakeProfitFilled = takeProfitOrderStatus === "FILLED";
@@ -55,8 +68,8 @@ async function orderCheckFunForFix(symbol) {
     if (isStopLossFilled || isTakeProfitFilled) {
       console.log(`One of the orders is filled for ${symbol}`);
 
-      // If Stop Loss is NOT filled, check again before canceling
-      if (!isStopLossFilled) {
+      // Cancel stop-loss if not filled and exists
+      if (stopLossOrderId && !isStopLossFilled) {
         const recheckStopLoss = await binance.futuresOrderStatus(symbol, {
           orderId: stopLossOrderId,
         });
@@ -64,15 +77,15 @@ async function orderCheckFunForFix(symbol) {
           recheckStopLoss?.status !== "CANCELED" &&
           recheckStopLoss?.status !== "FILLED"
         ) {
-          await binance.futuresCancel(symbol, stopLossOrderId);
-          console.log(`Stop Loss order canceled`);
+          await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
+          console.log(`Stop Loss order canceled for ${symbol}`);
         } else {
-          console.log(`Stop Loss already canceled or filled`);
+          console.log(`Stop Loss already canceled or filled for ${symbol}`);
         }
       }
 
-      // If Take Profit is NOT filled, check again before canceling
-      if (!isTakeProfitFilled) {
+      // Cancel take-profit if not filled and exists
+      if (takeProfitOrderId && !isTakeProfitFilled) {
         const recheckTakeProfit = await binance.futuresOrderStatus(symbol, {
           orderId: takeProfitOrderId,
         });
@@ -80,10 +93,10 @@ async function orderCheckFunForFix(symbol) {
           recheckTakeProfit?.status !== "CANCELED" &&
           recheckTakeProfit?.status !== "FILLED"
         ) {
-          await binance.futuresCancel(symbol, takeProfitOrderId);
-          console.log(`Take Profit order canceled`);
+          await binance.futuresCancel(symbol, { orderId: takeProfitOrderId });
+          console.log(`Take Profit order canceled for ${symbol}`);
         } else {
-          console.log(`Take Profit already canceled or filled`);
+          console.log(`Take Profit already canceled or filled for ${symbol}`);
         }
       }
 
@@ -101,5 +114,4 @@ async function orderCheckFunForFix(symbol) {
     console.error("Error checking or canceling orders:", error);
   }
 }
-
-module.exports = { orderCheckFunForFix};
+module.exports = { orderCheckFunForFix };
