@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { TEMA } = require("technicalindicators");
 const { checkOrders } = require("./orderCheckFun");
-const { decide25TEMA } = require("./decide25TEMA");
+const { decide25TEMA ,calculateTEMA} = require("./decide25TEMA");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -42,9 +42,9 @@ async function getTEMAValues(symbol) {
     // Extract closing prices
     const closes = klines.map((k) => parseFloat(k[4])); // k[4] = close price
 
-    // Calculate TEMA 15 and TEMA 25
-    const tema15 = TEMA.calculate({ period: 15, values: closes });
-    const tema21 = TEMA.calculate({ period: 21, values: closes });
+    // Calculate TEMA 15 and TEMA 21 using your own function
+    const tema15 = calculateTEMA(closes, 15);
+    const tema21 = calculateTEMA(closes, 21);
 
     if (tema15.length === 0 || tema21.length === 0) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA`);

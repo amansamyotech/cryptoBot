@@ -47,6 +47,7 @@ function calculateEMA(prices, period) {
   return emaArray;
 }
 
+
 function calculateTEMA(prices, period) {
   const k = 2 / (period + 1);
   const ema1 = [prices[0]];
@@ -295,4 +296,4 @@ async function decide25TEMA(symbol) {
   }
 }
 
-module.exports = { decide25TEMA };
+module.exports = { decide25TEMA ,calculateTEMA};
