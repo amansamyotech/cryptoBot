@@ -318,9 +318,9 @@ setInterval(async () => {
     const maxSpendPerTrade = usableBalance / availableSymbols.length;
     console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
 
-    if (maxSpendPerTrade < MINIMUM_BALANCE_PER_TRADE) {
+    if (maxSpendPerTrade < 1.3) {
       console.log(
-        `Insufficient balance for trading. Required per trade: ${MINIMUM_BALANCE_PER_TRADE} USDT`
+        `Insufficient balance for trading. Required per trade: ${1.3} USDT`
       );
       return;
     }
