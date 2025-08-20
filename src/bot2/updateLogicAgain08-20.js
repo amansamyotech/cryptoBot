@@ -34,6 +34,30 @@ const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
 const STOP_LOSS_CANCEL_ROI = 1.5; // Changed from PROFIT_LOCK_ROI to be more descriptive
 
+async function getCandles(symbol, interval, limit = 1000) {
+  try {
+    const res = await axios.get(
+      `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
+    );
+    return res.data
+      .map((c) => ({
+        openTime: c[0],
+        open: parseFloat(c[1]),
+        high: parseFloat(c[2]),
+        low: parseFloat(c[3]),
+        close: parseFloat(c[4]),
+        volume: parseFloat(c[5]),
+      }))
+      .filter((c) => !isNaN(c.close));
+  } catch (err) {
+    console.error(
+      `❌ Error fetching candles for ${symbol} (${interval}):`,
+      err.message
+    );
+    return [];
+  }
+}
+
 async function getTEMAValues(symbol) {
   try {
     const candles = await getCandles(symbol, "3m", 1000);
