@@ -48,7 +48,7 @@ function calculateEMA(prices, period) {
 }
 
 
-async function calculateTEMA(prices, period) {
+function calculateTEMA(prices, period) {
   const k = 2 / (period + 1);
   const ema1 = [prices[0]];
   const ema2 = [];

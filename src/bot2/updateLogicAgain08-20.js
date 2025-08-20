@@ -36,15 +36,19 @@ const STOP_LOSS_CANCEL_ROI = 1.5; // Changed from PROFIT_LOCK_ROI to be more des
 
 async function getTEMAValues(symbol) {
   try {
-    const klines = await binance.futuresCandles(symbol, "3m", { limit: 50 });
+    const candles = await getCandles(symbol, "3m", 1000);
+    if (candles.length < 50) {
+      console.log("❌ Insufficient candles for analysis");
+      return "HOLD";
+    }
 
-    const closes = klines.map((k) => parseFloat(k[4]));
+    const closes = candles.map((c) => c.close);
 
-    const tema15 = await calculateTEMA(closes, 15);
-    console.log(`tema15`,tema15);
-    
-    const tema21 = await calculateTEMA(closes, 21);
-    console.log(`tema21`,tema21);
+    const tema15 = calculateTEMA(closes, 15);
+    console.log(`tema15`, tema15);
+
+    const tema21 = calculateTEMA(closes, 21);
+    console.log(`tema21`, tema21);
 
     if (tema15.length === 0 || tema21.length === 0) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA`);
@@ -449,13 +453,13 @@ async function placeShortOrder(symbol, marginAmount) {
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
 
-//   if (decision === "LONG") {
-//     await placeBuyOrder(symbol, maxSpendPerTrade);
-//   } else if (decision === "SHORT") {
-//     await placeShortOrder(symbol, maxSpendPerTrade);
-//   } else {
-//     console.log(`No trade signal for ${symbol}`);
-//   }
+  //   if (decision === "LONG") {
+  //     await placeBuyOrder(symbol, maxSpendPerTrade);
+  //   } else if (decision === "SHORT") {
+  //     await placeShortOrder(symbol, maxSpendPerTrade);
+  //   } else {
+  //     console.log(`No trade signal for ${symbol}`);
+  //   }
 }
 
 // Main trading interval
