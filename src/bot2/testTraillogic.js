@@ -32,7 +32,7 @@ async function getUsdtBalance() {
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
-const PROFIT_LOCK_ROI = 1;
+const PROFIT_LOCK_ROI = 1.5;
 
 async function getTEMAValues(symbol) {
   try {
@@ -220,7 +220,8 @@ async function lockProfitsAtROI(
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     // Calculate stop loss price for +1% ROI
-    const targetPnL = (PROFIT_LOCK_ROI / 100) * margin;
+    // const targetPnL = (PROFIT_LOCK_ROI / 100) * margin;
+    const targetPnL = (1 / 100) * margin;
     let newStopPrice;
 
     if (side === "LONG") {
