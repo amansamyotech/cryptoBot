@@ -4,7 +4,7 @@ const axios = require("axios");
 const { orderCheckFunForFix } = require("./orderCheckFunForFix");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { symbols } = require("./constent");
-const { decide25TEMA } = require("./decide25TEMA");
+const { decide25TemaFIx } = require("./decide25TemaFIx");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
@@ -254,7 +254,7 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await decide25TEMA(symbol);
+  const decision = await decide25TemaFIx(symbol);
 
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
