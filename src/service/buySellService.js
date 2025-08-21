@@ -54,6 +54,8 @@ const getDetailsWithSymbol = async (symbol) => {
       const tradeDetails = {
         stopLossOrderId: trade.stopLossOrderId,
         takeProfitOrderId: trade.takeProfitOrderId,
+        profitOrderId: trade.profitOrderId,
+        takeProfitPrice: trade.takeProfitPrice,
         objectId: trade._id,
         side: trade.side,
         ShortTimeCurrentPrice: trade.ShortTimeCurrentPrice,
