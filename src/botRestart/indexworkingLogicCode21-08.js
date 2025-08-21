@@ -5,7 +5,7 @@ const {
   calculateTEMA,
 } = require("./updateDecideLogicSir");
 const { getUsdtBalance } = require("./helper/getBalance");
-const { getCandles } = require("./helper/getCandles")
+const { getCandles } = require("./helper/getCandles");
 const { checkOrders } = require("./orderCheckFun");
 const isProcessing = {};
 
@@ -18,7 +18,15 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"];
+const symbols = [
+  "SOLUSDT",
+  "BNBUSDT",
+  "XRPUSDT",
+  "ADAUSDT",
+  "DOGEUSDT",
+  "TAOUSDT",
+  "CKBUSDT",
+];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
