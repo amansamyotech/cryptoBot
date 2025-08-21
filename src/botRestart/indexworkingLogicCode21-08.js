@@ -1,16 +1,19 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { decide25TEMA, calculateTEMA } = require("./decide25TEMAFullworking");
+const {
+  updateDecideLogicSir,
+  calculateTEMA,
+} = require("./updateDecideLogicSir");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { getCandles } = require("./helper/getCandles");
-const { checkOrders } = require("./orderCheck2Fun");
+const { checkOrders } = require("./orderCheckFun");
 const isProcessing = {};
 
-const API_ENDPOINT = "http://localhost:3001/api/buySell/";
+const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
 const binance = new Binance().options({
-  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
-  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
+  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
   useServerTime: true,
   test: false,
 });
@@ -425,7 +428,7 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await decide25TEMA(symbol);
+  const decision = await updateDecideLogicSir(symbol);
 
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
