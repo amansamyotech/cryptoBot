@@ -19,6 +19,7 @@ const binance = new Binance().options({
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
 const TAKE_PROFIT_ROI = 1.5;
+const PRICE_BUFFER_PERCENT = 0.1;
 
 async function placeBuyOrder(symbol, marginAmount) {
   try {
@@ -52,13 +53,23 @@ async function placeBuyOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
-    const takeProfit = (TAKE_PROFIT_ROI / 100) * marginAmount;
+    const stopLossPnL = Math.abs((STOP_LOSS_ROI / 100) * marginAmount);
+    const takeProfitPnL = Math.abs((TAKE_PROFIT_ROI / 100) * marginAmount);
+
     const stopLossPrice = parseFloat(
-      (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
+      (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
     );
     const takeProfitPrice = parseFloat(
-      (entryPrice + takeProfit / quantity).toFixed(pricePrecision)
+      (entryPrice + takeProfitPnL / quantity).toFixed(pricePrecision)
+    );
+
+    const bufferedStopLoss = parseFloat(
+      (stopLossPrice * (1 - PRICE_BUFFER_PERCENT / 100)).toFixed(pricePrecision)
+    );
+    const bufferedTakeProfit = parseFloat(
+      (takeProfitPrice * (1 + PRICE_BUFFER_PERCENT / 100)).toFixed(
+        pricePrecision
+      )
     );
 
     console.log(`LONG Order Details for ${symbol}:`);
@@ -97,7 +108,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: stopLossPrice,
+        stopPrice: bufferedStopLoss,
         reduceOnly: true,
         timeInForce: "GTC",
       }
@@ -109,7 +120,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: takeProfitPrice,
+        stopPrice: bufferedTakeProfit,
         reduceOnly: true,
         timeInForce: "GTC",
       }
@@ -120,9 +131,9 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
 
     const details = {
-      takeProfitPrice: takeProfitPrice,
+      takeProfitPrice: bufferedTakeProfit,
       profitOrderId: takeProfitOrder.orderId,
-      stopLossPrice: stopLossPrice,
+      stopLossPrice: bufferedStopLoss,
       stopLossOrderId: stopLossOrder.orderId,
     };
     console.log(`details`, details);
@@ -168,13 +179,22 @@ async function placeShortOrder(symbol, marginAmount) {
 
     const stopLossPnL = Math.abs((STOP_LOSS_ROI / 100) * marginAmount);
     const takeProfitPnL = Math.abs((TAKE_PROFIT_ROI / 100) * marginAmount);
+
     const stopLossPrice = parseFloat(
-      (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
+      (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
     );
     const takeProfitPrice = parseFloat(
       (entryPrice - takeProfitPnL / quantity).toFixed(pricePrecision)
     );
 
+    const bufferedStopLoss = parseFloat(
+      (stopLossPrice * (1 + PRICE_BUFFER_PERCENT / 100)).toFixed(pricePrecision)
+    );
+    const bufferedTakeProfit = parseFloat(
+      (takeProfitPrice * (1 - PRICE_BUFFER_PERCENT / 100)).toFixed(
+        pricePrecision
+      )
+    );
     console.log(`SHORT Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
@@ -212,7 +232,7 @@ async function placeShortOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: stopLossPrice,
+        stopPrice: bufferedStopLoss,
         reduceOnly: true,
         timeInForce: "GTC",
       }
@@ -227,7 +247,7 @@ async function placeShortOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: takeProfitPrice,
+        stopPrice: bufferedTakeProfit,
         reduceOnly: true,
         timeInForce: "GTC",
       }
@@ -237,9 +257,9 @@ async function placeShortOrder(symbol, marginAmount) {
     );
 
     const details = {
-      takeProfitPrice: takeProfitPrice,
+      takeProfitPrice: bufferedTakeProfit,
       profitOrderId: takeProfitOrder.orderId,
-      stopLossPrice: stopLossPrice,
+      stopLossPrice: bufferedStopLoss,
       stopLossOrderId: stopLossOrder.orderId,
     };
 
@@ -325,8 +345,6 @@ setInterval(async () => {
 
           continue;
         }
-
-        await trailStopLoss(sym);
       }
     } catch (err) {
       console.error(`Error with ${sym}:`, err.message);
