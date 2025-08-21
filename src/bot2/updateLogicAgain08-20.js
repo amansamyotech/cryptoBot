@@ -3,6 +3,7 @@ const axios = require("axios");
 const { decide25TEMA, calculateTEMA } = require("./decide25TEMA");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { getCandles } = require("./helper/getCandles");
+const { checkOrders } = require("./orderCheck2Fun");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -508,4 +509,10 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 2000);
+}, 2500);
+
+setInterval(async () => {
+  for (const sym of symbols) {
+    await checkOrders(sym);
+  }
+}, 3000);
