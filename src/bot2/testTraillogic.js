@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { TEMA } = require("technicalindicators");
 const { checkOrders } = require("./orderCheckFun");
-const { decide25TEMA, calculateTEMA } = require("./decide25TEMA");
+const { decide25TEMA, calculateTEMA } = require("./decide25TEMAFullworking.js");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";

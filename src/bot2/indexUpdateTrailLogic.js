@@ -1,6 +1,6 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { decide25TEMA } = require("./decide25TEMA");
+const { decide25TEMA } = require("./decide25TEMAFullworkingjs");
 const { checkOrders } = require("./orderCheck2Fun");
 const isProcessing = {};
 
