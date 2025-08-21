@@ -19,7 +19,7 @@ const symbols = ["SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
-const STOP_LOSS_CANCEL_ROI = 1.5;
+const STOP_LOSS_CANCEL_ROI = 1;
 
 async function getTEMAValues(symbol) {
   try {
