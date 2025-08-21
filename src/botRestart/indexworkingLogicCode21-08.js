@@ -5,7 +5,7 @@ const {
   calculateTEMA,
 } = require("./updateDecideLogicSir");
 const { getUsdtBalance } = require("./helper/getBalance");
-const { getCandles } = require("./helper/getCandles");
+const { getCandles } = require("./helper/getCandles")
 const { checkOrders } = require("./orderCheckFun");
 const isProcessing = {};
 
