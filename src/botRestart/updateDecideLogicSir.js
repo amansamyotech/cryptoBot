@@ -275,15 +275,17 @@ async function updateDecideLogicSir(symbol) {
     console.log(`📊 Signals → 3m: ${sig3m}, 15m: ${sig15m}, 1h: ${sig1h}`);
 
     // Final decision: 3m entry must align with higher TFs
-    if (sig3m === "LONG" && sig15m === "LONG" && sig1h === "LONG") {
+    if (sig3m === "LONG" && sig15m === "LONG") {
       return "LONG";
-    } else if (sig3m === "SHORT" && sig15m === "SHORT" && sig1h === "SHORT") {
+    } else if (sig3m === "SHORT" && sig15m === "SHORT") {
       return "SHORT";
     } else {
       return "HOLD"; // no alignment
     }
   } catch (err) {
-    console.error(`❌ Error in updateDecideLogicSir for ${symbol}:, err.message`);
+    console.error(
+      `❌ Error in updateDecideLogicSir for ${symbol}:, err.message`
+    );
     return "HOLD";
   }
 }
