@@ -1,5 +1,6 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
+const { getCandles } = require("./helper/getCandles");
 
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
@@ -9,30 +10,6 @@ const binance = new Binance().options({
 });
 
 const TIMEFRAME_MAIN = "5m";
-
-async function getCandles(symbol, interval, limit = 1000) {
-  try {
-    const res = await axios.get(
-      `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-    );
-    return res.data
-      .map((c) => ({
-        openTime: c[0],
-        open: parseFloat(c[1]),
-        high: parseFloat(c[2]),
-        low: parseFloat(c[3]),
-        close: parseFloat(c[4]),
-        volume: parseFloat(c[5]),
-      }))
-      .filter((c) => !isNaN(c.close));
-  } catch (err) {
-    console.error(
-      `❌ Error fetching candles for ${symbol} (${interval}):`,
-      err.message
-    );
-    return [];
-  }
-}
 
 function calculateEMA(prices, period) {
   const k = 2 / (period + 1);
@@ -46,7 +23,6 @@ function calculateEMA(prices, period) {
 
   return emaArray;
 }
-
 
 function calculateTEMA(prices, period) {
   const k = 2 / (period + 1);
@@ -72,7 +48,7 @@ function calculateTEMA(prices, period) {
   for (let i = 0; i < prices.length; i++) {
     tema.push(3 * ema1[i] - 3 * ema2[i] + ema3[i]);
   }
-  
+
   return tema;
 }
 
@@ -296,4 +272,4 @@ async function decide25TEMA(symbol) {
   }
 }
 
-module.exports = { decide25TEMA ,calculateTEMA};
+module.exports = { decide25TEMA, calculateTEMA };

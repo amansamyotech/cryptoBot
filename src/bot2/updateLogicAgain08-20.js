@@ -1,8 +1,8 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { TEMA } = require("technicalindicators");
-const { checkOrders } = require("./orderCheckFun");
 const { decide25TEMA, calculateTEMA } = require("./decide25TEMA");
+const { getUsdtBalance } = require("./helper/getBalance");
+const { getCandles } = require("./helper/getCandles");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -16,47 +16,9 @@ const binance = new Binance().options({
 
 const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "ADAUSDT", "DOGEUSDT"];
 
-async function getUsdtBalance() {
-  try {
-    const account = await binance.futuresBalance();
-    const usdtBalance = parseFloat(
-      account.find((asset) => asset.asset === "USDT")?.balance || 0
-    );
-    return usdtBalance;
-  } catch (err) {
-    console.error("Error fetching balance:", err);
-    return 0;
-  }
-}
-
-const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
-const STOP_LOSS_CANCEL_ROI = 1.5; // Changed from PROFIT_LOCK_ROI to be more descriptive
-
-async function getCandles(symbol, interval, limit = 1000) {
-  try {
-    const res = await axios.get(
-      `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-    );
-    return res.data
-      .map((c) => ({
-        openTime: c[0],
-        open: parseFloat(c[1]),
-        high: parseFloat(c[2]),
-        low: parseFloat(c[3]),
-        close: parseFloat(c[4]),
-        volume: parseFloat(c[5]),
-      }))
-      .filter((c) => !isNaN(c.close));
-  } catch (err) {
-    console.error(
-      `❌ Error fetching candles for ${symbol} (${interval}):`,
-      err.message
-    );
-    return [];
-  }
-}
+const STOP_LOSS_CANCEL_ROI = 1.5;
 
 async function getTEMAValues(symbol) {
   try {
@@ -77,7 +39,6 @@ async function getTEMAValues(symbol) {
       return null;
     }
 
-    // Get the latest TEMA values
     const latestTEMA15 = tema15[tema15.length - 1];
 
     const latestTEMA21 = tema21[tema21.length - 1];
@@ -92,7 +53,6 @@ async function getTEMAValues(symbol) {
   }
 }
 
-// Function to check for TEMA crossover
 async function checkTEMACrossover(symbol, side) {
   try {
     const temaValues = await getTEMAValues(symbol);
@@ -100,12 +60,10 @@ async function checkTEMACrossover(symbol, side) {
 
     const { tema15, tema21 } = temaValues;
 
-    // For LONG positions: exit when TEMA15 crosses below TEMA21
-    // For SHORT positions: exit when TEMA15 crosses above TEMA21
     if (side === "LONG") {
-      return tema15 < tema21; // TEMA15 below TEMA21 - bearish crossover
+      return tema15 < tema21;
     } else if (side === "SHORT") {
-      return tema15 > tema21; // TEMA15 above TEMA21 - bullish crossover
+      return tema15 > tema21;
     }
 
     return false;
@@ -117,8 +75,6 @@ async function checkTEMACrossover(symbol, side) {
     return false;
   }
 }
-
-// Function to close position manually (market order)
 async function closePosition(symbol, tradeDetails) {
   try {
     const { side, quantity, objectId } = tradeDetails;
@@ -146,6 +102,7 @@ async function closePosition(symbol, tradeDetails) {
     const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
       data: { status: "1" },
     });
+    console.log(`data`, data);
 
     return true;
   } catch (error) {
@@ -198,13 +155,11 @@ async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
       return;
     }
 
-    // If stop losses are cancelled (stopLossCancelled = true), only monitor for TEMA crossover
     if (stopLossCancelled) {
       const shouldExit = await checkTEMACrossover(symbol, side);
       if (shouldExit) {
         console.log(`[${symbol}] TEMA crossover detected - closing position`);
 
-        // Close position with market order (no need to cancel stop loss as it's already cancelled)
         await closePosition(symbol, tradeDetails);
       }
     }
@@ -213,7 +168,6 @@ async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
   }
 }
 
-// Modified function to cancel stop losses at +1.5% ROI
 async function cancelStopLossAtROI(symbol, tradeDetails) {
   try {
     const { objectId } = tradeDetails;
@@ -222,16 +176,15 @@ async function cancelStopLossAtROI(symbol, tradeDetails) {
       `[${symbol}] ROI crossed +1.5% - Cancelling all stop loss orders`
     );
 
-    // Cancel existing stop loss orders
     const cancelResult = await cancelExistingStopOrders(symbol);
     console.log(`[${symbol}] Stop loss cancellation result:`, cancelResult);
 
-    // Update database to mark stop losses as cancelled
-    await axios.put(`${API_ENDPOINT}${objectId}`, {
+    const cancelOrder = await axios.put(`${API_ENDPOINT}${objectId}`, {
       data: {
         stopLossCancelled: true,
       },
     });
+    console.log(`cancelOrder`, cancelOrder);
 
     console.log(
       `[${symbol}] Database updated - stop losses cancelled, only TEMA crossover will trigger exit`
@@ -241,7 +194,6 @@ async function cancelStopLossAtROI(symbol, tradeDetails) {
   }
 }
 
-// Helper function to cancel existing stop orders
 async function cancelExistingStopOrders(symbol) {
   try {
     const openOrders = await binance.futuresOpenOrders(symbol);
@@ -330,7 +282,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
-      stopLossCancelled: false, // Initially false, will be set to true when ROI > 1.5%
+      stopLossCancelled: false,
     };
 
     console.log(`buyOrderDetails`, buyOrderDetails);
@@ -427,7 +379,7 @@ async function placeShortOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
-      stopLossCancelled: false, // Initially false, will be set to true when ROI > 1.5%
+      stopLossCancelled: false,
     };
 
     console.log(`shortOrderDetails`, shortOrderDetails);
@@ -482,7 +434,6 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 }
 
-// Main trading interval
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
   const usableBalance = totalBalance - 1;
@@ -512,9 +463,8 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 4000);
+}, 10000);
 
-// Profit management and exit monitoring interval - INCREASED FREQUENCY FOR REAL-TIME ROI MONITORING
 setInterval(async () => {
   for (const sym of symbols) {
     try {
@@ -525,7 +475,6 @@ setInterval(async () => {
       let status = response?.data?.data.status;
 
       if (status === false) {
-        // Trade is open
         if (isProcessing[sym]) {
           console.log(
             `[${sym}] Skipping profit management — already processing.`
@@ -534,7 +483,6 @@ setInterval(async () => {
         }
         isProcessing[sym] = true;
 
-        // Confirm position is still open
         const positions = await binance.futuresPositionRisk({ symbol: sym });
         const pos = positions.find((p) => p.symbol === sym);
         if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
@@ -542,7 +490,6 @@ setInterval(async () => {
           continue;
         }
 
-        // Get current price and trade details
         const priceMap = await binance.futuresPrices();
         const currentPrice = parseFloat(priceMap[sym]);
 
@@ -561,4 +508,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 1500); // Reduced interval to 500ms for more real-time ROI monitoring
+}, 2000);
