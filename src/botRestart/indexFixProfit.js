@@ -114,7 +114,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       }
     );
     const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT",
+      "TAKE_PROFIT_MARKET",
       "SELL",
       symbol,
       qtyFixed,
@@ -241,7 +241,7 @@ async function placeShortOrder(symbol, marginAmount) {
       `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
     const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT",
+      "TAKE_PROFIT_MARKET",
       "BUY",
       symbol,
       qtyFixed,
