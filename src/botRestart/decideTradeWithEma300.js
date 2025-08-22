@@ -445,8 +445,8 @@ async function decideTradeDirection300(symbol) {
 
     console.log(`📉 TEMA Angle: ${latestAngle.toFixed(2)}°`);
 
-    const isBullish = (angle) => angle >= 30;
-    const isBearish = (angle) => angle <= -30;
+    const isBullish = (angle) => angle >= 45;
+    const isBearish = (angle) => angle <= -45;
 
     if (isBullish(latestAngle)) {
       console.log(`✅ LONG signal from TEMA angle`);
