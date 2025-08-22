@@ -347,23 +347,33 @@ async function decideTradeDirection300(symbol) {
     }
 
     // Extract close prices from 3m candles
-    const closePrices = pastCandles3m.map(c => c.close);
+    const closePrices = pastCandles3m.map((c) => c.close);
     const tema15 = calculateTEMA(closePrices, 15); // Use 15-period TEMA
 
     // Function to calculate angle between two points
     function getAngleFromPoints(y1, y2) {
       const slope = y2 - y1;
-      return (Math.atan(slope) * (180 / Math.PI))*1000;
+      return Math.atan(slope) * (180 / Math.PI) * 1000;
     }
 
     // Use 4th-last and 2nd-last TEMA values to calculate angles
-    const angleA = getAngleFromPoints(tema15[tema15.length - 4], tema15[tema15.length - 3]); // 4th-last
-    const angleB = getAngleFromPoints(tema15[tema15.length - 2], tema15[tema15.length - 1]); // 2nd-last
+    const angleA = getAngleFromPoints(
+      tema15[tema15.length - 4],
+      tema15[tema15.length - 3]
+    ); // 4th-last
+    const angleB = getAngleFromPoints(
+      tema15[tema15.length - 2],
+      tema15[tema15.length - 1]
+    ); // 2nd-last
 
-    console.log(`📉 TEMA Angles - 4th-last: ${angleA.toFixed(2)}°, 2nd-last: ${angleB.toFixed(2)}°`);
+    console.log(
+      `📉 TEMA Angles - 4th-last: ${angleA.toFixed(
+        2
+      )}°, 2nd-last: ${angleB.toFixed(2)}°`
+    );
 
-    const isBullish = (angle) => angle >= 90 && angle <= 135;
-    const isBearish = (angle) => angle >= 225 && angle <= 280;
+    const isBullish = (angle) => angle >= 30;
+    const isBearish = (angle) => angle <= -30;
 
     if (isBearish(angleA) && isBullish(angleB)) {
       console.log(`✅ LONG signal from TEMA angle cross`);
