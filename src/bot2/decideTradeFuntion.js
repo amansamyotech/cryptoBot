@@ -1,15 +1,5 @@
-const Binance = require("node-binance-api");
 const axios = require("axios");
-
-const binance = new Binance().options({
-  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
-  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
-  useServerTime: true,
-  test: false,
-});
-
-const TIMEFRAME_MAIN = "5m";
-const TIMEFRAME_TREND = "15m";
+const TIMEFRAME_MAIN = "3m";
 
 async function getCandles(symbol, interval, limit = 1000) {
   try {
@@ -350,9 +340,9 @@ async function decideTradeDirection(symbol) {
     const angle = getCandleAngle(crossoverCandle);
     console.log(`angle`, angle);
 
-    if (angle == 1000&& temaSignal === "LONG") {
+    if (angle == 10 && temaSignal === "LONG") {
       return "LONG";
-    } else if (angle === -1000 && temaSignal === "SHORT") {
+    } else if (angle === -10 && temaSignal === "SHORT") {
       return "SHORT";
     } else {
       return "HOLD";
