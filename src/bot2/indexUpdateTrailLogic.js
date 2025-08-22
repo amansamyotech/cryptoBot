@@ -29,7 +29,7 @@ async function getUsdtBalance() {
 }
 
 const interval = "1m";
-const LEVERAGE = 4;
+const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 1.2;
 const INITIAL_TRAILING_ROI = 1;
@@ -717,7 +717,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 3;
+  const usableBalance = totalBalance - 1;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
