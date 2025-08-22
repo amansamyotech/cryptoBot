@@ -332,13 +332,13 @@ async function decideTradeDirection300(symbol) {
     }
 
     // Use 4th-last and 2nd-last candles
-    const candleA = pastCandles3m[pastCandles3m.length - 4]; // 4th-last
+    const candleA = pastCandles3m[pastCandles3m.length - 3]; // 4th-last
     const candleB = pastCandles3m[pastCandles3m.length - 2]; // 2nd-last
 
     const angleA = getCandleAngle(candleA);
     const angleB = getCandleAngle(candleB);
 
-    console.log(`📉 Angles - 4th-last: ${angleA.toFixed(2)}°, 2nd-last: ${angleB.toFixed(2)}°`);
+    console.log(`📉 Angles - (98)3th-last: ${angleA.toFixed(2)}°, (99)2nd-last: ${angleB.toFixed(2)}°`);
 
     const isBullish = (angle) => angle >= 90 && angle <= 135;
     const isBearish = (angle) => angle >= 225 && angle <= 280;
