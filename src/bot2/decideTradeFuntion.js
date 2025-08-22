@@ -328,6 +328,9 @@ async function decideTradeDirection(symbol) {
     let temaSignal = "HOLD";
     // let crossoverCandle = null;
     let crossoverCandle = pastCandles5m[pastCandles5m.length - 1];
+console.log(`lastTema9, lastTema15`,prevTema9 <= prevTema15);
+console.log(`lastTema9, lastTema15`,lastTema9 > lastTema15);
+
 
     if (prevTema9 <= prevTema15 && lastTema9 > lastTema15) {
       temaSignal = "LONG";
