@@ -518,8 +518,8 @@ async function decideTradeDirection300(symbol) {
     const selectedAngle = angleTradingView;
 
     // Adjust thresholds based on your TradingView observations
-    const bullishThreshold = 15; // You can change this based on testing
-    const bearishThreshold = -15; // You can change this based on testing
+    const bullishThreshold = 30; // You can change this based on testing
+    const bearishThreshold = -30; // You can change this based on testing
 
     if (selectedAngle >= bullishThreshold) {
       console.log(
