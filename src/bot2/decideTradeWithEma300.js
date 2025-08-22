@@ -527,7 +527,8 @@ async function decideTradeDirection300(symbol) {
           2
         )}° (Last Completed)`
       );
-      return "LONG";
+      return "SHORT";
+      
       
     }
 
@@ -537,8 +538,8 @@ async function decideTradeDirection300(symbol) {
           2
         )}° (Last Completed)`
       );
+      return "LONG";
       
-      return "SHORT";
     }
 
     console.log(
