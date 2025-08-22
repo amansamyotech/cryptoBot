@@ -100,20 +100,21 @@ function getCandleAngle(candle, timeSpan = 300) {
 }
 
 function calculateRSI(prices, period = 14) {
-  const gains = [], losses = [];
+  const gains = [],
+    losses = [];
   for (let i = 1; i < prices.length; i++) {
-    const diff = prices[i] - prices[i-1];
+    const diff = prices[i] - prices[i - 1];
     gains.push(diff > 0 ? diff : 0);
     losses.push(diff < 0 ? -diff : 0);
   }
   let avgGain = gains.slice(0, period).reduce((a, b) => a + b) / period;
   let avgLoss = losses.slice(0, period).reduce((a, b) => a + b) / period;
-  const rsi = [100 - (100 / (1 + (avgGain / avgLoss || 1)))];  // Handle div by 0
+  const rsi = [100 - 100 / (1 + (avgGain / avgLoss || 1))]; // Handle div by 0
 
   for (let i = period; i < gains.length; i++) {
     avgGain = (avgGain * (period - 1) + gains[i]) / period;
     avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
-    rsi.push(100 - (100 / (1 + (avgGain / avgLoss || 1))));
+    rsi.push(100 - 100 / (1 + (avgGain / avgLoss || 1)));
   }
   return rsi;
 }
@@ -324,13 +325,10 @@ async function decideTradeDirection300(symbol) {
     }
 
     const closePrices = pastCandles5m.map((c) => c.close);
-
-    // ✅ Calculate TEMA(15)
     const tema12 = calculateTEMA(closePrices, 15);
 
-    // Get the last 2 confirmed candles (exclude the current unconfirmed candle)
-    const candle2 = pastCandles5m[pastCandles5m.length - 3]; // Older confirmed
-    const candle1 = pastCandles5m[pastCandles5m.length - 2]; // Newer confirmed
+    const candle2 = pastCandles5m[pastCandles5m.length - 3];
+    const candle1 = pastCandles5m[pastCandles5m.length - 2];
 
     const tema2 = tema12[tema12.length - 3];
     const tema1 = tema12[tema12.length - 2];
@@ -342,42 +340,45 @@ async function decideTradeDirection300(symbol) {
       `📐 Angle1: ${angle1.toFixed(2)}°, Angle2: ${angle2.toFixed(2)}°`
     );
 
-    // ✅ Check for LONG
+    // 🔽 New logic: Match latest angles from 3m and 1m before deciding
+    const [last3mCandle] = await getCandles(symbol, "3m", 2);
+    const [last1mCandle] = await getCandles(symbol, "1m", 2);
+
+    const angle3m = getCandleAngle(last3mCandle);
+    const angle1m = getCandleAngle(last1mCandle);
+
+    console.log(
+      `⏱️ Angle 3m: ${angle3m.toFixed(2)}°, Angle 1m: ${angle1m.toFixed(2)}°`
+    );
+
+    const isBullish = (angle) => angle >= 90 && angle <= 135;
+    const isBearish = (angle) => angle >= 225 && angle <= 280;
+
     if (
-      angle1 >= 90 &&
-      angle1 <= 135 &&
-      angle2 >= 90 &&
-      angle2 <= 135 &&
+      isBullish(angle1) &&
+      isBullish(angle2) &&
       candle1.close > tema1 &&
-      candle2.close > tema2
+      candle2.close > tema2 &&
+      isBullish(angle3m) &&
+      isBullish(angle1m)
     ) {
-      console.log(
-        `✅ LONG signal for ${symbol}: Both angles indicate uptrend and candles closed above TEMA`
-      );
+      console.log(`✅ LONG signal confirmed by 3m & 1m angles`);
       return "LONG";
     }
 
-    // ✅ Check for SHORT
     if (
-      angle1 >= 225 &&
-      angle1 <= 280 &&
-      angle2 >= 225 &&
-      angle2 <= 280 &&
+      isBearish(angle1) &&
+      isBearish(angle2) &&
       candle1.close < tema1 &&
-      candle2.close < tema2
+      candle2.close < tema2 &&
+      isBearish(angle3m) &&
+      isBearish(angle1m)
     ) {
-      console.log(
-        `✅ SHORT signal for ${symbol}: Both angles indicate downtrend and candles closed below TEMA`
-      );
+      console.log(`✅ SHORT signal confirmed by 3m & 1m angles`);
       return "SHORT";
     }
 
-    // ❌ No clear signal
-    console.log(
-      `ℹ️ No clear signal for ${symbol}. Angle1=${angle1.toFixed(
-        2
-      )}°, Angle2=${angle2.toFixed(2)}°`
-    );
+    console.log(`ℹ️ No clear signal confirmed by multi-timeframe. Holding.`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
