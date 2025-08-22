@@ -21,6 +21,8 @@ const getAllTrades = async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
+
+
 const getCountOfOpenTread = async (req, res) => {
   try {
     const trades = await tradeService.getCountOfOpenTread();

@@ -322,7 +322,7 @@ async function decideTradeDirection300(symbol) {
     const closePrices = pastCandles5m.map((c) => c.close);
 
     // ✅ Calculate TEMA(12)
-    const tema12 = calculateTEMA(closePrices, 25);
+    const tema12 = calculateTEMA(closePrices, 15);
     const lastCandle = pastCandles5m[pastCandles5m.length - 2]; // Confirmed candle
     const currentCandle = pastCandles5m[pastCandles5m.length - 1]; // Unconfirmed
 
@@ -331,6 +331,8 @@ async function decideTradeDirection300(symbol) {
 
     // ✅ Step 1: First check the angle of the last confirmed candle
     const angle = getCandleAngle(lastCandle);
+    console.log(`angle`,angle);
+    
 
     // ✅ Step 2: Check if angle indicates LONG direction
     if (angle >= 90 && angle <= 135) {

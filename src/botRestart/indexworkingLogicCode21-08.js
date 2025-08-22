@@ -1,9 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const {
-  updateDecideLogicSir,
-  calculateTEMA,
-} = require("./updateDecideLogicSir");
+const { calculateTEMA } = require("./updateDecideLogicSir");
+const { decideTradeDirection300 } = require("./decideTradeWithEma300");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { getCandles } = require("./helper/getCandles");
 const { checkOrders } = require("./orderCheckFun");
@@ -436,15 +434,16 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await updateDecideLogicSir(symbol);
+  const decision = await decideTradeDirection300(symbol);
+  console.log(`decision`, decision);
 
-  if (decision === "LONG") {
-    await placeBuyOrder(symbol, maxSpendPerTrade);
-  } else if (decision === "SHORT") {
-    await placeShortOrder(symbol, maxSpendPerTrade);
-  } else {
-    console.log(`No trade signal for ${symbol}`);
-  }
+  //   if (decision === "LONG") {
+  //     await placeBuyOrder(symbol, maxSpendPerTrade);
+  //   } else if (decision === "SHORT") {
+  //     await placeShortOrder(symbol, maxSpendPerTrade);
+  //   } else {
+  //     console.log(`No trade signal for ${symbol}`);
+  //   }
 }
 
 setInterval(async () => {
