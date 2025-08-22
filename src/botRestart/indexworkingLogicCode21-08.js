@@ -16,15 +16,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = [
-  "SOLUSDT",
-  "BNBUSDT",
-  "XRPUSDT",
-  "ADAUSDT",
-  "DOGEUSDT",
-  "TAOUSDT",
-  "CKBUSDT",
-];
+const symbols = ["SOLUSDT", "BNBUSDT", "AVAXUSDT", "XRPUSDT", "ADAUSDT"];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
@@ -435,16 +427,14 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decideTradeDirection300(symbol);
-  console.log(`decideTradeDirection300`,decideTradeDirection300);
-  
 
-//   if (decision === "LONG") {
-//     await placeBuyOrder(symbol, maxSpendPerTrade);
-//   } else if (decision === "SHORT") {
-//     await placeShortOrder(symbol, maxSpendPerTrade);
-//   } else {
-//     console.log(`No trade signal for ${symbol}`);
-//   }
+  if (decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 setInterval(async () => {
