@@ -429,7 +429,7 @@ async function decideTradeDirection300(symbol) {
 
     // Extract close prices from 3m candles
     const closePrices = pastCandles3m.map((c) => c.close);
-    const tema15 = calculateTEMA(closePrices, 15); // Use 15-period TEMA
+    const tema15 = calculateTEMA(closePrices, 25); // Use 15-period TEMA
 
     // Function to calculate angle between two points
     function getAngleFromPoints(y1, y2) {
