@@ -339,36 +339,43 @@ async function decideTradeDirection300(symbol) {
       return "HOLD";
     }
 
-    // --- Get recent 3m candles (at least 5 to be safe)
-    const pastCandles3m = await getCandles(symbol, "3m", 5);
-    if (pastCandles3m.length < 4) {
-      console.log("❌ Not enough 3m candles for angle check");
+    // --- Get recent 3m candles (need at least 20 for safe TEMA)
+    const pastCandles3m = await getCandles(symbol, "3m", 20);
+    if (pastCandles3m.length < 16) {
+      console.log("❌ Not enough 3m candles for TEMA angle check");
       return "HOLD";
     }
 
-    // Use 4th-last and 2nd-last candles
-    const candleA = pastCandles3m[pastCandles3m.length - 3]; // 4th-last
-    const candleB = pastCandles3m[pastCandles3m.length - 2]; // 2nd-last
+    // Extract close prices from 3m candles
+    const closePrices = pastCandles3m.map(c => c.close);
+    const tema15 = calculateTEMA(closePrices, 15); // Use 15-period TEMA
 
-    const angleA = getTEMAangle(candleA);
-    const angleB = getTEMAangle(candleB);
+    // Function to calculate angle between two points
+    function getAngleFromPoints(y1, y2) {
+      const slope = y2 - y1;
+      return Math.atan(slope) * (180 / Math.PI);
+    }
 
-    console.log(`📉 Angles - (98)3th-last: ${angleA.toFixed(2)}°, (99)2nd-last: ${angleB.toFixed(2)}°`);
+    // Use 4th-last and 2nd-last TEMA values to calculate angles
+    const angleA = getAngleFromPoints(tema15[tema15.length - 4], tema15[tema15.length - 3]); // 4th-last
+    const angleB = getAngleFromPoints(tema15[tema15.length - 2], tema15[tema15.length - 1]); // 2nd-last
+
+    console.log(`📉 TEMA Angles - 4th-last: ${angleA.toFixed(2)}°, 2nd-last: ${angleB.toFixed(2)}°`);
 
     const isBullish = (angle) => angle >= 90 && angle <= 135;
     const isBearish = (angle) => angle >= 225 && angle <= 280;
 
     if (isBearish(angleA) && isBullish(angleB)) {
-      console.log(`✅ LONG signal from 4th-last and 2nd-last candle angles`);
+      console.log(`✅ LONG signal from TEMA angle cross`);
       return "LONG";
     }
 
     if (isBullish(angleA) && isBearish(angleB)) {
-      console.log(`✅ SHORT signal from 4th-last and 2nd-last candle angles`);
+      console.log(`✅ SHORT signal from TEMA angle cross`);
       return "SHORT";
     }
 
-    console.log(`ℹ️ No valid signal from updated candle angle logic. Holding.`);
+    console.log(`ℹ️ No valid signal from TEMA angle logic. Holding.`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
