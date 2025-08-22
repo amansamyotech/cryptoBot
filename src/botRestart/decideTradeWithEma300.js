@@ -418,9 +418,10 @@ async function decideTradeDirection300(symbol) {
     const tema15 = calculateTEMA(closePrices, 25); // Use 15-period TEMA
 
     // Function to calculate angle between two points
+    // Function to calculate angle (normalized by percentage change)
     function getAngleFromPoints(y1, y2) {
-      const slope = y2 - y1;
-      return Math.atan(slope) * (180 / Math.PI) * 1000;
+      const slope = (y2 - y1) / y1; // percentage change slope
+      return Math.atan(slope) * (180 / Math.PI);
     }
 
     // Only calculate the latest angle (between 2nd-last and last TEMA values)
