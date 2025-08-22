@@ -8,7 +8,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const TIMEFRAME_MAIN = "5m";
+const TIMEFRAME_MAIN = "3m";
 const TIMEFRAME_TREND = "15m";
 
 async function getCandles(symbol, interval, limit = 1000) {
