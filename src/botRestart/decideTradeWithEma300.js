@@ -353,7 +353,7 @@ async function decideTradeDirection300(symbol) {
     // Function to calculate angle between two points
     function getAngleFromPoints(y1, y2) {
       const slope = y2 - y1;
-      return Math.atan(slope) * (180 / Math.PI);
+      return (Math.atan(slope) * (180 / Math.PI))*1000;
     }
 
     // Use 4th-last and 2nd-last TEMA values to calculate angles
