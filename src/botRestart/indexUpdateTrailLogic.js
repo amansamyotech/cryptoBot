@@ -4,7 +4,7 @@ const axios = require("axios");
 const { checkOrders } = require("./orderCheckFun");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { symbols } = require("./constent");
-const { decide25TEMA } = require("./decide25TEMA");
+const { decide25TEMA } = require("./decideTradeWithEma300");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
@@ -18,8 +18,8 @@ const binance = new Binance().options({
 
 const interval = "1m";
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -2;
-const TRAILING_START_ROI = 1.2;
+const STOP_LOSS_ROI = -3;
+const TRAILING_START_ROI = 2;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
@@ -705,7 +705,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 15;
+  const usableBalance = totalBalance - 2;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
