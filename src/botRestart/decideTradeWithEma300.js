@@ -360,8 +360,8 @@ console.log(`angle1m`,angle1m);
     if (
       isBullish(angle1) &&
       isBullish(angle2) &&
-      candle1.close > tema1 &&
-      candle2.close > tema2 &&
+      // candle1.close > tema1 &&
+      // candle2.close > tema2 &&
       isBullish(angle3m) &&
       isBullish(angle1m)
     ) {
@@ -372,8 +372,8 @@ console.log(`angle1m`,angle1m);
     if (
       isBearish(angle1) &&
       isBearish(angle2) &&
-      candle1.close < tema1 &&
-      candle2.close < tema2 &&
+      // candle1.close < tema1 &&
+      // candle2.close < tema2 &&
       isBearish(angle3m) &&
       isBearish(angle1m)
     ) {
