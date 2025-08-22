@@ -295,20 +295,6 @@ function isSidewaysMarket(
   // RSI
   const rsi = calculateRSI(closePrices, 14);
   const lastRsi = rsi.at(-1);
-  console.log(
-    "sidebase data",
-    priceRange <= thresholdPercent && // narrow range
-      emaConvergence <= 0.15 && // TEMA almost flat
-      recentVolatility <= 0.25 && // very low volatility
-      oscillationRatio >= 0.45 && // ping-pong behaviour
-      bbWidth <= 0.8 && // tight bands
-      candles.at(-1).close <= lastUpper &&
-      candles.at(-1).close >= lastLower &&
-      lastAdx <= 18 && // very weak trend
-      dojiCount >= 2 &&
-      lastRsi >= 45 &&
-      lastRsi <= 55
-  );
 
   return (
     priceRange <= thresholdPercent && // narrow range
