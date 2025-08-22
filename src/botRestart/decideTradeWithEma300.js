@@ -1019,7 +1019,7 @@ async function decideTradeDirection300(symbol) {
 }
 
 // New function to monitor and log changing TEMA angle in real-time
-async function monitorTEMAAngle(symbol = "BTCUSDT", intervalMs = 1000) {
+async function monitorTEMAAngle(symbol = "BTCUSDT", intervalMs = 5000) {
   console.log(
     `Starting real-time monitoring for ${symbol} every ${
       intervalMs / 1000
