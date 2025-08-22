@@ -393,6 +393,93 @@ function getTEMAangle(temaArray) {
 //   }
 // }
 
+// Method 1: Multi-point angle calculation (recommended)
+function getTEMAAngleMultiPoint(temaArray, lookbackPeriods = 3) {
+  const len = temaArray.length;
+  if (len < lookbackPeriods + 1) return 0;
+
+  const y2 = temaArray[len - 1]; // latest TEMA
+  const y1 = temaArray[len - 1 - lookbackPeriods]; // TEMA from N periods ago
+
+  // Calculate percentage change over multiple periods
+  const percentageChange = ((y2 - y1) / y1) * 100;
+
+  // Scale the angle to make it more meaningful
+  // You can adjust this multiplier based on your needs
+  const angle = Math.atan(percentageChange / lookbackPeriods) * (180 / Math.PI);
+
+  return angle;
+}
+
+// Method 2: Rate of change approach
+function getTEMAAngleROC(temaArray, periods = 3) {
+  const len = temaArray.length;
+  if (len < periods + 1) return 0;
+
+  const current = temaArray[len - 1];
+  const previous = temaArray[len - 1 - periods];
+
+  // Rate of change as percentage
+  const roc = ((current - previous) / previous) * 100;
+
+  // Convert to angle (you can adjust the divisor to scale sensitivity)
+  const angle = Math.atan(roc / 10) * (180 / Math.PI);
+
+  return angle;
+}
+
+// Method 3: Linear regression slope (most accurate)
+function getTEMAAngleRegression(temaArray, periods = 5) {
+  const len = temaArray.length;
+  if (len < periods) return 0;
+
+  // Get last N TEMA values
+  const recentTema = temaArray.slice(-periods);
+
+  // Calculate linear regression slope
+  const n = recentTema.length;
+  const sumX = (n * (n - 1)) / 2; // 0+1+2+...+(n-1)
+  const sumY = recentTema.reduce((sum, val) => sum + val, 0);
+  const sumXY = recentTema.reduce((sum, val, i) => sum + i * val, 0);
+  const sumX2 = (n * (n - 1) * (2 * n - 1)) / 6; // sum of squares
+
+  const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+
+  // Convert slope to percentage and then to angle
+  const avgPrice = sumY / n;
+  const slopePercent = (slope / avgPrice) * 100;
+  const angle = Math.atan(slopePercent) * (180 / Math.PI);
+
+  return angle;
+}
+
+// Method 4: TradingView-like calculation with time scaling
+function getTEMAAngleTradingView(
+  temaArray,
+  timeframeMinutes = 3,
+  lookbackPeriods = 2
+) {
+  const len = temaArray.length;
+  if (len < lookbackPeriods + 1) return 0;
+
+  const y2 = temaArray[len - 1];
+  const y1 = temaArray[len - 1 - lookbackPeriods];
+
+  // Calculate percentage change
+  const percentChange = ((y2 - y1) / y1) * 100;
+
+  // Time span in minutes
+  const timeSpan = lookbackPeriods * timeframeMinutes;
+
+  // Calculate angle with time consideration
+  // This simulates how TradingView calculates angles
+  const normalizedSlope = percentChange / Math.sqrt(timeSpan);
+  const angle = Math.atan(normalizedSlope) * (180 / Math.PI) * 10; // Scale factor
+
+  return angle;
+}
+
+// Updated decision function
 async function decideTradeDirection300(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
@@ -406,54 +493,50 @@ async function decideTradeDirection300(symbol) {
       return "HOLD";
     }
 
-    // --- Get recent 3m candles (need at least 20 for safe TEMA)
-    const pastCandles3m = await getCandles(symbol, "3m", 20);
-    if (pastCandles3m.length < 16) {
+    const pastCandles3m = await getCandles(symbol, "3m", 30); // Get more candles
+    if (pastCandles3m.length < 25) {
       console.log("❌ Not enough 3m candles for TEMA angle check");
       return "HOLD";
     }
 
-    // Extract close prices from 3m candles
     const closePrices = pastCandles3m.map((c) => c.close);
-    const tema15 = calculateTEMA(closePrices, 25); // Use 15-period TEMA
+    const tema15 = calculateTEMA(closePrices, 15);
 
-    // Function to calculate angle between two points
-    // Function to calculate angle (normalized by percentage change)
-    function getAngleFromPoints(temaArray) {
-      const len = temaArray.length;
-      if (len < 3) return 0;
-      const y1 = temaArray[len - 3]; // 3rd-last
-      const y2 = temaArray[len - 1]; // last
-      const slope = (y2 - y1) / (y1 * 2); // Average slope over 2 intervals
-      return Math.atan(slope) * (180 / Math.PI);
-    }
-    // Only calculate the latest angle (between 2nd-last and last TEMA values)
-    const latestAngle = getAngleFromPoints(
-      tema15[tema15.length - 2],
-      tema15[tema15.length - 1]
-    );
+    // Try different angle calculation methods
+    const angleMultiPoint = getTEMAAngleMultiPoint(tema15, 4);
+    const angleROC = getTEMAAngleROC(tema15, 3);
+    const angleRegression = getTEMAAngleRegression(tema15, 5);
+    const angleTradingView = getTEMAAngleTradingView(tema15, 3, 2);
 
-    console.log(`📉 TEMA Angle: ${latestAngle.toFixed(2)}°`);
+    console.log(`📊 TEMA Angles for ${symbol}:`);
+    console.log(`   Multi-point (4 periods): ${angleMultiPoint.toFixed(2)}°`);
+    console.log(`   Rate of Change: ${angleROC.toFixed(2)}°`);
+    console.log(`   Linear Regression: ${angleRegression.toFixed(2)}°`);
+    console.log(`   TradingView-like: ${angleTradingView.toFixed(2)}°`);
 
-    const isBullish = (angle) => angle >= 45;
-    const isBearish = (angle) => angle <= -45;
+    // Use the method that gives you the most reasonable results
+    // I recommend starting with the multi-point method
+    const selectedAngle = angleMultiPoint;
 
-    if (isBullish(latestAngle)) {
-      console.log(`✅ LONG signal from TEMA angle`);
+    // You might need to adjust these thresholds based on testing
+    const bullishThreshold = 15; // Instead of 45
+    const bearishThreshold = -15; // Instead of -45
+
+    if (selectedAngle >= bullishThreshold) {
+      console.log(`✅ LONG signal - TEMA angle: ${selectedAngle.toFixed(2)}°`);
       return "LONG";
     }
 
-    if (isBearish(latestAngle)) {
-      console.log(`✅ SHORT signal from TEMA angle`);
+    if (selectedAngle <= bearishThreshold) {
+      console.log(`✅ SHORT signal - TEMA angle: ${selectedAngle.toFixed(2)}°`);
       return "SHORT";
     }
 
-    console.log(`ℹ️ No valid signal from TEMA angle. Holding.`);
+    console.log(`ℹ️ No valid signal. Angle: ${selectedAngle.toFixed(2)}°`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
-
 module.exports = { decideTradeDirection300 };
