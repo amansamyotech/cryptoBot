@@ -516,7 +516,7 @@ async function decideTradeDirection300(symbol) {
 
     // Use the method that gives you the most reasonable results
     // I recommend starting with the multi-point method
-    const selectedAngle = angleMultiPoint;
+    const selectedAngle = angleTradingView;
 
     // You might need to adjust these thresholds based on testing
     const bullishThreshold = 15; // Instead of 45
