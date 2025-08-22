@@ -996,7 +996,7 @@ async function decideTradeDirection300(symbol) {
           2
         )}° (Including Current)`
       );
-      return "LONG";
+      return "SHORT";
     }
 
     if (selectedAngle <= bearishThreshold) {
@@ -1005,7 +1005,8 @@ async function decideTradeDirection300(symbol) {
           2
         )}° (Including Current)`
       );
-      return "SHORT";
+      
+      return "LONG";
     }
 
     console.log(
