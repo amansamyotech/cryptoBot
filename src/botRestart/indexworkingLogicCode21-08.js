@@ -17,13 +17,13 @@ const binance = new Binance().options({
 });
 
 const symbols = [
-  "SOLUSDT",
-  "BNBUSDT",
+//   "SOLUSDT",
+//   "BNBUSDT",
   "XRPUSDT",
-  "ADAUSDT",
-  "DOGEUSDT",
-  "TAOUSDT",
-  "CKBUSDT",
+//   "ADAUSDT",
+//   "DOGEUSDT",
+//   "TAOUSDT",
+//   "CKBUSDT",
 ];
 
 const LEVERAGE = 3;
@@ -435,7 +435,7 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decideTradeDirection300(symbol);
-  console.log(`decision`, decision);
+  console.log(`decisiondecisiondecision`, decision);
 
   //   if (decision === "LONG") {
   //     await placeBuyOrder(symbol, maxSpendPerTrade);
