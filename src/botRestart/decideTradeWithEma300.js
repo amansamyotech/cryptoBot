@@ -83,21 +83,21 @@ function calculateTEMA(prices, period) {
   return tema;
 }
 
-function getCandleAngle(candle, timeSpan = 300) {
-  const delta = ((candle.close - candle.open) / candle.open) * 100000;
-  const rawAngleRad = Math.atan(delta / timeSpan);
-  let angle = rawAngleRad * (180 / Math.PI);
+// function getCandleAngle(candle, timeSpan = 300) {
+//   const delta = ((candle.close - candle.open) / candle.open) * 100000;
+//   const rawAngleRad = Math.atan(delta / timeSpan);
+//   let angle = rawAngleRad * (180 / Math.PI);
 
-  if (candle.close > candle.open) {
-    angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
-  } else if (candle.close < candle.open) {
-    angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
-  } else {
-    angle = 180;
-  }
+//   if (candle.close > candle.open) {
+//     angle = 90 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
+//   } else if (candle.close < candle.open) {
+//     angle = 210 + (Math.abs(delta) / (Math.abs(delta) + 100)) * 60;
+//   } else {
+//     angle = 180;
+//   }
 
-  return angle;
-}
+//   return angle;
+// }
 
 function calculateRSI(prices, period = 14) {
   const gains = [],
@@ -311,6 +311,21 @@ function isSidewaysMarket(
   );
 }
 
+function getTEMAangle(temaArray) {
+  const len = temaArray.length;
+  if (len < 2) return 0;
+
+  const y2 = temaArray[len - 1]; // most recent TEMA
+  const y1 = temaArray[len - 2]; // previous TEMA
+
+  const dx = 1; // one candle difference
+  const dy = y2 - y1;
+  const slope = dy / dx;
+
+  const angle = Math.atan(slope) * (180 / Math.PI);
+  return angle;
+}
+
 async function decideTradeDirection300(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
@@ -335,8 +350,8 @@ async function decideTradeDirection300(symbol) {
     const candleA = pastCandles3m[pastCandles3m.length - 3]; // 4th-last
     const candleB = pastCandles3m[pastCandles3m.length - 2]; // 2nd-last
 
-    const angleA = getCandleAngle(candleA);
-    const angleB = getCandleAngle(candleB);
+    const angleA = getTEMAangle(candleA);
+    const angleB = getTEMAangle(candleB);
 
     console.log(`📉 Angles - (98)3th-last: ${angleA.toFixed(2)}°, (99)2nd-last: ${angleB.toFixed(2)}°`);
 
