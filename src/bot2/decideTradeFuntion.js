@@ -207,96 +207,99 @@ function calculateADX(candles, period = 14) {
   return adx;
 }
 
+function calculateRSI(prices, period = 14) {
+  const gains = [],
+    losses = [];
+  for (let i = 1; i < prices.length; i++) {
+    const diff = prices[i] - prices[i - 1];
+    gains.push(diff > 0 ? diff : 0);
+    losses.push(diff < 0 ? -diff : 0);
+  }
+  let avgGain = gains.slice(0, period).reduce((a, b) => a + b) / period;
+  let avgLoss = losses.slice(0, period).reduce((a, b) => a + b) / period;
+  const rsi = [100 - 100 / (1 + (avgGain / avgLoss || 1))]; // Handle div by 0
+
+  for (let i = period; i < gains.length; i++) {
+    avgGain = (avgGain * (period - 1) + gains[i]) / period;
+    avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
+    rsi.push(100 - 100 / (1 + (avgGain / avgLoss || 1)));
+  }
+  return rsi;
+}
+
 function isSidewaysMarket(
   candles,
-  lookbackPeriod = 20,
-  thresholdPercent = 0.6 // Tighter for 5m scalping
+  lookbackPeriod = 30,
+  thresholdPercent = 0.8
 ) {
-  if (candles.length < lookbackPeriod) {
-    console.log("❌ Insufficient candles for sideways analysis");
-    return false;
-  }
+  if (candles.length < lookbackPeriod) return false;
 
-  // Get recent candles
-  const recentCandles = candles.slice(-lookbackPeriod);
-  const closePrices = recentCandles.map((c) => c.close);
+  const recent = candles.slice(-lookbackPeriod);
+  const closePrices = recent.map((c) => c.close);
+  const highs = recent.map((c) => c.high);
+  const lows = recent.map((c) => c.low);
+  const currentPrice = candles.at(-1).close;
 
-  // 1. Price Range Check
-  const highs = recentCandles.map((c) => c.high);
-  const lows = recentCandles.map((c) => c.low);
-  const highestHigh = Math.max(...highs);
-  const lowestLow = Math.min(...lows);
-  const currentPrice = candles[candles.length - 1].close;
-  const priceRange = ((highestHigh - lowestLow) / currentPrice) * 100;
+  // Price Range %
+  const priceRange =
+    ((Math.max(...highs) - Math.min(...lows)) / currentPrice) * 100;
 
-  // 2. Volatility Check (tighter for 5m)
+  // Recent Volatility (last 10 candles)
   const recentVolatility =
-    recentCandles.slice(-5).reduce((sum, candle) => {
-      return sum + Math.abs((candle.high - candle.low) / candle.close) * 100;
-    }, 0) / 5;
+    recent
+      .slice(-10)
+      .reduce((sum, c) => sum + Math.abs((c.high - c.low) / c.close) * 100, 0) /
+    10;
 
-  // 3. EMA Convergence Check
-  const ema5 = calculateEMA(closePrices, 5);
-  const ema15 = calculateEMA(closePrices, 15);
-  const lastEma5 = ema5[ema5.length - 1];
-  const lastEma15 = ema15[ema15.length - 1];
-  const emaConvergence = Math.abs((lastEma5 - lastEma15) / currentPrice) * 100;
+  // TEMA Instead of EMA (better for sideways detection)
+  const tema15 = calculateTEMA(closePrices, 15);
+  const tema25 = calculateTEMA(closePrices, 25);
+  const lastTema15 = tema15.at(-1);
+  const lastTema25 = tema25.at(-1);
+  const emaConvergence =
+    Math.abs((lastTema15 - lastTema25) / currentPrice) * 100;
 
-  // 4. Oscillation Check
-  const avgEma = (lastEma5 + lastEma15) / 2;
-  let priceAboveEma = 0;
-  let priceBelowEma = 0;
-  recentCandles.slice(-10).forEach((candle) => {
-    if (candle.close > avgEma) priceAboveEma++;
-    else priceBelowEma++;
-  });
-  const oscillationRatio = Math.min(priceAboveEma, priceBelowEma) / 10;
+  // Oscillation check
+  const avgEma = (lastTema15 + lastTema25) / 2;
+  const osc = recent.slice(-12).reduce((count, c) => {
+    return c.close > avgEma ? count + 1 : count;
+  }, 0);
+  const oscillationRatio = Math.min(osc, 12 - osc) / 12;
 
-  // 5. Bollinger Bands Check
-  const bb = calculateBollingerBands(closePrices, 20, 2);
-  const lastPrice = closePrices[closePrices.length - 1];
-  const lastUpperBand = bb.upperBand[bb.upperBand.length - 1];
-  const lastLowerBand = bb.lowerBand[bb.lowerBand.length - 1];
-  const bbWidth = ((lastUpperBand - lastLowerBand) / lastPrice) * 100;
-  const priceWithinBands =
-    lastPrice <= lastUpperBand && lastPrice >= lastLowerBand;
+  // Bollinger Bands
+  const bb = calculateBollingerBands(closePrices, 20);
+  const lastUpper = bb.upperBand.at(-1);
+  const lastLower = bb.lowerBand.at(-1);
+  const bbWidth = ((lastUpper - lastLower) / currentPrice) * 100;
 
-  // 6. ADX Check (low ADX indicates no trend)
-  const adx = calculateADX(recentCandles, 14);
-  const lastAdx = adx[adx.length - 1];
+  // ADX
+  const adx = calculateADX(recent, 14);
+  const lastAdx = adx.at(-1);
 
-  // 7. Consolidation Pattern Check (doji-like candles)
-  const recentCandlesShort = recentCandles.slice(-5);
-  const dojiCount = recentCandlesShort.filter((c) => {
-    const bodySize = Math.abs(c.close - c.open) / c.open;
-    const totalRange = (c.high - c.low) / c.open;
-    return bodySize <= 0.001 && totalRange >= 0.002; // Small body, reasonable range
+  // Doji Check
+  const dojiCount = recent.slice(-8).filter((c) => {
+    const body = Math.abs(c.close - c.open) / c.open;
+    const range = (c.high - c.low) / c.open;
+    return body <= 0.002 && range >= 0.004;
   }).length;
 
-  // Enhanced Sideways Criteria
-  const isSideways =
-    priceRange <= thresholdPercent && // Tighter range
-    emaConvergence <= 0.25 && // Tighter EMA convergence
-    recentVolatility <= 0.3 && // Lower volatility for 5m
-    oscillationRatio >= 0.4 && // Stronger oscillation
-    bbWidth <= 1.0 && // Narrow Bollinger Bands
-    priceWithinBands && // Price within bands
-    lastAdx <= 20 && // Low ADX (no trend)
-    dojiCount >= 2; // At least 2 doji-like candles
+  // RSI
+  const rsi = calculateRSI(closePrices, 14);
+  const lastRsi = rsi.at(-1);
 
-  if (isSideways) {
-    console.log(
-      `📊 Sideways market detected for 5m timeframe: ` +
-        `Range=${priceRange.toFixed(2)}%, ` +
-        `EMA convergence=${emaConvergence.toFixed(3)}%, ` +
-        `Volatility=${recentVolatility.toFixed(2)}%, ` +
-        `BB Width=${bbWidth.toFixed(2)}%, ` +
-        `ADX=${lastAdx.toFixed(2)}, ` +
-        `Doji Count=${dojiCount}`
-    );
-  }
-
-  return isSideways;
+  return (
+    priceRange <= thresholdPercent && // narrow range
+    emaConvergence <= 0.15 && // TEMA almost flat
+    recentVolatility <= 0.25 && // very low volatility
+    oscillationRatio >= 0.45 && // ping-pong behaviour
+    bbWidth <= 0.8 && // tight bands
+    candles.at(-1).close <= lastUpper &&
+    candles.at(-1).close >= lastLower &&
+    lastAdx <= 18 && // very weak trend
+    dojiCount >= 2 &&
+    lastRsi >= 45 &&
+    lastRsi <= 55
+  );
 }
 async function decideTradeDirection(symbol) {
   try {
