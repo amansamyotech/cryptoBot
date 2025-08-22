@@ -29,7 +29,7 @@ async function getUsdtBalance() {
 }
 
 const interval = "1m";
-const LEVERAGE = 3;
+const LEVERAGE = 4;
 const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 1.2;
 const INITIAL_TRAILING_ROI = 1;
@@ -723,7 +723,7 @@ setInterval(async () => {
   console.log(`Total Balance: ${totalBalance} USDT`);
   console.log(`Usable Balance: ${usableBalance} USDT`);
   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
-  if (maxSpendPerTrade >= 1.6) {
+  if (maxSpendPerTrade >= 1) {
     for (const sym of symbols) {
       try {
         const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
