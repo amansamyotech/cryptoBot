@@ -1,6 +1,6 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { decide25TEMA } = require("./decide25TEMAFullworkingjs");
+const { decide25TEMA } = require("./decide25TEMAFullworking");
 const { checkOrders } = require("./orderCheck2Fun");
 const isProcessing = {};
 
@@ -95,30 +95,48 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
         let openOrders;
         try {
           openOrders = await binance.futuresOpenOrders(symbol);
-          console.log(`[${symbol}] Open orders before cleanup: ${openOrders.length}`);
+          console.log(
+            `[${symbol}] Open orders before cleanup: ${openOrders.length}`
+          );
           for (const order of openOrders) {
-            if (order.type === 'STOP_MARKET' && order.side === 'SELL' && order.reduceOnly) {
-              console.log(`[${symbol}] Attempting to clean up order ${order.orderId}`);
+            if (
+              order.type === "STOP_MARKET" &&
+              order.side === "SELL" &&
+              order.reduceOnly
+            ) {
+              console.log(
+                `[${symbol}] Attempting to clean up order ${order.orderId}`
+              );
               try {
                 await binance.futuresCancel(symbol, order.orderId);
-                console.log(`[${symbol}] Cleaned up orphan STOP_MARKET order ${order.orderId}`);
+                console.log(
+                  `[${symbol}] Cleaned up orphan STOP_MARKET order ${order.orderId}`
+                );
               } catch (cancelErr) {
                 if (cancelErr.code === -2011 || cancelErr.code === -1102) {
-                  console.log(`[${symbol}] Order ${order.orderId} already gone (${cancelErr.code}). Skipping.`);
+                  console.log(
+                    `[${symbol}] Order ${order.orderId} already gone (${cancelErr.code}). Skipping.`
+                  );
                 } else {
-                  console.warn(`[${symbol}] Failed to clean up ${order.orderId}: ${cancelErr.message}`);
+                  console.warn(
+                    `[${symbol}] Failed to clean up ${order.orderId}: ${cancelErr.message}`
+                  );
                 }
               }
             }
           }
         } catch (err) {
-          console.warn(`[${symbol}] Failed to fetch open orders: ${err.message}`);
+          console.warn(
+            `[${symbol}] Failed to fetch open orders: ${err.message}`
+          );
         }
 
         // Cancel old stop loss (if it exists)
         let orderExists = false;
         if (stopLossOrderId) {
-          console.log(`[${symbol}] Checking status of old stop order ${stopLossOrderId}`);
+          console.log(
+            `[${symbol}] Checking status of old stop order ${stopLossOrderId}`
+          );
           try {
             const order = await binance.futuresOrderStatus(symbol, {
               orderId: stopLossOrderId,
@@ -127,53 +145,85 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
               order && order.status !== "CANCELED" && order.status !== "FILLED";
           } catch (err) {
             if (err.code === -2011 || err.code === -1102) {
-              console.log(`[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`);
+              console.log(
+                `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`
+              );
             } else {
-              console.warn(`[${symbol}] Failed to fetch order ${stopLossOrderId}: ${err.message}`);
+              console.warn(
+                `[${symbol}] Failed to fetch order ${stopLossOrderId}: ${err.message}`
+              );
             }
           }
 
           if (orderExists) {
-            console.log(`[${symbol}] Attempting to cancel old stop order ${stopLossOrderId}`);
+            console.log(
+              `[${symbol}] Attempting to cancel old stop order ${stopLossOrderId}`
+            );
             try {
               await binance.futuresCancel(symbol, stopLossOrderId);
-              console.log(`[${symbol}] Canceled old stop order ${stopLossOrderId}`);
+              console.log(
+                `[${symbol}] Canceled old stop order ${stopLossOrderId}`
+              );
             } catch (err) {
               if (err.code === -2011 || err.code === -1102) {
-                console.log(`[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`);
+                console.log(
+                  `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`
+                );
               } else {
-                console.warn(`[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`);
+                console.warn(
+                  `[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`
+                );
               }
             }
           }
         } else {
-          console.warn(`[${symbol}] No stopLossOrderId provided. Skipping cancellation.`);
+          console.warn(
+            `[${symbol}] No stopLossOrderId provided. Skipping cancellation.`
+          );
         }
 
         // Place new stop loss
         const tickSize = Math.pow(10, -pricePrecision);
         const buffer = tickSize * 5;
-        const adjustedStop = parseFloat((newStop - buffer).toFixed(pricePrecision));
+        const adjustedStop = parseFloat(
+          (newStop - buffer).toFixed(pricePrecision)
+        );
         console.log(`adjustedStop: ${adjustedStop}`);
 
         let stopLossOrder;
         try {
           stopLossOrder = await binance.futuresOrder(
-            "STOP_MARKET", "SELL", symbol, qtyFixed, null,
+            "STOP_MARKET",
+            "SELL",
+            symbol,
+            qtyFixed,
+            null,
             { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
           );
-          console.log(`[${symbol}] New stop order placed: ${stopLossOrder.orderId}`);
+          console.log(
+            `[${symbol}] New stop order placed: ${stopLossOrder.orderId}`
+          );
         } catch (placeErr) {
           if (placeErr.code === -4045) {
-            console.warn(`[${symbol}] Hit max stop limit (-4045). Canceling all and retrying.`);
+            console.warn(
+              `[${symbol}] Hit max stop limit (-4045). Canceling all and retrying.`
+            );
             await binance.futuresCancelAll(symbol);
             stopLossOrder = await binance.futuresOrder(
-              "STOP_MARKET", "SELL", symbol, qtyFixed, null,
+              "STOP_MARKET",
+              "SELL",
+              symbol,
+              qtyFixed,
+              null,
               { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
             );
-            console.log(`[${symbol}] Retry succeeded: New stop order ${stopLossOrder.orderId}`);
+            console.log(
+              `[${symbol}] Retry succeeded: New stop order ${stopLossOrder.orderId}`
+            );
           } else if (placeErr.code === -2011 || placeErr.code === -1102) {
-            console.warn(`[${symbol}] Place failed (${placeErr.code}). Skipping this update.`);
+            console.warn(
+              `[${symbol}] Place failed (${placeErr.code}). Skipping this update.`
+            );
             return; // Don't update DB
           } else {
             throw placeErr; // Other errors bubble up
@@ -268,30 +318,48 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
         let openOrders;
         try {
           openOrders = await binance.futuresOpenOrders(symbol);
-          console.log(`[${symbol}] Open orders before cleanup: ${openOrders.length}`);
+          console.log(
+            `[${symbol}] Open orders before cleanup: ${openOrders.length}`
+          );
           for (const order of openOrders) {
-            if (order.type === 'STOP_MARKET' && order.side === 'BUY' && order.reduceOnly) {
-              console.log(`[${symbol}] Attempting to clean up order ${order.orderId}`);
+            if (
+              order.type === "STOP_MARKET" &&
+              order.side === "BUY" &&
+              order.reduceOnly
+            ) {
+              console.log(
+                `[${symbol}] Attempting to clean up order ${order.orderId}`
+              );
               try {
                 await binance.futuresCancel(symbol, order.orderId);
-                console.log(`[${symbol}] Cleaned up orphan STOP_MARKET order ${order.orderId}`);
+                console.log(
+                  `[${symbol}] Cleaned up orphan STOP_MARKET order ${order.orderId}`
+                );
               } catch (cancelErr) {
                 if (cancelErr.code === -2011 || cancelErr.code === -1102) {
-                  console.log(`[${symbol}] Order ${order.orderId} already gone (${cancelErr.code}). Skipping.`);
+                  console.log(
+                    `[${symbol}] Order ${order.orderId} already gone (${cancelErr.code}). Skipping.`
+                  );
                 } else {
-                  console.warn(`[${symbol}] Failed to clean up ${order.orderId}: ${cancelErr.message}`);
+                  console.warn(
+                    `[${symbol}] Failed to clean up ${order.orderId}: ${cancelErr.message}`
+                  );
                 }
               }
             }
           }
         } catch (err) {
-          console.warn(`[${symbol}] Failed to fetch open orders: ${err.message}`);
+          console.warn(
+            `[${symbol}] Failed to fetch open orders: ${err.message}`
+          );
         }
 
         // Cancel old stop loss (if it exists)
         let orderExists = false;
         if (stopLossOrderId) {
-          console.log(`[${symbol}] Checking status of old stop order ${stopLossOrderId}`);
+          console.log(
+            `[${symbol}] Checking status of old stop order ${stopLossOrderId}`
+          );
           try {
             const order = await binance.futuresOrderStatus(symbol, {
               orderId: stopLossOrderId,
@@ -300,53 +368,85 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
               order && order.status !== "CANCELED" && order.status !== "FILLED";
           } catch (err) {
             if (err.code === -2011 || err.code === -1102) {
-              console.log(`[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`);
+              console.log(
+                `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`
+              );
             } else {
-              console.warn(`[${symbol}] Failed to fetch order ${stopLossOrderId}: ${err.message}`);
+              console.warn(
+                `[${symbol}] Failed to fetch order ${stopLossOrderId}: ${err.message}`
+              );
             }
           }
 
           if (orderExists) {
-            console.log(`[${symbol}] Attempting to cancel old stop order ${stopLossOrderId}`);
+            console.log(
+              `[${symbol}] Attempting to cancel old stop order ${stopLossOrderId}`
+            );
             try {
               await binance.futuresCancel(symbol, stopLossOrderId);
-              console.log(`[${symbol}] Canceled old stop order ${stopLossOrderId}`);
+              console.log(
+                `[${symbol}] Canceled old stop order ${stopLossOrderId}`
+              );
             } catch (err) {
               if (err.code === -2011 || err.code === -1102) {
-                console.log(`[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`);
+                console.log(
+                  `[${symbol}] Old stop ${stopLossOrderId} already gone (${err.code}). Proceeding.`
+                );
               } else {
-                console.warn(`[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`);
+                console.warn(
+                  `[${symbol}] Failed to cancel order ${stopLossOrderId}: ${err.message}`
+                );
               }
             }
           }
         } else {
-          console.warn(`[${symbol}] No stopLossOrderId provided. Skipping cancellation.`);
+          console.warn(
+            `[${symbol}] No stopLossOrderId provided. Skipping cancellation.`
+          );
         }
 
         // Place new stop loss
         const tickSize = Math.pow(10, -pricePrecision);
         const buffer = tickSize * 5;
-        const adjustedStop = parseFloat((roundedStop + buffer).toFixed(pricePrecision));
+        const adjustedStop = parseFloat(
+          (roundedStop + buffer).toFixed(pricePrecision)
+        );
         console.log(`adjustedStop: ${adjustedStop}`);
 
         let stopLossOrder;
         try {
           stopLossOrder = await binance.futuresOrder(
-            "STOP_MARKET", "BUY", symbol, qtyFixed, null,
+            "STOP_MARKET",
+            "BUY",
+            symbol,
+            qtyFixed,
+            null,
             { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
           );
-          console.log(`[${symbol}] New stop order placed: ${stopLossOrder.orderId}`);
+          console.log(
+            `[${symbol}] New stop order placed: ${stopLossOrder.orderId}`
+          );
         } catch (placeErr) {
           if (placeErr.code === -4045) {
-            console.warn(`[${symbol}] Hit max stop limit (-4045). Canceling all and retrying.`);
+            console.warn(
+              `[${symbol}] Hit max stop limit (-4045). Canceling all and retrying.`
+            );
             await binance.futuresCancelAll(symbol);
             stopLossOrder = await binance.futuresOrder(
-              "STOP_MARKET", "BUY", symbol, qtyFixed, null,
+              "STOP_MARKET",
+              "BUY",
+              symbol,
+              qtyFixed,
+              null,
               { stopPrice: adjustedStop, reduceOnly: true, timeInForce: "GTC" }
             );
-            console.log(`[${symbol}] Retry succeeded: New stop order ${stopLossOrder.orderId}`);
+            console.log(
+              `[${symbol}] Retry succeeded: New stop order ${stopLossOrder.orderId}`
+            );
           } else if (placeErr.code === -2011 || placeErr.code === -1102) {
-            console.warn(`[${symbol}] Place failed (${placeErr.code}). Skipping this update.`);
+            console.warn(
+              `[${symbol}] Place failed (${placeErr.code}). Skipping this update.`
+            );
             return; // Don't update DB
           } else {
             throw placeErr; // Other errors bubble up
