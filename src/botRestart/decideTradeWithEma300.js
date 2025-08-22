@@ -324,39 +324,36 @@ async function decideTradeDirection300(symbol) {
       return "HOLD";
     }
 
-    // --- Get 3m candles (at least 1000 for index 997, 999)
-    const pastCandles3m = await getCandles(symbol, "3m", 1000);
-    if (pastCandles3m.length < 1000) {
+    // --- Get recent 3m candles (at least 5 to be safe)
+    const pastCandles3m = await getCandles(symbol, "3m", 5);
+    if (pastCandles3m.length < 4) {
       console.log("❌ Not enough 3m candles for angle check");
       return "HOLD";
     }
 
-    const candle997 = pastCandles3m[997];
-    const candle999 = pastCandles3m[999];
+    // Use 4th-last and 2nd-last candles
+    const candleA = pastCandles3m[pastCandles3m.length - 4]; // 4th-last
+    const candleB = pastCandles3m[pastCandles3m.length - 2]; // 2nd-last
 
-    const angle997 = getCandleAngle(candle997);
-    const angle999 = getCandleAngle(candle999);
+    const angleA = getCandleAngle(candleA);
+    const angleB = getCandleAngle(candleB);
 
-    console.log(
-      `📉 Angles - Candle997: ${angle997.toFixed(
-        2
-      )}°, Candle999: ${angle999.toFixed(2)}°`
-    );
+    console.log(`📉 Angles - 4th-last: ${angleA.toFixed(2)}°, 2nd-last: ${angleB.toFixed(2)}°`);
 
     const isBullish = (angle) => angle >= 90 && angle <= 135;
     const isBearish = (angle) => angle >= 225 && angle <= 280;
 
-    if (isBearish(angle997) && isBullish(angle999)) {
-      console.log(`✅ LONG signal from candle 997 and 999 angles`);
+    if (isBearish(angleA) && isBullish(angleB)) {
+      console.log(`✅ LONG signal from 4th-last and 2nd-last candle angles`);
       return "LONG";
     }
 
-    if (isBullish(angle997) && isBearish(angle999)) {
-      console.log(`✅ SHORT signal from candle 997 and 999 angles`);
+    if (isBullish(angleA) && isBearish(angleB)) {
+      console.log(`✅ SHORT signal from 4th-last and 2nd-last candle angles`);
       return "SHORT";
     }
 
-    console.log(`ℹ️ No valid signal from 997/999 angle logic. Holding.`);
+    console.log(`ℹ️ No valid signal from updated candle angle logic. Holding.`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
