@@ -295,6 +295,20 @@ function isSidewaysMarket(
   // RSI
   const rsi = calculateRSI(closePrices, 14);
   const lastRsi = rsi.at(-1);
+  console.log(
+    "sidebase data",
+    priceRange <= thresholdPercent && // narrow range
+      emaConvergence <= 0.15 && // TEMA almost flat
+      recentVolatility <= 0.25 && // very low volatility
+      oscillationRatio >= 0.45 && // ping-pong behaviour
+      bbWidth <= 0.8 && // tight bands
+      candles.at(-1).close <= lastUpper &&
+      candles.at(-1).close >= lastLower &&
+      lastAdx <= 18 && // very weak trend
+      dojiCount >= 2 &&
+      lastRsi >= 45 &&
+      lastRsi <= 55
+  );
 
   return (
     priceRange <= thresholdPercent && // narrow range
@@ -326,6 +340,73 @@ function getTEMAangle(temaArray) {
   return angle;
 }
 
+// async function decideTradeDirection300(symbol) {
+//   try {
+//     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
+//     if (pastCandles5m.length < 50) {
+//       console.log("❌ Insufficient candles for analysis");
+//       return "HOLD";
+//     }
+
+//     if (isSidewaysMarket(pastCandles5m)) {
+//       console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
+//       return "HOLD";
+//     }
+
+//     // --- Get recent 3m candles (need at least 20 for safe TEMA)
+//     const pastCandles3m = await getCandles(symbol, "3m", 20);
+//     if (pastCandles3m.length < 16) {
+//       console.log("❌ Not enough 3m candles for TEMA angle check");
+//       return "HOLD";
+//     }
+
+//     // Extract close prices from 3m candles
+//     const closePrices = pastCandles3m.map((c) => c.close);
+//     const tema15 = calculateTEMA(closePrices, 15); // Use 15-period TEMA
+
+//     // Function to calculate angle between two points
+//     function getAngleFromPoints(y1, y2) {
+//       const slope = y2 - y1;
+//       return Math.atan(slope) * (180 / Math.PI) * 1000;
+//     }
+
+//     // Use 4th-last and 2nd-last TEMA values to calculate angles
+//     const angleA = getAngleFromPoints(
+//       tema15[tema15.length - 4],
+//       tema15[tema15.length - 3]
+//     ); // 4th-last
+//     const angleB = getAngleFromPoints(
+//       tema15[tema15.length - 2],
+//       tema15[tema15.length - 1]
+//     ); // 2nd-last
+
+//     console.log(
+//       `📉 TEMA Angles - 4th-last: ${angleA.toFixed(
+//         2
+//       )}°, 2nd-last: ${angleB.toFixed(2)}°`
+//     );
+
+//     const isBullish = (angle) => angle >= 30;
+//     const isBearish = (angle) => angle <= -30;
+
+//     if (isBearish(angleA) && isBullish(angleB)) {
+//       console.log(`✅ LONG signal from TEMA angle cross`);
+//       return "LONG";
+//     }
+
+//     if (isBullish(angleA) && isBearish(angleB)) {
+//       console.log(`✅ SHORT signal from TEMA angle cross`);
+//       return "SHORT";
+//     }
+
+//     console.log(`ℹ️ No valid signal from TEMA angle logic. Holding.`);
+//     return "HOLD";
+//   } catch (err) {
+//     console.error(`❌ Decision error for ${symbol}:`, err.message);
+//     return "HOLD";
+//   }
+// }
+
 async function decideTradeDirection300(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
@@ -356,36 +437,28 @@ async function decideTradeDirection300(symbol) {
       return Math.atan(slope) * (180 / Math.PI) * 1000;
     }
 
-    // Use 4th-last and 2nd-last TEMA values to calculate angles
-    const angleA = getAngleFromPoints(
-      tema15[tema15.length - 4],
-      tema15[tema15.length - 3]
-    ); // 4th-last
-    const angleB = getAngleFromPoints(
+    // Only calculate the latest angle (between 2nd-last and last TEMA values)
+    const latestAngle = getAngleFromPoints(
       tema15[tema15.length - 2],
       tema15[tema15.length - 1]
-    ); // 2nd-last
-
-    console.log(
-      `📉 TEMA Angles - 4th-last: ${angleA.toFixed(
-        2
-      )}°, 2nd-last: ${angleB.toFixed(2)}°`
     );
+
+    console.log(`📉 TEMA Angle: ${latestAngle.toFixed(2)}°`);
 
     const isBullish = (angle) => angle >= 30;
     const isBearish = (angle) => angle <= -30;
 
-    if (isBearish(angleA) && isBullish(angleB)) {
-      console.log(`✅ LONG signal from TEMA angle cross`);
+    if (isBullish(latestAngle)) {
+      console.log(`✅ LONG signal from TEMA angle`);
       return "LONG";
     }
 
-    if (isBullish(angleA) && isBearish(angleB)) {
-      console.log(`✅ SHORT signal from TEMA angle cross`);
+    if (isBearish(latestAngle)) {
+      console.log(`✅ SHORT signal from TEMA angle`);
       return "SHORT";
     }
 
-    console.log(`ℹ️ No valid signal from TEMA angle logic. Holding.`);
+    console.log(`ℹ️ No valid signal from TEMA angle. Holding.`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
