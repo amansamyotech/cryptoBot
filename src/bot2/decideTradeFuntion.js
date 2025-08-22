@@ -337,6 +337,8 @@ async function decideTradeDirection(symbol) {
       crossoverCandle = pastCandles5m[pastCandles5m.length - 1];
     }
 
+    console.log(`temaSignal`,temaSignal);
+    
     if (!crossoverCandle) return "HOLD";
     console.log(`crossoverCandle`, crossoverCandle);
 
