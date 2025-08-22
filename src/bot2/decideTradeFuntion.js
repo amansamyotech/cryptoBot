@@ -342,7 +342,7 @@ console.log(`lastTema9, lastTema15`,lastTema9 > lastTema15);
 
     console.log(`temaSignal`,temaSignal);
     
-    if (!crossoverCandle) return "HOLD";
+     if (!crossoverCandle) return "HOLD";
     console.log(`crossoverCandle`, crossoverCandle);
 
     const angle = getCandleAngle(crossoverCandle);
@@ -350,7 +350,7 @@ console.log(`lastTema9, lastTema15`,lastTema9 > lastTema15);
 
     if (angle == 20 && temaSignal === "LONG") {
       return "LONG";
-    } else if (angle === -20 && temaSignal === "SHORT") {
+    } else if (angle == -20 && temaSignal === "SHORT") {
       return "SHORT";
     } else {
       return "HOLD";
