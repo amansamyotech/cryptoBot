@@ -403,11 +403,11 @@ async function decideTradeDirection300(symbol) {
     const selectedAngle = angleData.final;
 
     // Screenshot के हिसाब से thresholds - आपकी requirement के अनुसार
-    const bullishThreshold = 30; // +35° से ऊपर LONG
-    const bearishThreshold = -30; // -35° से नीचे SHORT
+    const bullishThreshold = 40; // +35° से ऊपर LONG
+    const bearishThreshold = -40; // -35° से नीचे SHORT
 
     // Additional confirmation for strong signals
-    const strongSignalThreshold = 35;
+    const strongSignalThreshold = 40;
     const isStrongBullish = selectedAngle >= strongSignalThreshold;
     const isStrongBearish = selectedAngle <= -strongSignalThreshold;
 
