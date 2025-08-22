@@ -343,10 +343,13 @@ async function decideTradeDirection300(symbol) {
     // 🔽 New logic: Match latest angles from 3m and 1m before deciding
     const [last3mCandle] = await getCandles(symbol, "3m", 2);
     const [last1mCandle] = await getCandles(symbol, "1m", 2);
+console.log(`last3mCandle`,last3mCandle);
 
     const angle3m = getCandleAngle(last3mCandle);
+    console.log(`angle3m`,angle3m);
+    
     const angle1m = getCandleAngle(last1mCandle);
-
+console.log(`angle1m`,angle1m);
     console.log(
       `⏱️ Angle 3m: ${angle3m.toFixed(2)}°, Angle 1m: ${angle1m.toFixed(2)}°`
     );
