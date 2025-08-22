@@ -340,9 +340,9 @@ async function decideTradeDirection(symbol) {
     const angle = getCandleAngle(crossoverCandle);
     console.log(`angle`, angle);
 
-    if (angle == 10 && temaSignal === "LONG") {
+    if (angle == 20 && temaSignal === "LONG") {
       return "LONG";
-    } else if (angle === -10 && temaSignal === "SHORT") {
+    } else if (angle === -20 && temaSignal === "SHORT") {
       return "SHORT";
     } else {
       return "HOLD";
