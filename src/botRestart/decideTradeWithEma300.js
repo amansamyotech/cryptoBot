@@ -394,33 +394,33 @@ function getTEMAangle(temaArray) {
 // }
 
 // Method 1: Multi-point angle calculation (recommended)
+// Method 1: Multi-point calculation - Last Completed Candle
 function getTEMAAngleMultiPoint(temaArray, lookbackPeriods = 3) {
   const len = temaArray.length;
-  if (len < lookbackPeriods + 1) return 0;
+  if (len < lookbackPeriods + 2) return 0; // Need extra candle since we skip current
 
-  const y2 = temaArray[len - 1]; // latest TEMA
-  const y1 = temaArray[len - 1 - lookbackPeriods]; // TEMA from N periods ago
+  const lastCompleted = temaArray[len - 2]; // Last completed candle
+  const previous = temaArray[len - 2 - lookbackPeriods]; // Go back from last completed
 
   // Calculate percentage change over multiple periods
-  const percentageChange = ((y2 - y1) / y1) * 100;
+  const percentageChange = ((lastCompleted - previous) / previous) * 100;
 
   // Scale the angle to make it more meaningful
-  // You can adjust this multiplier based on your needs
   const angle = Math.atan(percentageChange / lookbackPeriods) * (180 / Math.PI);
 
   return angle;
 }
 
-// Method 2: Rate of change approach
+// Method 2: Rate of change approach - Last Completed Candle
 function getTEMAAngleROC(temaArray, periods = 3) {
   const len = temaArray.length;
-  if (len < periods + 1) return 0;
+  if (len < periods + 2) return 0; // Need extra candle since we skip current
 
-  const current = temaArray[len - 1];
-  const previous = temaArray[len - 1 - periods];
+  const lastCompleted = temaArray[len - 2]; // Last completed candle
+  const previous = temaArray[len - 2 - periods]; // Go back from last completed
 
   // Rate of change as percentage
-  const roc = ((current - previous) / previous) * 100;
+  const roc = ((lastCompleted - previous) / previous) * 100;
 
   // Convert to angle (you can adjust the divisor to scale sensitivity)
   const angle = Math.atan(roc / 10) * (180 / Math.PI);
@@ -428,13 +428,13 @@ function getTEMAAngleROC(temaArray, periods = 3) {
   return angle;
 }
 
-// Method 3: Linear regression slope (most accurate)
+// Method 3: Linear regression slope - Last Completed Candle
 function getTEMAAngleRegression(temaArray, periods = 5) {
   const len = temaArray.length;
-  if (len < periods) return 0;
+  if (len < periods + 1) return 0; // Need at least periods + 1 to skip current
 
-  // Get last N TEMA values
-  const recentTema = temaArray.slice(-periods);
+  // Get last N TEMA values (excluding current forming candle)
+  const recentTema = temaArray.slice(-(periods + 1), -1); // Skip last element (current candle)
 
   // Calculate linear regression slope
   const n = recentTema.length;
@@ -453,20 +453,20 @@ function getTEMAAngleRegression(temaArray, periods = 5) {
   return angle;
 }
 
-// Method 4: TradingView-like calculation with time scaling
+// Method 4: TradingView-like calculation - Last Completed Candle
 function getTEMAAngleTradingView(
   temaArray,
   timeframeMinutes = 3,
   lookbackPeriods = 2
 ) {
   const len = temaArray.length;
-  if (len < lookbackPeriods + 1) return 0;
+  if (len < lookbackPeriods + 2) return 0; // Need extra candle since we skip current
 
-  const y2 = temaArray[len - 1];
-  const y1 = temaArray[len - 1 - lookbackPeriods];
+  const lastCompleted = temaArray[len - 2]; // Last completed candle
+  const previous = temaArray[len - 2 - lookbackPeriods]; // Go back from last completed
 
   // Calculate percentage change
-  const percentChange = ((y2 - y1) / y1) * 100;
+  const percentChange = ((lastCompleted - previous) / previous) * 100;
 
   // Time span in minutes
   const timeSpan = lookbackPeriods * timeframeMinutes;
@@ -479,7 +479,7 @@ function getTEMAAngleTradingView(
   return angle;
 }
 
-// Updated decision function
+// Updated decision function - Using Last Completed Candle
 async function decideTradeDirection300(symbol) {
   try {
     const pastCandles5m = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
@@ -493,8 +493,8 @@ async function decideTradeDirection300(symbol) {
       return "HOLD";
     }
 
-    const pastCandles3m = await getCandles(symbol, "3m", 30); // Get more candles
-    if (pastCandles3m.length < 25) {
+    const pastCandles3m = await getCandles(symbol, "3m", 35); // Get more candles for last completed
+    if (pastCandles3m.length < 30) {
       console.log("❌ Not enough 3m candles for TEMA angle check");
       return "HOLD";
     }
@@ -502,41 +502,51 @@ async function decideTradeDirection300(symbol) {
     const closePrices = pastCandles3m.map((c) => c.close);
     const tema15 = calculateTEMA(closePrices, 15);
 
-    // Try different angle calculation methods
+    // Try different angle calculation methods (all using last completed candle)
     const angleMultiPoint = getTEMAAngleMultiPoint(tema15, 4);
     const angleROC = getTEMAAngleROC(tema15, 3);
     const angleRegression = getTEMAAngleRegression(tema15, 5);
     const angleTradingView = getTEMAAngleTradingView(tema15, 3, 2);
 
-    console.log(`📊 TEMA Angles for ${symbol}:`);
+    console.log(`📊 TEMA Angles for ${symbol} (Last Completed Candle):`);
     console.log(`   Multi-point (4 periods): ${angleMultiPoint.toFixed(2)}°`);
     console.log(`   Rate of Change: ${angleROC.toFixed(2)}°`);
     console.log(`   Linear Regression: ${angleRegression.toFixed(2)}°`);
     console.log(`   TradingView-like: ${angleTradingView.toFixed(2)}°`);
 
-    // Use the method that gives you the most reasonable results
-    // I recommend starting with the multi-point method
+    // Use the TradingView method as it was giving good results
     const selectedAngle = angleTradingView;
 
-    // You might need to adjust these thresholds based on testing
-    const bullishThreshold = 15; // Instead of 45
-    const bearishThreshold = -15; // Instead of -45
+    // Adjust thresholds based on your TradingView observations
+    const bullishThreshold = 15; // You can change this based on testing
+    const bearishThreshold = -15; // You can change this based on testing
 
     if (selectedAngle >= bullishThreshold) {
-      console.log(`✅ LONG signal - TEMA angle: ${selectedAngle.toFixed(2)}°`);
+      console.log(
+        `✅ LONG signal - TEMA angle: ${selectedAngle.toFixed(
+          2
+        )}° (Last Completed)`
+      );
       return "LONG";
     }
 
     if (selectedAngle <= bearishThreshold) {
-      console.log(`✅ SHORT signal - TEMA angle: ${selectedAngle.toFixed(2)}°`);
+      console.log(
+        `✅ SHORT signal - TEMA angle: ${selectedAngle.toFixed(
+          2
+        )}° (Last Completed)`
+      );
       return "SHORT";
     }
 
-    console.log(`ℹ️ No valid signal. Angle: ${selectedAngle.toFixed(2)}°`);
+    console.log(
+      `ℹ️ No valid signal. Angle: ${selectedAngle.toFixed(2)}° (Last Completed)`
+    );
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
+
 module.exports = { decideTradeDirection300 };
