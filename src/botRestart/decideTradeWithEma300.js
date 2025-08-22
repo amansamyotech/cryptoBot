@@ -324,68 +324,44 @@ async function decideTradeDirection300(symbol) {
       return "HOLD";
     }
 
-    const closePrices = pastCandles5m.map((c) => c.close);
-    const tema12 = calculateTEMA(closePrices, 15);
+    // --- Get 3m candles (at least 1000 for index 997, 999)
+    const pastCandles3m = await getCandles(symbol, "3m", 1000);
+    if (pastCandles3m.length < 1000) {
+      console.log("❌ Not enough 3m candles for angle check");
+      return "HOLD";
+    }
 
-    const candle2 = pastCandles5m[pastCandles5m.length - 3];
-    const candle1 = pastCandles5m[pastCandles5m.length - 2];
+    const candle997 = pastCandles3m[997];
+    const candle999 = pastCandles3m[999];
 
-    const tema2 = tema12[tema12.length - 3];
-    const tema1 = tema12[tema12.length - 2];
-
-    const angle2 = getCandleAngle(candle2);
-    const angle1 = getCandleAngle(candle1);
+    const angle997 = getCandleAngle(candle997);
+    const angle999 = getCandleAngle(candle999);
 
     console.log(
-      `📐 Angle1: ${angle1.toFixed(2)}°, Angle2: ${angle2.toFixed(2)}°`
-    );
-
-    // 🔽 New logic: Match latest angles from 3m and 1m before deciding
-    const [last3mCandle] = await getCandles(symbol, "3m", 2);
-    const [last1mCandle] = await getCandles(symbol, "1m", 2);
-console.log(`last3mCandle`,last3mCandle);
-
-    const angle3m = getCandleAngle(last3mCandle);
-    console.log(`angle3m`,angle3m);
-    
-    const angle1m = getCandleAngle(last1mCandle);
-console.log(`angle1m`,angle1m);
-    console.log(
-      `⏱️ Angle 3m: ${angle3m.toFixed(2)}°, Angle 1m: ${angle1m.toFixed(2)}°`
+      `📉 Angles - Candle997: ${angle997.toFixed(
+        2
+      )}°, Candle999: ${angle999.toFixed(2)}°`
     );
 
     const isBullish = (angle) => angle >= 90 && angle <= 135;
     const isBearish = (angle) => angle >= 225 && angle <= 280;
 
-    if (
-      isBullish(angle1) &&
-      isBullish(angle2) &&
-      // candle1.close > tema1 &&
-      // candle2.close > tema2 &&
-      isBullish(angle3m) &&
-      isBullish(angle1m)
-    ) {
-      console.log(`✅ LONG signal confirmed by 3m & 1m angles`);
+    if (isBearish(angle997) && isBullish(angle999)) {
+      console.log(`✅ LONG signal from candle 997 and 999 angles`);
       return "LONG";
     }
 
-    if (
-      isBearish(angle1) &&
-      isBearish(angle2) &&
-      // candle1.close < tema1 &&
-      // candle2.close < tema2 &&
-      isBearish(angle3m) &&
-      isBearish(angle1m)
-    ) {
-      console.log(`✅ SHORT signal confirmed by 3m & 1m angles`);
+    if (isBullish(angle997) && isBearish(angle999)) {
+      console.log(`✅ SHORT signal from candle 997 and 999 angles`);
       return "SHORT";
     }
 
-    console.log(`ℹ️ No clear signal confirmed by multi-timeframe. Holding.`);
+    console.log(`ℹ️ No valid signal from 997/999 angle logic. Holding.`);
     return "HOLD";
   } catch (err) {
     console.error(`❌ Decision error for ${symbol}:`, err.message);
     return "HOLD";
   }
 }
+
 module.exports = { decideTradeDirection300 };
