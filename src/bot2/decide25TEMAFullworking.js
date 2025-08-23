@@ -1,6 +1,6 @@
 const { getCandles } = require("./helper/getCandles");
 
-const TIMEFRAME_MAIN = "5m";
+const TIMEFRAME_MAIN = "3m";
 
 function calculateEMA(prices, period) {
   const k = 2 / (period + 1);
@@ -133,22 +133,22 @@ function calculateBollingerBands(prices, period = 20, stdDev = 2) {
   return { sma, upperBand, lowerBand };
 }
 
-
 function calculateRSI(prices, period = 14) {
-  const gains = [], losses = [];
+  const gains = [],
+    losses = [];
   for (let i = 1; i < prices.length; i++) {
-    const diff = prices[i] - prices[i-1];
+    const diff = prices[i] - prices[i - 1];
     gains.push(diff > 0 ? diff : 0);
     losses.push(diff < 0 ? -diff : 0);
   }
   let avgGain = gains.slice(0, period).reduce((a, b) => a + b) / period;
   let avgLoss = losses.slice(0, period).reduce((a, b) => a + b) / period;
-  const rsi = [100 - (100 / (1 + (avgGain / avgLoss || 1)))];  // Handle div by 0
+  const rsi = [100 - 100 / (1 + (avgGain / avgLoss || 1))]; // Handle div by 0
 
   for (let i = period; i < gains.length; i++) {
     avgGain = (avgGain * (period - 1) + gains[i]) / period;
     avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
-    rsi.push(100 - (100 / (1 + (avgGain / avgLoss || 1))));
+    rsi.push(100 - 100 / (1 + (avgGain / avgLoss || 1)));
   }
   return rsi;
 }
