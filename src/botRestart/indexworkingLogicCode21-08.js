@@ -16,7 +16,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["DOGEUSDT"];
+const symbols = ["SOLUSDT"];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
