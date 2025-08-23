@@ -19,7 +19,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["SOLUSDT", "XRPUSDT"];
+const symbols = ["SOLUSDT", "BNBUSDT"];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -3;
