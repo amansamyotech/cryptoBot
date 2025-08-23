@@ -18,12 +18,11 @@ const binance = new Binance().options({
 
 const symbols = [
   "BNBUSDT",
-  // "ADAUSDT",
   "XRPUSDT",
   "SOLUSDT",
-  // "DOGEUSDT",
+  "DOGEUSDT",
   "SUIUSDT",
-  // "INJUSDT",
+  "INJUSDT",
 ];
 
 const LEVERAGE = 3;
@@ -435,23 +434,21 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
-  // const runMarketScanrunMarketScan = await runMarketScan();
-  // console.log(`runMarketScan`, runMarketScanrunMarketScan);
 
-  console.log(`✅✅✅✅decisiondecisiondecisiondecisiondecision`, decision);
+  // console.log(`✅✅✅✅decisiondecisiondecisiondecisiondecision`, decision);
 
-  // if (decision?.decision === "LONG") {
-  //   await placeBuyOrder(symbol, maxSpendPerTrade);
-  // } else if (decision?.decision === "SHORT") {
-  //   await placeShortOrder(symbol, maxSpendPerTrade);
-  // } else {
-  //   console.log(`No trade signal for ${symbol}`);
-  // }
+  if (decision?.decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision?.decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 1;
+  const usableBalance = totalBalance - 3;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
