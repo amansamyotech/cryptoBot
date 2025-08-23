@@ -427,11 +427,11 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decideTradeDirectionEnhanced(symbol);
-  console.log(`decisiondecisiondecisiondecisiondecision`, decision);
+  console.log(`decisiondecisiondecisiondecisiondecision`, decision?.decision);
 
-    if (decision === "LONG") {
+    if (decision?.decision === "LONG") {
       await placeBuyOrder(symbol, maxSpendPerTrade);
-    } else if (decision === "SHORT") {
+    } else if (decision?.decision === "SHORT") {
       await placeShortOrder(symbol, maxSpendPerTrade);
     } else {
       console.log(`No trade signal for ${symbol}`);
