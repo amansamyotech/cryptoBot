@@ -786,16 +786,13 @@ class PerformanceTracker {
 // Market scanner for finding trading opportunities
 async function scanMarket(
   symbols = [
-    "BTCUSDT",
-    "ETHUSDT",
     "BNBUSDT",
     "ADAUSDT",
     "XRPUSDT",
     "SOLUSDT",
-    "DOTUSDT",
     "LINKUSDT",
-    "LTCUSDT",
-    "BCHUSDT",
+    "DOGEUSDT",
+    "SUIUSDT",
   ]
 ) {
   console.log("\n🔍 Starting Market Scan...");
