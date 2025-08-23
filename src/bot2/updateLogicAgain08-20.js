@@ -427,16 +427,15 @@ async function placeShortOrder(symbol, marginAmount) {
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
 
-  console.log(`decision✅✅✅`,decision);
-  
+  // console.log(`decision✅✅✅`,decision);
 
-  // if (decision === "LONG") {
-  //   await placeBuyOrder(symbol, maxSpendPerTrade);
-  // } else if (decision === "SHORT") {
-  //   await placeShortOrder(symbol, maxSpendPerTrade);
-  // } else {
-  //   console.log(`No trade signal for ${symbol}`);
-  // }
+  if (decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 setInterval(async () => {
