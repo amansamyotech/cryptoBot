@@ -1,38 +1,6 @@
-const Binance = require("node-binance-api");
-const axios = require("axios");
+const { getCandles } = require("./helper/getCandles");
 
-const binance = new Binance().options({
-  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
-  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
-  useServerTime: true,
-  test: false,
-});
-
-const TIMEFRAME_MAIN = "3m";
-
-async function getCandles(symbol, interval, limit = 1000) {
-  try {
-    const res = await axios.get(
-      `https://fapi.binance.com/fapi/v1/klines?symbol=${symbol}&interval=${interval}&limit=${limit}`
-    );
-    return res.data
-      .map((c) => ({
-        openTime: c[0],
-        open: parseFloat(c[1]),
-        high: parseFloat(c[2]),
-        low: parseFloat(c[3]),
-        close: parseFloat(c[4]),
-        volume: parseFloat(c[5]),
-      }))
-      .filter((c) => !isNaN(c.close));
-  } catch (err) {
-    console.error(
-      `❌ Error fetching candles for ${symbol} (${interval}):`,
-      err.message
-    );
-    return [];
-  }
-}
+const TIMEFRAME_MAIN = "5m";
 
 function calculateEMA(prices, period) {
   const k = 2 / (period + 1);
@@ -165,142 +133,165 @@ function calculateBollingerBands(prices, period = 20, stdDev = 2) {
   return { sma, upperBand, lowerBand };
 }
 
-function calculateATR(candles, period = 14) {
-  const tr = [];
-  for (let i = 1; i < candles.length; i++) {
-    const high = candles[i].high;
-    const low = candles[i].low;
-    const prevClose = candles[i - 1].close;
-    const trValue = Math.max(
-      high - low,
-      Math.abs(high - prevClose),
-      Math.abs(low - prevClose)
-    );
-    tr.push(trValue);
+function calculateRSI(prices, period = 14) {
+  const gains = [],
+    losses = [];
+  for (let i = 1; i < prices.length; i++) {
+    const diff = prices[i] - prices[i - 1];
+    gains.push(diff > 0 ? diff : 0);
+    losses.push(diff < 0 ? -diff : 0);
   }
+  let avgGain = gains.slice(0, period).reduce((a, b) => a + b) / period;
+  let avgLoss = losses.slice(0, period).reduce((a, b) => a + b) / period;
+  const rsi = [100 - 100 / (1 + (avgGain / avgLoss || 1))]; // Handle div by 0
 
-  const atr = [];
-  for (let i = period - 1; i < tr.length; i++) {
-    if (i === period - 1) {
-      atr.push(
-        tr.slice(i - period + 1, i + 1).reduce((a, b) => a + b) / period
-      );
-    } else {
-      atr.push((atr.at(-1) * (period - 1) + tr[i]) / period);
-    }
+  for (let i = period; i < gains.length; i++) {
+    avgGain = (avgGain * (period - 1) + gains[i]) / period;
+    avgLoss = (avgLoss * (period - 1) + losses[i]) / period;
+    rsi.push(100 - 100 / (1 + (avgGain / avgLoss || 1)));
   }
-  return atr;
+  return rsi;
 }
-
 function isSidewaysMarket(
   candles,
-  lookbackPeriod = 20,
-  thresholdPercent = 0.4,
-  adxThreshold = 15,
-  bbWidthThreshold = 0.7
+  lookbackPeriod = 30,
+  thresholdPercent = 0.8
 ) {
   if (candles.length < lookbackPeriod) return false;
 
-  // Extract data
   const recent = candles.slice(-lookbackPeriod);
   const closePrices = recent.map((c) => c.close);
   const highs = recent.map((c) => c.high);
   const lows = recent.map((c) => c.low);
   const currentPrice = candles.at(-1).close;
 
-  // 1. Price Range Check
+  // Price Range %
   const priceRange =
     ((Math.max(...highs) - Math.min(...lows)) / currentPrice) * 100;
 
-  // 2. ADX Check
-  const adx = calculateADX(recent);
-  const lastAdx = adx.at(-1);
+  // Recent Volatility (last 10 candles)
+  const recentVolatility =
+    recent
+      .slice(-10)
+      .reduce((sum, c) => sum + Math.abs((c.high - c.low) / c.close) * 100, 0) /
+    10;
 
-  // 3. Bollinger Bands Width Check
-  const bb = calculateBollingerBands(closePrices);
+  // TEMA Instead of EMA (better for sideways detection)
+  const tema15 = calculateTEMA(closePrices, 15);
+  const tema25 = calculateTEMA(closePrices, 25);
+  const lastTema15 = tema15.at(-1);
+  const lastTema25 = tema25.at(-1);
+  const emaConvergence =
+    Math.abs((lastTema15 - lastTema25) / currentPrice) * 100;
+
+  // Oscillation check
+  const avgEma = (lastTema15 + lastTema25) / 2;
+  const osc = recent.slice(-12).reduce((count, c) => {
+    return c.close > avgEma ? count + 1 : count;
+  }, 0);
+  const oscillationRatio = Math.min(osc, 12 - osc) / 12;
+
+  // Bollinger Bands
+  const bb = calculateBollingerBands(closePrices, 20);
   const lastUpper = bb.upperBand.at(-1);
   const lastLower = bb.lowerBand.at(-1);
   const bbWidth = ((lastUpper - lastLower) / currentPrice) * 100;
 
-  // Logging for debugging
-  console.log({
-    priceRange: priceRange + "%",
-    lastAdx: lastAdx,
-    bbWidth: bbWidth + "%",
-    isSideways:
-      priceRange <= thresholdPercent &&
-      lastAdx <= adxThreshold &&
-      bbWidth <= bbWidthThreshold,
-  });
+  // ADX
+  const adx = calculateADX(recent, 14);
+  const lastAdx = adx.at(-1);
 
-  // Return true if all conditions are met
+  // Doji Check
+  const dojiCount = recent.slice(-8).filter((c) => {
+    const body = Math.abs(c.close - c.open) / c.open;
+    const range = (c.high - c.low) / c.open;
+    return body <= 0.002 && range >= 0.004;
+  }).length;
+
+  // RSI
+  const rsi = calculateRSI(closePrices, 14);
+  const lastRsi = rsi.at(-1);
+
   return (
-    priceRange <= thresholdPercent && // Price range ≤ 0.4%
-    lastAdx <= adxThreshold && // ADX ≤ 15
-    bbWidth <= bbWidthThreshold // Bollinger Bands width ≤ 0.7%
+    priceRange <= thresholdPercent && // narrow range
+    emaConvergence <= 0.15 && // TEMA almost flat
+    recentVolatility <= 0.25 && // very low volatility
+    oscillationRatio >= 0.45 && // ping-pong behaviour
+    bbWidth <= 0.8 && // tight bands
+    candles.at(-1).close <= lastUpper &&
+    candles.at(-1).close >= lastLower &&
+    lastAdx <= 18 && // very weak trend
+    dojiCount >= 2 &&
+    lastRsi >= 45 &&
+    lastRsi <= 55
   );
 }
+
 async function decide25TEMA(symbol) {
   try {
     const candles = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
-    if (candles.length < 50) {
+    if (candles.length < 300) {
+      // Ensure enough candles for TEMA300
       console.log("❌ Insufficient candles for analysis");
       return "HOLD";
     }
 
+    const closes = candles.map((c) => c.close);
+
+    // Calculate TEMA values
+    const tema25 = calculateTEMA(closes, 15);
+    const tema300 = calculateTEMA(closes, 300);
+
+    const lastPrice = closes.at(-1);
+    const lastTEMA25 = tema25.at(-1);
+    const prevTEMA25 = tema25.at(-2);
+    const lastTEMA300 = tema300.at(-1);
+
+    // Check sideways market first
     if (isSidewaysMarket(candles)) {
       console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
       return "HOLD";
     }
 
-    const closes = candles.map((c) => c.close);
-    const tema25 = calculateTEMA(closes, 25);
-
-    if (tema25.length < 2) {
-      console.log("❌ Insufficient TEMA data");
-      return "HOLD";
-    }
-
-    const lastPrice = closes.at(-1);
-    const lastTEMA25 = tema25.at(-1);
-    const prevTEMA25 = tema25.at(-2);
-
     // Calculate angle of TEMA(25)
-    const scaleFactor = 1000; // Sensitivity for angle calculation
+    const scaleFactor = 1000;
     const slope = ((lastTEMA25 - prevTEMA25) / prevTEMA25) * scaleFactor;
     const angleRadians = Math.atan(slope);
     const angleDegrees = angleRadians * (180 / Math.PI);
-    console.log(`angleDegrees`, angleDegrees);
+    console.log(`📐 TEMA(25) angleDegrees: ${angleDegrees.toFixed(2)}°`);
 
-    // Decision logic: Based on TEMA(25) position and angle
     let decision = "HOLD";
     let reason = "";
 
-    if (lastTEMA25 < lastPrice && angleDegrees > 35) {
-      decision = "LONG";
-      reason = `Price (${lastPrice.toFixed(
-        2
-      )}) > TEMA(25) (${lastTEMA25.toFixed(
-        2
-      )}) and angle ${angleDegrees.toFixed(2)}° > 30°`;
-    } else if (lastTEMA25 > lastPrice && angleDegrees < -35) {
-      decision = "SHORT";
-      reason = `Price (${lastPrice.toFixed(
-        2
-      )}) < TEMA(25) (${lastTEMA25.toFixed(
-        2
-      )}) and angle ${angleDegrees.toFixed(2)}° < -30°`;
+    // TEMA300 filter logic
+    if (lastPrice > lastTEMA300) {
+      // Price above TEMA300 → Only LONG signals
+      if (lastTEMA25 < lastPrice && angleDegrees > 35) {
+        decision = "LONG";
+        reason = `Price above TEMA300. TEMA25 angle ${angleDegrees.toFixed(
+          2
+        )}° > 35°`;
+      } else {
+        reason = `Price above TEMA300 but conditions not met for LONG.`;
+      }
+    } else if (lastPrice < lastTEMA300) {
+      // Price below TEMA300 → Only SHORT signals
+      if (lastTEMA25 > lastPrice && angleDegrees < -35) {
+        decision = "SHORT";
+        reason = `Price below TEMA300. TEMA25 angle ${angleDegrees.toFixed(
+          2
+        )}° < -35°`;
+      } else {
+        reason = `Price below TEMA300 but conditions not met for SHORT.`;
+      }
     } else {
-      decision = "HOLD";
-      reason = `Conditions not met. TEMA(25): ${lastTEMA25.toFixed(
-        2
-      )}, Price: ${lastPrice.toFixed(2)}, Angle: ${angleDegrees.toFixed(2)}°`;
+      reason = `Price at TEMA300 level. HOLD.`;
     }
 
     console.log(
-      `📐 TEMA(25) for ${symbol}: ${lastTEMA25.toFixed(
+      `📊 Decision for ${symbol}: ${decision} (${reason}) | Price: ${lastPrice.toFixed(
         2
-      )}, Angle: ${angleDegrees.toFixed(2)}°, Decision: ${decision} (${reason})`
+      )}, TEMA25: ${lastTEMA25.toFixed(2)}, TEMA300: ${lastTEMA300.toFixed(2)}`
     );
 
     return decision;
@@ -310,4 +301,4 @@ async function decide25TEMA(symbol) {
   }
 }
 
-module.exports = { decide25TEMA, calculateTEMA, calculateATR };
+module.exports = { decide25TEMA, calculateTEMA };

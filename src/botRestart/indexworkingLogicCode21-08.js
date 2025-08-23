@@ -1,10 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { calculateTEMA } = require("../bot2/decide25TEMAFullworking");
-const {
-  decideTradeDirectionEnhanced,
-  runMarketScan,
-} = require("./decideTradeWithEma300");
+const { decide25TEMA } = require("./decide25TEMA");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { getCandles } = require("./helper/getCandles");
 const { checkOrders } = require("./checkOrderFun2");
@@ -30,7 +27,7 @@ const symbols = [
 ];
 
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -3;
+const STOP_LOSS_ROI = -1.5;
 const STOP_LOSS_CANCEL_ROI = 3;
 
 async function getTEMAValues(symbol) {
@@ -437,19 +434,19 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await decideTradeDirectionEnhanced(symbol);
+  const decision = await decide25TEMA(symbol);
   // const runMarketScanrunMarketScan = await runMarketScan();
   // console.log(`runMarketScan`, runMarketScanrunMarketScan);
 
   console.log(`decisiondecisiondecisiondecisiondecision`, decision);
 
-  if (decision?.decision === "LONG") {
-    await placeBuyOrder(symbol, maxSpendPerTrade);
-  } else if (decision?.decision === "SHORT") {
-    await placeShortOrder(symbol, maxSpendPerTrade);
-  } else {
-    console.log(`No trade signal for ${symbol}`);
-  }
+  // if (decision?.decision === "LONG") {
+  //   await placeBuyOrder(symbol, maxSpendPerTrade);
+  // } else if (decision?.decision === "SHORT") {
+  //   await placeShortOrder(symbol, maxSpendPerTrade);
+  // } else {
+  //   console.log(`No trade signal for ${symbol}`);
+  // }
 }
 
 setInterval(async () => {
