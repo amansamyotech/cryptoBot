@@ -437,9 +437,9 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
   // console.log(`✅✅✅✅decisiondecisiondecisiondecisiondecision`, decision);
 
-  if (decision?.decision === "LONG") {
+  if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
-  } else if (decision?.decision === "SHORT") {
+  } else if (decision === "SHORT") {
     await placeShortOrder(symbol, maxSpendPerTrade);
   } else {
     console.log(`No trade signal for ${symbol}`);
