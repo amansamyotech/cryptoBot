@@ -19,7 +19,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["SOLUSDT", "BNBUSDT"];
+const symbols = ["SOLUSDT", "INJUSDT"];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -3;
