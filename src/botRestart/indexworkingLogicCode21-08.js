@@ -481,7 +481,7 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 5000);
+}, 7000);
 
 setInterval(async () => {
   for (const sym of symbols) {
