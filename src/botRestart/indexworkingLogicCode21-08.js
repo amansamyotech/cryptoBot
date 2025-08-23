@@ -470,7 +470,7 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 10000);
+}, 5000);
 
 setInterval(async () => {
   for (const sym of symbols) {
@@ -517,8 +517,8 @@ setInterval(async () => {
   }
 }, 3000);
 
-setInterval(async () => {
-  for (const sym of symbols) {
-    await checkOrders(sym);
-  }
-}, 4000);
+// setInterval(async () => {
+//   for (const sym of symbols) {
+//     await checkOrders(sym);
+//   }
+// }, 4000);
