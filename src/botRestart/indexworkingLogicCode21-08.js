@@ -27,7 +27,7 @@ const symbols = [
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
-const STOP_LOSS_CANCEL_ROI = 3;
+const STOP_LOSS_CANCEL_ROI = 2;
 
 async function getTEMAValues(symbol) {
   try {
@@ -448,7 +448,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 3;
+  const usableBalance = totalBalance - 2;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
