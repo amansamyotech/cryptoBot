@@ -27,7 +27,7 @@ const symbols = [
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
-const STOP_LOSS_CANCEL_ROI = 2;
+const STOP_LOSS_CANCEL_ROI = 3;
 
 async function getTEMAValues(symbol) {
   try {
