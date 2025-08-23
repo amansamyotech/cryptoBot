@@ -1,7 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { calculateTEMA } = require("../bot2/decide25TEMAFullworking");
-const { decideTradeDirectionEnhanced } = require("./decideTradeWithEma300");
+const { decideTradeDirectionEnhanced, runMarketScan } = require("./decideTradeWithEma300");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { getCandles } = require("./helper/getCandles");
 const { checkOrders } = require("./checkOrderFun2");
@@ -16,7 +16,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["DOGEUSDT"];
+const symbols = ["BTCUSDT"];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -3;
@@ -427,6 +427,9 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decideTradeDirectionEnhanced(symbol);
+  const runMarketScan = await runMarketScan();
+  console.log(`runMarketScan`,runMarketScan);
+  
   console.log(`decisiondecisiondecisiondecisiondecision`, decision?.decision);
 
     if (decision?.decision === "LONG") {
