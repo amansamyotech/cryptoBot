@@ -427,8 +427,8 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decideTradeDirectionEnhanced(symbol);
-  const runMarketScanrunMarketScan = await runMarketScan();
-  console.log(`runMarketScan`,runMarketScanrunMarketScan);
+  // const runMarketScanrunMarketScan = await runMarketScan();
+  // console.log(`runMarketScan`,runMarketScanrunMarketScan);
   
   console.log(`decisiondecisiondecisiondecisiondecision`, decision?.decision);
 
