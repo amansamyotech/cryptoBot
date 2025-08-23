@@ -23,7 +23,7 @@ const symbols = ["SOLUSDT", "INJUSDT"];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -3;
-const STOP_LOSS_CANCEL_ROI = 5;
+const STOP_LOSS_CANCEL_ROI = 3;
 
 async function getTEMAValues(symbol) {
   try {
