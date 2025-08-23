@@ -438,7 +438,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   // const runMarketScanrunMarketScan = await runMarketScan();
   // console.log(`runMarketScan`, runMarketScanrunMarketScan);
 
-  console.log(`decisiondecisiondecisiondecisiondecision`, decision);
+  console.log(`✅✅✅✅decisiondecisiondecisiondecisiondecision`, decision);
 
   // if (decision?.decision === "LONG") {
   //   await placeBuyOrder(symbol, maxSpendPerTrade);
