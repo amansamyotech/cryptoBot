@@ -11,7 +11,7 @@ const CONFIG = {
 
   // Signal Detection Parameters
   BASE_ANGLE_THRESHOLD: 25, // Lowered from 40 for more signals
-  VOLUME_MULTIPLIER: 0.50, // Volume must be 25% above average
+  VOLUME_MULTIPLIER: 0.5, // Volume must be 25% above average
   MIN_RR_RATIO: 2.0, // Minimum 1:2 risk-reward
   TARGET_ROI: 0.05, // 5% target
   MAX_RISK_PER_TRADE: 0.02, // 2% max risk per trade
@@ -319,6 +319,11 @@ function hasVolumeConfirmation(candles, lookback = 10) {
   const avgVolume =
     recentVolumes.reduce((a, b) => a + b) / recentVolumes.length;
   const currentVolume = candles[candles.length - 1].volume;
+  console.log(
+    `currentVolume > avgVolume * CONFIG.VOLUME_MULTIPLIER`,
+    avgVolume * CONFIG.VOLUME_MULTIPLIER
+  );
+  console.log(`currentVolume `, currentVolume);
 
   return currentVolume > avgVolume * CONFIG.VOLUME_MULTIPLIER;
 }
