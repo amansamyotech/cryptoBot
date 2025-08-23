@@ -432,13 +432,13 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   
   console.log(`decisiondecisiondecisiondecisiondecision`, decision?.decision);
 
-    if (decision?.decision === "LONG") {
-      await placeBuyOrder(symbol, maxSpendPerTrade);
-    } else if (decision?.decision === "SHORT") {
-      await placeShortOrder(symbol, maxSpendPerTrade);
-    } else {
-      console.log(`No trade signal for ${symbol}`);
-    }
+    // if (decision?.decision === "LONG") {
+    //   await placeBuyOrder(symbol, maxSpendPerTrade);
+    // } else if (decision?.decision === "SHORT") {
+    //   await placeShortOrder(symbol, maxSpendPerTrade);
+    // } else {
+    //   console.log(`No trade signal for ${symbol}`);
+    // }
 }
 
 setInterval(async () => {
