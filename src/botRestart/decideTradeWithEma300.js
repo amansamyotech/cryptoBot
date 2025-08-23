@@ -436,7 +436,7 @@ async function getHigherTimeframeBias(symbol) {
     if (candles15m.length < 30) return "NEUTRAL";
 
     const closes15m = candles15m.map((c) => c.close);
-    const tema25_15m = calculateTEMA(closes15m, 25);
+    const tema25_15m = calculateTEMA(closes15m, 9);
 
     if (tema25_15m.length < 5) return "NEUTRAL";
 
