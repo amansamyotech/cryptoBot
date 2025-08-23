@@ -19,7 +19,15 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["SOLUSDT", "INJUSDT"];
+const symbols = [
+  "BNBUSDT",
+  // "ADAUSDT",
+  "XRPUSDT",
+  "SOLUSDT",
+  // "DOGEUSDT",
+  "SUIUSDT",
+  // "INJUSDT",
+];
 
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -3;
@@ -430,18 +438,18 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decideTradeDirectionEnhanced(symbol);
-  const runMarketScanrunMarketScan = await runMarketScan();
-  console.log(`runMarketScan`, runMarketScanrunMarketScan);
+  // const runMarketScanrunMarketScan = await runMarketScan();
+  // console.log(`runMarketScan`, runMarketScanrunMarketScan);
 
   console.log(`decisiondecisiondecisiondecisiondecision`, decision);
 
-  // if (decision?.decision === "LONG") {
-  //   await placeBuyOrder(symbol, maxSpendPerTrade);
-  // } else if (decision?.decision === "SHORT") {
-  //   await placeShortOrder(symbol, maxSpendPerTrade);
-  // } else {
-  //   console.log(`No trade signal for ${symbol}`);
-  // }
+  if (decision?.decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision?.decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 setInterval(async () => {
@@ -520,8 +528,8 @@ setInterval(async () => {
   }
 }, 3000);
 
-// setInterval(async () => {
-//   for (const sym of symbols) {
-//     await checkOrders(sym);
-//   }
-// }, 4000);
+setInterval(async () => {
+  for (const sym of symbols) {
+    await checkOrders(sym);
+  }
+}, 4000);
