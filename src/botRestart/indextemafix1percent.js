@@ -1,6 +1,5 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { calculateTEMA } = require("../bot2/decide25TEMAFullworking");
 const { decide25TEMA } = require("./decide25TEMA");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { checkOrders } = require("./checkOrderFun2");
@@ -22,51 +21,56 @@ const STOP_LOSS_ROI = -1.5;
 const PROFIT_TRIGGER_ROI = 2;
 const PROFIT_LOCK_ROI = 1;
 
-async function getTEMAValues(symbol) {
+async function checkTEMACrossover(symbol, side) {
   try {
-    // Fetch historical klines (3-minute intervals)
-    const klines = await binance.futuresCandles(symbol, "3m", { limit: 50 });
+    // Get current and previous TEMA values to detect crossover
+    const klines = await binance.futuresCandles(symbol, "3m", { limit: 51 }); // Get one extra for previous values
+    const closes = klines.map((k) => parseFloat(k[4]));
 
-    // Extract closing prices
-    const closes = klines.map((k) => parseFloat(k[4])); // k[4] = close price
-
-    // Calculate TEMA 15 and TEMA 21 using your own function
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
 
-    if (tema15.length === 0 || tema21.length === 0) {
-      console.warn(`[${symbol}] Not enough data to calculate TEMA`);
-      return null;
+    if (tema15.length < 2 || tema21.length < 2) {
+      console.warn(`[${symbol}] Not enough data to calculate TEMA crossover`);
+      return false;
     }
 
-    // Get the latest TEMA values
-    const latestTEMA15 = tema15[tema15.length - 1];
-    const latestTEMA21 = tema21[tema21.length - 1];
+    // Current values
+    const currentTEMA15 = tema15[tema15.length - 1];
+    const currentTEMA21 = tema21[tema21.length - 1];
 
-    return {
-      tema15: latestTEMA15,
-      tema21: latestTEMA21,
-    };
-  } catch (error) {
-    console.error(`Error getting TEMA values for ${symbol}:`, error.message);
-    return null;
-  }
-}
+    // Previous values (to detect crossover)
+    const prevTEMA15 = tema15[tema15.length - 2];
+    const prevTEMA21 = tema21[tema21.length - 2];
 
-// Function to check for TEMA crossover
-async function checkTEMACrossover(symbol, side) {
-  try {
-    const temaValues = await getTEMAValues(symbol);
-    if (!temaValues) return false;
+    console.log(
+      `[${symbol}] Current TEMA15: ${currentTEMA15.toFixed(
+        4
+      )}, TEMA21: ${currentTEMA21.toFixed(4)}`
+    );
+    console.log(
+      `[${symbol}] Previous TEMA15: ${prevTEMA15.toFixed(
+        4
+      )}, TEMA21: ${prevTEMA21.toFixed(4)}`
+    );
 
-    const { tema15, tema21 } = temaValues;
-
-    // For LONG positions: exit when TEMA15 crosses below TEMA21
-    // For SHORT positions: exit when TEMA15 crosses above TEMA21
+    // For LONG positions: exit when TEMA15 crosses below TEMA21 (bearish crossover)
     if (side === "LONG") {
-      return tema15 < tema21; // TEMA15 below TEMA21 - bearish crossover
-    } else if (side === "SHORT") {
-      return tema15 > tema21; // TEMA15 above TEMA21 - bullish crossover
+      const bearishCrossover =
+        prevTEMA15 >= prevTEMA21 && currentTEMA15 < currentTEMA21;
+      console.log(
+        `[${symbol}] LONG - Checking bearish crossover: ${bearishCrossover}`
+      );
+      return bearishCrossover;
+    }
+    // For SHORT positions: exit when TEMA15 crosses above TEMA21 (bullish crossover)
+    else if (side === "SHORT") {
+      const bullishCrossover =
+        prevTEMA15 <= prevTEMA21 && currentTEMA15 > currentTEMA21;
+      console.log(
+        `[${symbol}] SHORT - Checking bullish crossover: ${bullishCrossover}`
+      );
+      return bullishCrossover;
     }
 
     return false;
@@ -79,51 +83,6 @@ async function checkTEMACrossover(symbol, side) {
   }
 }
 
-// Function to close position manually (market order)
-async function closePosition(symbol, tradeDetails) {
-  try {
-    const { side, quantity, objectId } = tradeDetails;
-    const qty = parseFloat(quantity);
-
-    const exchangeInfo = await binance.futuresExchangeInfo();
-    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    const quantityPrecision = symbolInfo.quantityPrecision;
-    const qtyFixed = qty.toFixed(quantityPrecision);
-
-    let closeOrder;
-    if (side === "LONG") {
-      // Close long position with market sell
-      closeOrder = await binance.futuresMarketSell(symbol, qtyFixed, {
-        reduceOnly: true,
-      });
-    } else if (side === "SHORT") {
-      // Close short position with market buy
-      closeOrder = await binance.futuresMarketBuy(symbol, qtyFixed, {
-        reduceOnly: true,
-      });
-    }
-
-    console.log(
-      `[${symbol}] Position closed via TEMA crossover: ${closeOrder.orderId}`
-    );
-
-    // Update database to mark trade as closed
-    await axios.put(`${API_ENDPOINT}${objectId}`, {
-      data: {
-        isClosed: true,
-        closeReason: "TEMA_CROSSOVER",
-        closeOrderId: closeOrder.orderId,
-      },
-    });
-
-    return true;
-  } catch (error) {
-    console.error(`Error closing position for ${symbol}:`, error.message);
-    return false;
-  }
-}
-
-// Modified function to handle profit locking and TEMA crossover monitoring
 async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
   try {
     const {
@@ -161,31 +120,146 @@ async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
     }
     roi = (pnl / margin) * 100;
 
-    console.log(`[${symbol}] ${side} ROI: ${roi.toFixed(2)}%`);
+    console.log(
+      `[${symbol}] ${side} ROI: ${roi.toFixed(2)}%, isProfit: ${isProfit}`
+    );
 
-    // Check if ROI > 1.5% and profits haven't been locked yet
+    // Check if ROI > 2% and profits haven't been locked yet
     if (roi > PROFIT_TRIGGER_ROI && !isProfit) {
+      console.log(
+        `[${symbol}] Profit trigger reached at ${roi.toFixed(2)}% ROI`
+      );
       await lockProfitsAtROI(symbol, tradeDetails, entryPrice, currentPrice);
       return;
     }
 
     // If profits are already locked (isProfit = true), monitor for TEMA crossover
     if (isProfit) {
+      console.log(
+        `[${symbol}] Monitoring for TEMA crossover exit (profits locked)`
+      );
       const shouldExit = await checkTEMACrossover(symbol, side);
+
       if (shouldExit) {
-        console.log(`[${symbol}] TEMA crossover detected - closing position`);
+        console.log(
+          `[${symbol}] ⚡ TEMA crossover detected - CLOSING POSITION ⚡`
+        );
 
         // Cancel existing stop loss orders first
-        const data = await cancelExistingStopOrders(symbol);
-        console.log("cancelExistingStopOrders", data);
+        const cancelResult = await cancelExistingStopOrders(symbol);
+        console.log(`[${symbol}] Cancel result:`, cancelResult);
 
         // Close position with market order
-        const data2 = await closePosition(symbol, tradeDetails);
-        console.log("cancelExistingStopOrders", data2);
+        const closeResult = await closePosition(symbol, tradeDetails);
+        console.log(`[${symbol}] Close result:`, closeResult);
+
+        if (closeResult) {
+          console.log(
+            `[${symbol}] ✅ Position successfully closed via TEMA crossover`
+          );
+        } else {
+          console.error(`[${symbol}] ❌ Failed to close position`);
+        }
+      } else {
+        console.log(`[${symbol}] No TEMA crossover detected yet`);
       }
     }
   } catch (err) {
     console.error(`[${symbol}] Error in manageProfitAndExit:`, err.message);
+  }
+}
+
+async function closePosition(symbol, tradeDetails) {
+  try {
+    const { side, quantity, objectId } = tradeDetails;
+    const qty = parseFloat(quantity);
+
+    // Verify we still have an open position
+    const positions = await binance.futuresPositionRisk({ symbol: symbol });
+    const position = positions.find((p) => p.symbol === symbol);
+    const positionSize = Math.abs(parseFloat(position.positionAmt));
+
+    if (positionSize === 0) {
+      console.log(`[${symbol}] No open position found - already closed`);
+      return true; // Consider it successful if already closed
+    }
+
+    console.log(
+      `[${symbol}] Current position size: ${positionSize}, Trade quantity: ${qty}`
+    );
+
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const quantityPrecision = symbolInfo.quantityPrecision;
+
+    // Use the actual position size instead of stored quantity (in case of partial fills)
+    const qtyToClose = Math.min(positionSize, qty).toFixed(quantityPrecision);
+
+    let closeOrder;
+    if (side === "LONG") {
+      // Close long position with market sell
+      closeOrder = await binance.futuresMarketSell(symbol, qtyToClose, {
+        reduceOnly: true,
+      });
+    } else if (side === "SHORT") {
+      // Close short position with market buy
+      closeOrder = await binance.futuresMarketBuy(symbol, qtyToClose, {
+        reduceOnly: true,
+      });
+    }
+
+    console.log(
+      `[${symbol}] Position closed via TEMA crossover - Order ID: ${closeOrder.orderId}`
+    );
+
+    // Update database to mark trade as closed
+    await axios.put(`${API_ENDPOINT}${objectId}`, {
+      data: { status: "1" },
+    });
+
+    return true;
+  } catch (error) {
+    console.error(`[${symbol}] Error closing position:`, error.message);
+    if (error.code === -2019) {
+      console.log(`[${symbol}] Position already closed (margin insufficient)`);
+      return true; // Consider successful if position is already closed
+    }
+    return false;
+  }
+}
+
+// 5. IMPROVED CANCEL ORDERS FUNCTION
+async function cancelExistingStopOrders(symbol) {
+  try {
+    const openOrders = await binance.futuresOpenOrders(symbol);
+    let canceledCount = 0;
+
+    for (const order of openOrders) {
+      if (order.type === "STOP_MARKET" && order.reduceOnly) {
+        try {
+          await binance.futuresCancel(symbol, order.orderId);
+          console.log(`[${symbol}] ✅ Canceled stop order: ${order.orderId}`);
+          canceledCount++;
+        } catch (cancelErr) {
+          if (cancelErr.code === -2011 || cancelErr.code === -1102) {
+            console.log(
+              `[${symbol}] Stop order ${order.orderId} already executed/canceled`
+            );
+          } else {
+            console.warn(
+              `[${symbol}] Failed to cancel ${order.orderId}: ${cancelErr.message}`
+            );
+          }
+        }
+      }
+    }
+
+    return { success: true, canceledCount };
+  } catch (error) {
+    console.warn(
+      `[${symbol}] Failed to fetch/cancel stop orders: ${error.message}`
+    );
+    return { success: false, error: error.message };
   }
 }
 
@@ -274,35 +348,6 @@ async function lockProfitsAtROI(
     console.error(`[${symbol}] Error locking profits:`, error.message);
   }
 }
-
-// Helper function to cancel existing stop orders
-async function cancelExistingStopOrders(symbol) {
-  try {
-    const openOrders = await binance.futuresOpenOrders(symbol);
-
-    for (const order of openOrders) {
-      if (order.type === "STOP_MARKET" && order.reduceOnly) {
-        try {
-          await binance.futuresCancel(symbol, order.orderId);
-          console.log(`[${symbol}] Canceled stop order: ${order.orderId}`);
-        } catch (cancelErr) {
-          if (cancelErr.code === -2011 || cancelErr.code === -1102) {
-            console.log(`[${symbol}] Stop order ${order.orderId} already gone`);
-          } else {
-            console.warn(
-              `[${symbol}] Failed to cancel ${order.orderId}: ${cancelErr.message}`
-            );
-          }
-        }
-      }
-    }
-  } catch (error) {
-    console.warn(
-      `[${symbol}] Failed to fetch/cancel stop orders: ${error.message}`
-    );
-  }
-}
-
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     try {
