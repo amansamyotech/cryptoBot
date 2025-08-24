@@ -1,36 +1,32 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { checkOrders } = require("./orderCheckFun.js");
-const { decide25TEMA, calculateTEMA } = require("./decide25TEMAFullworking.js");
+const { calculateTEMA } = require("../bot2/decide25TEMAFullworking");
+const { decide25TEMA } = require("./decide25TEMA");
+const { getUsdtBalance } = require("./helper/getBalance");
+const { checkOrders } = require("./checkOrderFun2");
 const isProcessing = {};
 
-const API_ENDPOINT = "http://localhost:3001/api/buySell/";
+const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
 const binance = new Binance().options({
-  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
-  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
+  APISECRET: "UpK4CPfKywFrAJDInCAXPmWVSiSs5xVVL2nDes8igCONl3cVgowDjMbQg64fm5pr",
   useServerTime: true,
   test: false,
 });
 
-const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
-
-async function getUsdtBalance() {
-  try {
-    const account = await binance.futuresBalance();
-    const usdtBalance = parseFloat(
-      account.find((asset) => asset.asset === "USDT")?.balance || 0
-    );
-    return usdtBalance;
-  } catch (err) {
-    console.error("Error fetching balance:", err);
-    return 0;
-  }
-}
+const symbols = [
+  "BNBUSDT",
+  "XRPUSDT",
+  "SOLUSDT",
+  "DOGEUSDT",
+  "SUIUSDT",
+  "INJUSDT",
+];
 
 const interval = "1m";
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -2;
+const STOP_LOSS_ROI = -1.5;
 const PROFIT_TRIGGER_ROI = 2;
 const PROFIT_LOCK_ROI = 1;
 
