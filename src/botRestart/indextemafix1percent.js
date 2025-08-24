@@ -15,15 +15,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = [
-  "BNBUSDT",
-  "XRPUSDT",
-  "SOLUSDT",
-  "DOGEUSDT",
-  "SUIUSDT",
-  "INJUSDT",
-];
-
+const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
@@ -522,7 +514,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 // Main trading interval
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 1;
+  const usableBalance = totalBalance - 5;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
