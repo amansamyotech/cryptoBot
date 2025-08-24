@@ -112,7 +112,7 @@ async function checkTEMACrossover(symbol, side) {
     // For LONG positions: exit when TEMA15 crosses below TEMA21 (bearish crossover)
     if (side === "LONG") {
       const bearishCrossover =
-        prevTEMA15 >= prevTEMA21 && currentTEMA15 < currentTEMA21;
+         currentTEMA15 < currentTEMA21;
       console.log(
         `[${symbol}] LONG - Checking bearish crossover: ${bearishCrossover}`
       );
@@ -121,7 +121,7 @@ async function checkTEMACrossover(symbol, side) {
     // For SHORT positions: exit when TEMA15 crosses above TEMA21 (bullish crossover)
     else if (side === "SHORT") {
       const bullishCrossover =
-        prevTEMA15 <= prevTEMA21 && currentTEMA15 > currentTEMA21;
+        currentTEMA15 > currentTEMA21;
       console.log(
         `[${symbol}] SHORT - Checking bullish crossover: ${bullishCrossover}`
       );
