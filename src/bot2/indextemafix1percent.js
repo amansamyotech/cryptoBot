@@ -83,7 +83,6 @@ async function checkTEMACrossover(symbol, side) {
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
 
-    console.log(`tema15 , tema21 `, tema15, tema21);
 
     if (tema15.length < 2 || tema21.length < 2) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA crossover`);
