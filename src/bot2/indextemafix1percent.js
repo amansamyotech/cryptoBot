@@ -1,7 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { TEMA } = require("technicalindicators");
-const { checkOrders } = require("./orderCheckFun");
+const { checkOrders } = require("./orderCheckFun.js");
 const { decide25TEMA, calculateTEMA } = require("./decide25TEMAFullworking.js");
 const isProcessing = {};
 
@@ -32,7 +32,8 @@ async function getUsdtBalance() {
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1;
-const PROFIT_LOCK_ROI = 1;
+const PROFIT_TRIGGER_ROI = 1; // Trigger profit locking at 1.5% ROI
+const PROFIT_LOCK_ROI = 0.5; // Lock profits at 1% ROI
 
 async function getTEMAValues(symbol) {
   try {
@@ -175,8 +176,8 @@ async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
 
     console.log(`[${symbol}] ${side} ROI: ${roi.toFixed(2)}%`);
 
-    // Check if ROI > 1% and profits haven't been locked yet
-    if (roi > PROFIT_LOCK_ROI && !isProfit) {
+    // Check if ROI > 1.5% and profits haven't been locked yet
+    if (roi > PROFIT_TRIGGER_ROI && !isProfit) {
       await lockProfitsAtROI(symbol, tradeDetails, entryPrice, currentPrice);
       return;
     }
@@ -371,7 +372,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
-      isProfit: false, // Initially false until +1% ROI is reached
+      isProfit: false, // Initially false until +1.5% ROI is reached
     };
 
     console.log(`buyOrderDetails`, buyOrderDetails);
@@ -468,7 +469,7 @@ async function placeShortOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
-      isProfit: false, // Initially false until +1% ROI is reached
+      isProfit: false, // Initially false until +1.5% ROI is reached
     };
 
     console.log(`shortOrderDetails`, shortOrderDetails);
