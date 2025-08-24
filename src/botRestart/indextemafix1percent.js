@@ -16,20 +16,74 @@ const binance = new Binance().options({
 });
 
 const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
+
+async function getUsdtBalance() {
+  try {
+    const account = await binance.futuresBalance();
+    const usdtBalance = parseFloat(
+      account.find((asset) => asset.asset === "USDT")?.balance || 0
+    );
+    return usdtBalance;
+  } catch (err) {
+    console.error("Error fetching balance:", err);
+    return 0;
+  }
+}
+
+function calculateTEMA(prices, period) {
+  if (!prices || prices.length < period) {
+    console.warn(
+      `Not enough data points for TEMA calculation. Need: ${period}, Have: ${prices.length}`
+    );
+    return [];
+  }
+
+  const k = 2 / (period + 1);
+  const ema1 = [];
+  const ema2 = [];
+  const ema3 = [];
+
+  // Calculate first EMA
+  ema1[0] = prices[0];
+  for (let i = 1; i < prices.length; i++) {
+    ema1[i] = prices[i] * k + ema1[i - 1] * (1 - k);
+  }
+
+  // Calculate second EMA (EMA of EMA1)
+  ema2[0] = ema1[0];
+  for (let i = 1; i < ema1.length; i++) {
+    ema2[i] = ema1[i] * k + ema2[i - 1] * (1 - k);
+  }
+
+  // Calculate third EMA (EMA of EMA2)
+  ema3[0] = ema2[0];
+  for (let i = 1; i < ema2.length; i++) {
+    ema3[i] = ema2[i] * k + ema3[i - 1] * (1 - k);
+  }
+
+  // Calculate TEMA
+  const tema = [];
+  for (let i = 0; i < prices.length; i++) {
+    tema[i] = 3 * ema1[i] - 3 * ema2[i] + ema3[i];
+  }
+
+  return tema;
+}
 const interval = "1m";
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -1.5;
+const STOP_LOSS_ROI = -1;
 const PROFIT_TRIGGER_ROI = 2;
-const PROFIT_LOCK_ROI = 1;
+const PROFIT_LOCK_ROI = 1.5;
 
+// Function to check for TEMA crossover
 async function checkTEMACrossover(symbol, side) {
   try {
     // Get current and previous TEMA values to detect crossover
     const candles = await getCandles(symbol, "1m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
-
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
+
 
     if (tema15.length < 2 || tema21.length < 2) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA crossover`);
@@ -58,7 +112,7 @@ async function checkTEMACrossover(symbol, side) {
     // For LONG positions: exit when TEMA15 crosses below TEMA21 (bearish crossover)
     if (side === "LONG") {
       const bearishCrossover =
-        prevTEMA15 >= prevTEMA21 && currentTEMA15 < currentTEMA21;
+         currentTEMA15 < currentTEMA21;
       console.log(
         `[${symbol}] LONG - Checking bearish crossover: ${bearishCrossover}`
       );
@@ -67,7 +121,7 @@ async function checkTEMACrossover(symbol, side) {
     // For SHORT positions: exit when TEMA15 crosses above TEMA21 (bullish crossover)
     else if (side === "SHORT") {
       const bullishCrossover =
-        prevTEMA15 <= prevTEMA21 && currentTEMA15 > currentTEMA21;
+        currentTEMA15 > currentTEMA21;
       console.log(
         `[${symbol}] SHORT - Checking bullish crossover: ${bullishCrossover}`
       );
@@ -349,6 +403,7 @@ async function lockProfitsAtROI(
     console.error(`[${symbol}] Error locking profits:`, error.message);
   }
 }
+
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     try {
@@ -560,7 +615,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 // Main trading interval
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 5;
+  const usableBalance = totalBalance - 1;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
