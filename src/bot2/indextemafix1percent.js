@@ -77,7 +77,7 @@ const PROFIT_LOCK_ROI = 1;
 async function checkTEMACrossover(symbol, side) {
   try {
     // Get current and previous TEMA values to detect crossover
-    const klines = await binance.futuresCandles(symbol, "3m", { limit: 51 }); // Get one extra for previous values
+    const klines = await binance.futuresCandles(symbol, "1m", { limit: 51 }); // Get one extra for previous values
     const closes = klines.map((k) => parseFloat(k[4]));
 
     const tema15 = calculateTEMA(closes, 15);
