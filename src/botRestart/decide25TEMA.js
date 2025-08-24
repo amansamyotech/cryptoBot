@@ -1,6 +1,6 @@
 const { getCandles } = require("./helper/getCandles");
 
-const TIMEFRAME_MAIN = "5m";
+const TIMEFRAME_MAIN = "3m";
 
 function calculateEMA(prices, period) {
   const k = 2 / (period + 1);
@@ -230,68 +230,64 @@ function isSidewaysMarket(
 async function decide25TEMA(symbol) {
   try {
     const candles = await getCandles(symbol, TIMEFRAME_MAIN, 1000);
-    if (candles.length < 300) {
-      // Ensure enough candles for TEMA300
+    if (candles.length < 50) {
       console.log("❌ Insufficient candles for analysis");
       return "HOLD";
     }
 
-    const closes = candles.map((c) => c.close);
-
-    // Calculate TEMA values
-    const tema25 = calculateTEMA(closes, 15);
-    const tema300 = calculateTEMA(closes, 300);
-
-    const lastPrice = closes.at(-1);
-    const lastTEMA25 = tema25.at(-1);
-    const prevTEMA25 = tema25.at(-2);
-    const lastTEMA300 = tema300.at(-1);
-
-    // Check sideways market first
     if (isSidewaysMarket(candles)) {
       console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
       return "HOLD";
     }
 
+    const closes = candles.map((c) => c.close);
+    const tema25 = calculateTEMA(closes, 25);
+
+    if (tema25.length < 2) {
+      console.log("❌ Insufficient TEMA data");
+      return "HOLD";
+    }
+
+    const lastPrice = closes.at(-1);
+    const lastTEMA25 = tema25.at(-1);
+    const prevTEMA25 = tema25.at(-2);
+
     // Calculate angle of TEMA(25)
-    const scaleFactor = 1000;
+    const scaleFactor = 1000; // Sensitivity for angle calculation
     const slope = ((lastTEMA25 - prevTEMA25) / prevTEMA25) * scaleFactor;
     const angleRadians = Math.atan(slope);
     const angleDegrees = angleRadians * (180 / Math.PI);
-    console.log(`📐 TEMA(25) angleDegrees: ${angleDegrees.toFixed(2)}°`);
+    console.log(`angleDegrees`, angleDegrees);
 
+    // Decision logic: Based on TEMA(25) position and angle
     let decision = "HOLD";
     let reason = "";
 
-    // TEMA300 filter logic
-    if (lastPrice > lastTEMA300) {
-      // Price above TEMA300 → Only LONG signals
-      if (lastTEMA25 < lastPrice && angleDegrees > 35) {
-        decision = "LONG";
-        reason = `Price above TEMA300. TEMA25 angle ${angleDegrees.toFixed(
-          2
-        )}° > 35°`;
-      } else {
-        reason = `Price above TEMA300 but conditions not met for LONG.`;
-      }
-    } else if (lastPrice < lastTEMA300) {
-      // Price below TEMA300 → Only SHORT signals
-      if (lastTEMA25 > lastPrice && angleDegrees < -35) {
-        decision = "SHORT";
-        reason = `Price below TEMA300. TEMA25 angle ${angleDegrees.toFixed(
-          2
-        )}° < -35°`;
-      } else {
-        reason = `Price below TEMA300 but conditions not met for SHORT.`;
-      }
+    if (lastTEMA25 < lastPrice && angleDegrees > 35) {
+      decision = "LONG";
+      reason = `Price (${lastPrice.toFixed(
+        2
+      )}) > TEMA(25) (${lastTEMA25.toFixed(
+        2
+      )}) and angle ${angleDegrees.toFixed(2)}° > 35°`;
+    } else if (lastTEMA25 > lastPrice && angleDegrees < -35) {
+      decision = "SHORT";
+      reason = `Price (${lastPrice.toFixed(
+        2
+      )}) < TEMA(25) (${lastTEMA25.toFixed(
+        2
+      )}) and angle ${angleDegrees.toFixed(2)}° < -35°`;
     } else {
-      reason = `Price at TEMA300 level. HOLD.`;
+      decision = "HOLD";
+      reason = `Conditions not met. TEMA(25): ${lastTEMA25.toFixed(
+        2
+      )}, Price: ${lastPrice.toFixed(2)}, Angle: ${angleDegrees.toFixed(2)}°`;
     }
 
     console.log(
-      `📊 Decision for ${symbol}: ${decision} (${reason}) | Price: ${lastPrice.toFixed(
+      `📐 TEMA(25) for ${symbol}: ${lastTEMA25.toFixed(
         2
-      )}, TEMA25: ${lastTEMA25.toFixed(2)}, TEMA300: ${lastTEMA300.toFixed(2)}`
+      )}, Angle: ${angleDegrees.toFixed(2)}°, Decision: ${decision} (${reason})`
     );
 
     return decision;
