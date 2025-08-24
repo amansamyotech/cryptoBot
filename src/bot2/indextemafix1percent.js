@@ -76,14 +76,13 @@ const PROFIT_LOCK_ROI = 1;
 
 // Function to check for TEMA crossover
 async function checkTEMACrossover(symbol, side) {
-  console.log(`symbol, side`,symbol, side);
   
   try {
     // Get current and previous TEMA values to detect crossover
     const candles = await getCandles(symbol, '1m', 1000);
-    console.log(`candles`,candles);
     
-    const closes = candles.map((k) => parseFloat(k[4]));
+    const closes = candles.map((k) => parseFloat(k.close));
+
 
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
