@@ -3,6 +3,7 @@ const axios = require("axios");
 const { decide25TEMA } = require("./decide25TEMA");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { checkOrders } = require("./checkOrderFun2");
+const { getCandles } = require("./helper/getCandles");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
@@ -24,8 +25,8 @@ const PROFIT_LOCK_ROI = 1;
 async function checkTEMACrossover(symbol, side) {
   try {
     // Get current and previous TEMA values to detect crossover
-    const klines = await binance.futuresCandles(symbol, "1m", { limit: 51 }); // Get one extra for previous values
-    const closes = klines.map((k) => parseFloat(k[4]));
+    const candles = await getCandles(symbol, "1m", 1000);
+    const closes = candles.map((k) => parseFloat(k.close));
 
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);

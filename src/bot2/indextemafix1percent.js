@@ -76,14 +76,10 @@ const PROFIT_LOCK_ROI = 1;
 
 // Function to check for TEMA crossover
 async function checkTEMACrossover(symbol, side) {
-  
   try {
     // Get current and previous TEMA values to detect crossover
-    const candles = await getCandles(symbol, '1m', 1000);
-    
+    const candles = await getCandles(symbol, "1m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
-
-
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
 
@@ -607,13 +603,13 @@ async function placeShortOrder(symbol, marginAmount) {
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
 
-  // if (decision === "LONG") {
-  //   await placeBuyOrder(symbol, maxSpendPerTrade);
-  // } else if (decision === "SHORT") {
-  //   await placeShortOrder(symbol, maxSpendPerTrade);
-  // } else {
-  //   console.log(`No trade signal for ${symbol}`);
-  // }
+  if (decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 // Main trading interval
@@ -636,7 +632,6 @@ setInterval(async () => {
 
         if (status == true) {
           await processSymbol(sym, maxSpendPerTrade);
-          await checkTEMACrossover(sym, "LONG");
         } else {
           console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
         }
