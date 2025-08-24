@@ -18,8 +18,8 @@ const binance = new Binance().options({
 const symbols = ["SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"];
 
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -1.5;
-const STOP_LOSS_CANCEL_ROI = 1;
+const STOP_LOSS_ROI = -1.1;
+const STOP_LOSS_CANCEL_ROI = 0.8;
 
 async function getTEMAValues(symbol) {
   try {
