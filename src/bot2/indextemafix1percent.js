@@ -1,7 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { checkOrders } = require("./orderCheckFun.js");
-const { decide25TEMA } = require("./decide25TEMAFullworking.js");
+const { decide25TEMA, calculateTEMA } = require("./decide25TEMAFullworking.js");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -28,45 +28,45 @@ async function getUsdtBalance() {
   }
 }
 
-function calculateTEMA(prices, period) {
-  if (!prices || prices.length < period) {
-    console.warn(
-      `Not enough data points for TEMA calculation. Need: ${period}, Have: ${prices.length}`
-    );
-    return [];
-  }
+// function calculateTEMA(prices, period) {
+//   if (!prices || prices.length < period) {
+//     console.warn(
+//       `Not enough data points for TEMA calculation. Need: ${period}, Have: ${prices.length}`
+//     );
+//     return [];
+//   }
 
-  const k = 2 / (period + 1);
-  const ema1 = [];
-  const ema2 = [];
-  const ema3 = [];
+//   const k = 2 / (period + 1);
+//   const ema1 = [];
+//   const ema2 = [];
+//   const ema3 = [];
 
-  // Calculate first EMA
-  ema1[0] = prices[0];
-  for (let i = 1; i < prices.length; i++) {
-    ema1[i] = prices[i] * k + ema1[i - 1] * (1 - k);
-  }
+//   // Calculate first EMA
+//   ema1[0] = prices[0];
+//   for (let i = 1; i < prices.length; i++) {
+//     ema1[i] = prices[i] * k + ema1[i - 1] * (1 - k);
+//   }
 
-  // Calculate second EMA (EMA of EMA1)
-  ema2[0] = ema1[0];
-  for (let i = 1; i < ema1.length; i++) {
-    ema2[i] = ema1[i] * k + ema2[i - 1] * (1 - k);
-  }
+//   // Calculate second EMA (EMA of EMA1)
+//   ema2[0] = ema1[0];
+//   for (let i = 1; i < ema1.length; i++) {
+//     ema2[i] = ema1[i] * k + ema2[i - 1] * (1 - k);
+//   }
 
-  // Calculate third EMA (EMA of EMA2)
-  ema3[0] = ema2[0];
-  for (let i = 1; i < ema2.length; i++) {
-    ema3[i] = ema2[i] * k + ema3[i - 1] * (1 - k);
-  }
+//   // Calculate third EMA (EMA of EMA2)
+//   ema3[0] = ema2[0];
+//   for (let i = 1; i < ema2.length; i++) {
+//     ema3[i] = ema2[i] * k + ema3[i - 1] * (1 - k);
+//   }
 
-  // Calculate TEMA
-  const tema = [];
-  for (let i = 0; i < prices.length; i++) {
-    tema[i] = 3 * ema1[i] - 3 * ema2[i] + ema3[i];
-  }
+//   // Calculate TEMA
+//   const tema = [];
+//   for (let i = 0; i < prices.length; i++) {
+//     tema[i] = 3 * ema1[i] - 3 * ema2[i] + ema3[i];
+//   }
 
-  return tema;
-}
+//   return tema;
+// }
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
@@ -82,6 +82,8 @@ async function checkTEMACrossover(symbol, side) {
 
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
+
+    console.log(`tema15 , tema21 `, tema15, tema21);
 
     if (tema15.length < 2 || tema21.length < 2) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA crossover`);
@@ -601,13 +603,13 @@ async function placeShortOrder(symbol, marginAmount) {
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
 
-  if (decision === "LONG") {
-    await placeBuyOrder(symbol, maxSpendPerTrade);
-  } else if (decision === "SHORT") {
-    await placeShortOrder(symbol, maxSpendPerTrade);
-  } else {
-    console.log(`No trade signal for ${symbol}`);
-  }
+  // if (decision === "LONG") {
+  //   await placeBuyOrder(symbol, maxSpendPerTrade);
+  // } else if (decision === "SHORT") {
+  //   await placeShortOrder(symbol, maxSpendPerTrade);
+  // } else {
+  //   console.log(`No trade signal for ${symbol}`);
+  // }
 }
 
 // Main trading interval
@@ -630,6 +632,7 @@ setInterval(async () => {
 
         if (status == true) {
           await processSymbol(sym, maxSpendPerTrade);
+          await checkTEMACrossover(sym, "LONG");
         } else {
           console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
         }
