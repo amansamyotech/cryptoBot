@@ -32,7 +32,7 @@ async function getUsdtBalance() {
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
-const PROFIT_LOCK_ROI = 1.5;
+const PROFIT_LOCK_ROI = 1;
 
 async function getTEMAValues(symbol) {
   try {

@@ -15,6 +15,7 @@ const binance = new Binance().options({
   test: false,
 });
 
+
 const symbols = ["SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"];
 
 const LEVERAGE = 3;
