@@ -1,7 +1,8 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { checkOrders } = require("./orderCheckFun.js");
-const { decide25TEMA, calculateTEMA } = require("./decide25TEMAFullworking.js");
+const { decide25TEMA } = require("./decide25TEMAFullworking.js");
+const { getCandles } = require("./helper/getCandles.js");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -28,45 +29,45 @@ async function getUsdtBalance() {
   }
 }
 
-// function calculateTEMA(prices, period) {
-//   if (!prices || prices.length < period) {
-//     console.warn(
-//       `Not enough data points for TEMA calculation. Need: ${period}, Have: ${prices.length}`
-//     );
-//     return [];
-//   }
+function calculateTEMA(prices, period) {
+  if (!prices || prices.length < period) {
+    console.warn(
+      `Not enough data points for TEMA calculation. Need: ${period}, Have: ${prices.length}`
+    );
+    return [];
+  }
 
-//   const k = 2 / (period + 1);
-//   const ema1 = [];
-//   const ema2 = [];
-//   const ema3 = [];
+  const k = 2 / (period + 1);
+  const ema1 = [];
+  const ema2 = [];
+  const ema3 = [];
 
-//   // Calculate first EMA
-//   ema1[0] = prices[0];
-//   for (let i = 1; i < prices.length; i++) {
-//     ema1[i] = prices[i] * k + ema1[i - 1] * (1 - k);
-//   }
+  // Calculate first EMA
+  ema1[0] = prices[0];
+  for (let i = 1; i < prices.length; i++) {
+    ema1[i] = prices[i] * k + ema1[i - 1] * (1 - k);
+  }
 
-//   // Calculate second EMA (EMA of EMA1)
-//   ema2[0] = ema1[0];
-//   for (let i = 1; i < ema1.length; i++) {
-//     ema2[i] = ema1[i] * k + ema2[i - 1] * (1 - k);
-//   }
+  // Calculate second EMA (EMA of EMA1)
+  ema2[0] = ema1[0];
+  for (let i = 1; i < ema1.length; i++) {
+    ema2[i] = ema1[i] * k + ema2[i - 1] * (1 - k);
+  }
 
-//   // Calculate third EMA (EMA of EMA2)
-//   ema3[0] = ema2[0];
-//   for (let i = 1; i < ema2.length; i++) {
-//     ema3[i] = ema2[i] * k + ema3[i - 1] * (1 - k);
-//   }
+  // Calculate third EMA (EMA of EMA2)
+  ema3[0] = ema2[0];
+  for (let i = 1; i < ema2.length; i++) {
+    ema3[i] = ema2[i] * k + ema3[i - 1] * (1 - k);
+  }
 
-//   // Calculate TEMA
-//   const tema = [];
-//   for (let i = 0; i < prices.length; i++) {
-//     tema[i] = 3 * ema1[i] - 3 * ema2[i] + ema3[i];
-//   }
+  // Calculate TEMA
+  const tema = [];
+  for (let i = 0; i < prices.length; i++) {
+    tema[i] = 3 * ema1[i] - 3 * ema2[i] + ema3[i];
+  }
 
-//   return tema;
-// }
+  return tema;
+}
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1.5;
@@ -77,8 +78,8 @@ const PROFIT_LOCK_ROI = 1;
 async function checkTEMACrossover(symbol, side) {
   try {
     // Get current and previous TEMA values to detect crossover
-    const klines = await binance.futuresCandles(symbol, "1m", { limit: 51 }); // Get one extra for previous values
-    const closes = klines.map((k) => parseFloat(k[4]));
+    const candles = await getCandles(symbol, '1m', 1000);
+    const closes = candles.map((k) => parseFloat(k[4]));
 
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
