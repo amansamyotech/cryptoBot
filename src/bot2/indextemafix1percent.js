@@ -79,6 +79,8 @@ async function checkTEMACrossover(symbol, side) {
   try {
     // Get current and previous TEMA values to detect crossover
     const candles = await getCandles(symbol, '1m', 1000);
+    console.log(`candles`,candles);
+    
     const closes = candles.map((k) => parseFloat(k[4]));
 
     const tema15 = calculateTEMA(closes, 15);
