@@ -553,14 +553,14 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 4500);
+}, 6000);
 
 // Order checking interval
 setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 2000);
+}, 4000);
 
 // Profit management and exit monitoring interval
 setInterval(async () => {
@@ -609,4 +609,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 1000);
+}, 3000);
