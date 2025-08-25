@@ -600,7 +600,7 @@ setInterval(async () => {
 
 async function createTradeDetail() {
   try {
-    const newTrade = new TradeDetail({
+    const newTrade = new TradeDetails({
       symbol: "BTCUSDT",
       side: "LONG",
       placeOrderId: "1234567890",
