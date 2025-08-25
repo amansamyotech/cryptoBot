@@ -15,20 +15,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
-
-async function getUsdtBalance() {
-  try {
-    const account = await binance.futuresBalance();
-    const usdtBalance = parseFloat(
-      account.find((asset) => asset.asset === "USDT")?.balance || 0
-    );
-    return usdtBalance;
-  } catch (err) {
-    console.error("Error fetching balance:", err);
-    return 0;
-  }
-}
+const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT", "PEPEUSDT"];
 
 function calculateTEMA(prices, period) {
   if (!prices || prices.length < period) {
@@ -72,8 +59,8 @@ function calculateTEMA(prices, period) {
 const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -1;
-const PROFIT_TRIGGER_ROI = 2;
-const PROFIT_LOCK_ROI = 1.5;
+const PROFIT_TRIGGER_ROI = 1.5;
+const PROFIT_LOCK_ROI = 1;
 
 // Function to check for TEMA crossover
 async function checkTEMACrossover(symbol, side) {
@@ -83,7 +70,6 @@ async function checkTEMACrossover(symbol, side) {
     const closes = candles.map((k) => parseFloat(k.close));
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
-
 
     if (tema15.length < 2 || tema21.length < 2) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA crossover`);
@@ -111,8 +97,7 @@ async function checkTEMACrossover(symbol, side) {
 
     // For LONG positions: exit when TEMA15 crosses below TEMA21 (bearish crossover)
     if (side === "LONG") {
-      const bearishCrossover =
-         currentTEMA15 < currentTEMA21;
+      const bearishCrossover = currentTEMA15 < currentTEMA21;
       console.log(
         `[${symbol}] LONG - Checking bearish crossover: ${bearishCrossover}`
       );
@@ -120,8 +105,7 @@ async function checkTEMACrossover(symbol, side) {
     }
     // For SHORT positions: exit when TEMA15 crosses above TEMA21 (bullish crossover)
     else if (side === "SHORT") {
-      const bullishCrossover =
-        currentTEMA15 > currentTEMA21;
+      const bullishCrossover = currentTEMA15 > currentTEMA21;
       console.log(
         `[${symbol}] SHORT - Checking bullish crossover: ${bullishCrossover}`
       );
@@ -615,7 +599,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 // Main trading interval
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 1;
+  const usableBalance = totalBalance - 4;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
