@@ -458,7 +458,7 @@ async function placeShortOrder(symbol, marginAmount) {
 
     console.log(`shortOrderDetails`, shortOrderDetails);
 
-    const createdTrade = await TradeDetails.create(buyOrderDetails);
+    const createdTrade = await TradeDetails.create(shortOrderDetails);
     console.log(`Trade Created:`, createdTrade);
     const tradeId = createdTrade._id;
 
@@ -501,14 +501,15 @@ async function placeShortOrder(symbol, marginAmount) {
 
 async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
+  console.log(`decision`, decision);
 
-  if (decision === "LONG") {
-    await placeBuyOrder(symbol, maxSpendPerTrade);
-  } else if (decision === "SHORT") {
-    await placeShortOrder(symbol, maxSpendPerTrade);
-  } else {
-    console.log(`No trade signal for ${symbol}`);
-  }
+    if (decision === "LONG") {
+      await placeBuyOrder(symbol, maxSpendPerTrade);
+    } else if (decision === "SHORT") {
+      await placeShortOrder(symbol, maxSpendPerTrade);
+    } else {
+      console.log(`No trade signal for ${symbol}`);
+    }
 }
 
 setInterval(async () => {
@@ -600,6 +601,3 @@ setInterval(async () => {
 //     }
 //   }
 // }, 3000);
-
-
-
