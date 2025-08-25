@@ -631,10 +631,9 @@ async function createTrade() {
   }
 }
 
-mongoose.connection.once("open", () => {
   console.log(`hii`);
 
   createTrade();
 
   console.log(`MongoDB connected!`);
-});
+
