@@ -4,6 +4,10 @@ const { decide25TEMA } = require("./helper/decision.js");
 const { getUsdtBalance } = require("./helper/getBalance.js");
 const { checkTEMACrossover } = require("./helper/checkTEMACrossover.js");
 const TradeDetails = require("../backend/models/tradeDetails.js");
+const mongoose = require("../backend/db.js");
+mongoose.connection.once("open", () => {
+  console.log("MongoDB connection is open!");
+});
 
 const {
   LEVERAGE,
@@ -508,38 +512,38 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 }
 
-// setInterval(async () => {
-//   const totalBalance = await getUsdtBalance();
-//   const usableBalance = totalBalance - 1;
-//   const maxSpendPerTrade = usableBalance / symbols.length;
+setInterval(async () => {
+  const totalBalance = await getUsdtBalance();
+  const usableBalance = totalBalance - 1;
+  const maxSpendPerTrade = usableBalance / symbols.length;
 
-//   console.log(`Total Balance: ${totalBalance} USDT`);
-//   console.log(`Usable Balance: ${usableBalance} USDT`);
-//   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
-//   if (maxSpendPerTrade >= 1.6) {
-//     for (const sym of symbols) {
-//       try {
-//         const trades = await TradeDetails.find({
-//           symbol: sym,
-//           status: "0",
-//           createdBy: ENVUSERID,
-//         });
-//         console.log(`trades`, trades);
+  console.log(`Total Balance: ${totalBalance} USDT`);
+  console.log(`Usable Balance: ${usableBalance} USDT`);
+  console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
+  if (maxSpendPerTrade >= 1.6) {
+    for (const sym of symbols) {
+      try {
+        const trades = await TradeDetails.find({
+          symbol: sym,
+          status: "0",
+          createdBy: ENVUSERID,
+        });
+        console.log(`trades`, trades);
 
-//         let status = trades.length;
-//         if (!status) {
-//           await processSymbol(sym, maxSpendPerTrade);
-//         } else {
-//           console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
-//         }
-//       } catch (err) {
-//         console.error(`Error with ${sym}:`, err.message);
-//       }
-//     }
-//   } else {
-//     console.log("not enough amount");
-//   }
-// }, 6000);
+        let status = trades.length;
+        if (!status) {
+          await processSymbol(sym, maxSpendPerTrade);
+        } else {
+          console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+        }
+      } catch (err) {
+        console.error(`Error with ${sym}:`, err.message);
+      }
+    }
+  } else {
+    console.log("not enough amount");
+  }
+}, 6000);
 
 // setInterval(async () => {
 //   for (const sym of symbols) {
@@ -627,11 +631,10 @@ async function createTrade() {
   }
 }
 
-mongoose.connection.once('open', () => {
-    console.log(`hii`);
-    
+mongoose.connection.once("open", () => {
+  console.log(`hii`);
+
   createTrade();
 
   console.log(`MongoDB connected!`);
 });
-
