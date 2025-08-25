@@ -28,12 +28,12 @@ const binance = new Binance().options({
 const ENVUSERID = process.env.USER_ID || "68a5c721b414893e08247236";
 
 async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
-    console.log(`tradeDetails`,tradeDetails);
-    
+  console.log(`tradeDetails`, tradeDetails);
+
   try {
     const {
       stopLossOrderId,
-      objectId,
+      _id: objectId,
       side,
       quantity,
       stopLossPrice: oldStopLoss,
@@ -117,7 +117,7 @@ async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
 
 async function closePosition(symbol, tradeDetails) {
   try {
-    const { side, quantity, objectId } = tradeDetails;
+    const { side, quantity, _id: objectId } = tradeDetails;
     const qty = parseFloat(quantity);
 
     // Verify we still have an open position
@@ -217,8 +217,13 @@ async function lockProfitsAtROI(
   currentPrice
 ) {
   try {
-    const { stopLossOrderId, objectId, side, quantity, marginUsed } =
-      tradeDetails;
+    const {
+      stopLossOrderId,
+      _id: objectId,
+      side,
+      quantity,
+      marginUsed,
+    } = tradeDetails;
 
     const margin = parseFloat(marginUsed);
     const qty = parseFloat(quantity);
@@ -505,13 +510,13 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
   console.log(`decision`, decision);
 
-    if (decision === "LONG") {
-      await placeBuyOrder(symbol, maxSpendPerTrade);
-    } else if (decision === "SHORT") {
-      await placeShortOrder(symbol, maxSpendPerTrade);
-    } else {
-      console.log(`No trade signal for ${symbol}`);
-    }
+  if (decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
 }
 
 setInterval(async () => {
@@ -586,13 +591,13 @@ setInterval(async () => {
         const priceMap = await binance.futuresPrices();
         const currentPrice = parseFloat(priceMap[sym]);
 
-        const tradeResponse = await TradeDetails.find({
+        const tradeResponse = await TradeDetails.findOne({
           symbol: sym,
           status: "0",
           createdBy: ENVUSERID,
         });
 
-        if (tradeResponse.length) {
+        if (tradeResponse) {
           await manageProfitAndExit(sym, tradeResponse, currentPrice);
         }
       }
