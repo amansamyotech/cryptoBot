@@ -548,8 +548,7 @@ setInterval(async () => {
         });
         console.log(`trades`, trades);
 
-        let status = trades.length;
-        if (!status) {
+        if (!trades) {
           await processSymbol(sym, maxSpendPerTrade);
         } else {
           console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
@@ -586,9 +585,7 @@ setInterval(async () => {
         createdBy: ENVUSERID,
       });
 
-      let status = trades.length;
-
-      if (status) {
+      if (trades) {
         // Trade is open
         if (isProcessing[sym]) {
           console.log(
