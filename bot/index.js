@@ -16,7 +16,6 @@ const {
   PROFIT_LOCK_ROI,
   symbols,
 } = require("./config/const.js");
-const { default: mongoose } = require("mongoose");
 const isProcessing = {};
 
 const binance = new Binance().options({
