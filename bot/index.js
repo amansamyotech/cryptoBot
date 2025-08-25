@@ -539,59 +539,59 @@ setInterval(async () => {
   }
 }, 6000);
 
-setInterval(async () => {
-  for (const sym of symbols) {
-    await checkOrders(sym);
-  }
-}, 4000);
+// setInterval(async () => {
+//   for (const sym of symbols) {
+//     await checkOrders(sym);
+//   }
+// }, 4000);
 
-setInterval(async () => {
-  for (const sym of symbols) {
-    try {
-      const trades = await TradeDetailsSchema.find({
-        symbol: sym,
-        status: "0",
-        createdBy: ENVUSERID,
-      });
+// setInterval(async () => {
+//   for (const sym of symbols) {
+//     try {
+//       const trades = await TradeDetailsSchema.find({
+//         symbol: sym,
+//         status: "0",
+//         createdBy: ENVUSERID,
+//       });
 
-      let status = trades.length;
+//       let status = trades.length;
 
-      if (status) {
-        // Trade is open
-        if (isProcessing[sym]) {
-          console.log(
-            `[${sym}] Skipping profit management — already processing.`
-          );
-          continue;
-        }
-        isProcessing[sym] = true;
+//       if (status) {
+//         // Trade is open
+//         if (isProcessing[sym]) {
+//           console.log(
+//             `[${sym}] Skipping profit management — already processing.`
+//           );
+//           continue;
+//         }
+//         isProcessing[sym] = true;
 
-        // Confirm position is still open
-        const positions = await binance.futuresPositionRisk({ symbol: sym });
-        const pos = positions.find((p) => p.symbol === sym);
-        if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
-          console.log(`[${sym}] Position already closed. Skipping.`);
-          continue;
-        }
+//         // Confirm position is still open
+//         const positions = await binance.futuresPositionRisk({ symbol: sym });
+//         const pos = positions.find((p) => p.symbol === sym);
+//         if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
+//           console.log(`[${sym}] Position already closed. Skipping.`);
+//           continue;
+//         }
 
-        // Get current price and trade details
-        const priceMap = await binance.futuresPrices();
-        const currentPrice = parseFloat(priceMap[sym]);
+//         // Get current price and trade details
+//         const priceMap = await binance.futuresPrices();
+//         const currentPrice = parseFloat(priceMap[sym]);
 
-        const tradeResponse = await TradeDetailsSchema.find({
-          symbol: sym,
-          status: "0",
-          createdBy: ENVUSERID,
-        });
+//         const tradeResponse = await TradeDetailsSchema.find({
+//           symbol: sym,
+//           status: "0",
+//           createdBy: ENVUSERID,
+//         });
 
-        if (tradeResponse.length) {
-          await manageProfitAndExit(sym, tradeResponse, currentPrice);
-        }
-      }
-    } catch (err) {
-      console.error(`Error with ${sym}:`, err.message);
-    } finally {
-      isProcessing[sym] = false;
-    }
-  }
-}, 3000);
+//         if (tradeResponse.length) {
+//           await manageProfitAndExit(sym, tradeResponse, currentPrice);
+//         }
+//       }
+//     } catch (err) {
+//       console.error(`Error with ${sym}:`, err.message);
+//     } finally {
+//       isProcessing[sym] = false;
+//     }
+//   }
+// }, 3000);
