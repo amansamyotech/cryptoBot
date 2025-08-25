@@ -224,14 +224,14 @@ async function decide25TEMA(symbol) {
     let decision = "HOLD";
     let reason = "";
 
-    if (lastTEMA25 < lastPrice && angleDegrees > 40) {
+    if (lastTEMA25 < lastPrice && angleDegrees > 30) {
       decision = "LONG";
       reason = `Price (${lastPrice.toFixed(
         2
       )}) > TEMA(25) (${lastTEMA25.toFixed(
         2
       )}) and angle ${angleDegrees.toFixed(2)}° > 35°`;
-    } else if (lastTEMA25 > lastPrice && angleDegrees < -40) {
+    } else if (lastTEMA25 > lastPrice && angleDegrees < -30) {
       decision = "SHORT";
       reason = `Price (${lastPrice.toFixed(
         2
