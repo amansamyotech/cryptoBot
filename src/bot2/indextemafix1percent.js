@@ -70,9 +70,9 @@ function calculateTEMA(prices, period) {
 }
 const interval = "1m";
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -1;
-const PROFIT_TRIGGER_ROI = 1.5;
-const PROFIT_LOCK_ROI = 1;
+const STOP_LOSS_ROI = -1.5;
+const PROFIT_TRIGGER_ROI = 2.5;
+const PROFIT_LOCK_ROI = 2;
 
 // Function to check for TEMA crossover
 async function checkTEMACrossover(symbol, side) {
@@ -82,7 +82,6 @@ async function checkTEMACrossover(symbol, side) {
     const closes = candles.map((k) => parseFloat(k.close));
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
-
 
     if (tema15.length < 2 || tema21.length < 2) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA crossover`);
@@ -110,8 +109,7 @@ async function checkTEMACrossover(symbol, side) {
 
     // For LONG positions: exit when TEMA15 crosses below TEMA21 (bearish crossover)
     if (side === "LONG") {
-      const bearishCrossover =
-         currentTEMA15 < currentTEMA21;
+      const bearishCrossover = currentTEMA15 < currentTEMA21;
       console.log(
         `[${symbol}] LONG - Checking bearish crossover: ${bearishCrossover}`
       );
@@ -119,8 +117,7 @@ async function checkTEMACrossover(symbol, side) {
     }
     // For SHORT positions: exit when TEMA15 crosses above TEMA21 (bullish crossover)
     else if (side === "SHORT") {
-      const bullishCrossover =
-        currentTEMA15 > currentTEMA21;
+      const bullishCrossover = currentTEMA15 > currentTEMA21;
       console.log(
         `[${symbol}] SHORT - Checking bullish crossover: ${bullishCrossover}`
       );
