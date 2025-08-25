@@ -598,9 +598,9 @@ setInterval(async () => {
 //   }
 // }, 3000);
 
-async function createTradeDetail() {
+async function createTrade() {
   try {
-    const newTrade = new TradeDetails({
+    await TradeDetails.create({
       symbol: "BTCUSDT",
       side: "LONG",
       placeOrderId: "1234567890",
@@ -618,15 +618,15 @@ async function createTradeDetail() {
       profitOrderId: "5566778899",
       ShortTimeCurrentPrice: mongoose.Types.Decimal128.fromString("0"),
       status: "0",
-      createdBy: new mongoose.Types.ObjectId("68a5c721b414893e08247236"), // replace with real UserId
+      createdBy: new mongoose.Types.ObjectId("68a5c721b414893e08247236"),
     });
-
-    const savedTrade = await newTrade.save();
-
-    console.log("Trade detail saved successfully!", savedTrade);
-  } catch (error) {
-    console.error("Error saving trade detail:", error);
+    console.log("Trade inserted successfully!");
+  } catch (err) {
+    console.error("Insertion error:", err);
   }
 }
 
-createTradeDetail();
+mongoose.connection.once('open', () => {
+  createTrade();
+});
+
