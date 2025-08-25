@@ -522,6 +522,8 @@ setInterval(async () => {
           status: "0",
           createdBy: ENVUSERID,
         });
+        console.log(`trades`, trades);
+
         let status = trades.length;
         if (!status) {
           await processSymbol(sym, maxSpendPerTrade);
