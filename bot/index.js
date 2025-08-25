@@ -5,7 +5,6 @@ const { getUsdtBalance } = require("./helper/getBalance.js");
 const { checkTEMACrossover } = require("./helper/checkTEMACrossover.js");
 const TradeDetails = require("../backend/models/tradeDetails.js");
 
-
 const {
   LEVERAGE,
   STOP_LOSS_ROI,
@@ -519,11 +518,7 @@ setInterval(async () => {
   if (maxSpendPerTrade >= 1.6) {
     for (const sym of symbols) {
       try {
-        const trades = await TradeDetails.find({
-          symbol: sym,
-          status: "0",
-          createdBy: ENVUSERID,
-        });
+        const trades = await TradeDetails.find();
         console.log(`trades`, trades);
 
         let status = trades.length;
