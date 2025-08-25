@@ -616,7 +616,7 @@ TradeDetails.insertOne({
   profitOrderId: "5566778899",
   ShortTimeCurrentPrice: mongoose.Types.Decimal128.fromString("0"),
   status: "0",
-  createdBy: mongoose.Types.ObjectId("68a5c721b414893e08247236"), // <-- replace this with your actual User ID
+  createdBy: new mongoose.Types.ObjectId("68a5c721b414893e08247236"), // <-- replace this with your actual User ID
   createdAt: new Date(),
   updatedAt: new Date(),
 });
