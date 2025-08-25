@@ -72,4 +72,5 @@ const TradeDetailsSchema = new Schema(
   }
 );
 
-module.exports = model("tradeDetail", TradeDetailsSchema);
+const TradeDetail = model("tradeDetail", TradeDetailsSchema);
+module.exports = TradeDetail;

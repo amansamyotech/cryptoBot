@@ -3,7 +3,9 @@ const { checkOrders } = require("./orderUpdate.js");
 const { decide25TEMA } = require("./helper/decision.js");
 const { getUsdtBalance } = require("./helper/getBalance.js");
 const { checkTEMACrossover } = require("./helper/checkTEMACrossover.js");
-const { TradeDetailsSchema } = require("../backend/models/tradeDetails.js");
+const TradeDetails = require("../backend/models/tradeDetails.js");
+
+
 const {
   LEVERAGE,
   STOP_LOSS_ROI,
@@ -151,7 +153,7 @@ async function closePosition(symbol, tradeDetails) {
       `[${symbol}] Position closed via TEMA crossover - Order ID: ${closeOrder.orderId}`
     );
 
-    await TradeDetailsSchema.findOneAndUpdate(
+    await TradeDetails.findOneAndUpdate(
       { _id: objectId, createdBy: ENVUSERID },
       { status: "1" }
     );
@@ -275,7 +277,7 @@ async function lockProfitsAtROI(
     );
 
     // Update database
-    await TradeDetailsSchema.findOneAndUpdate(
+    await TradeDetails.findOneAndUpdate(
       { _id: objectId, createdBy: ENVUSERID },
       {
         stopLossPrice: newStopPrice,
@@ -351,7 +353,7 @@ async function placeBuyOrder(symbol, marginAmount) {
 
     console.log(`buyOrderDetails`, buyOrderDetails);
 
-    const createdTrade = await TradeDetailsSchema.create(buyOrderDetails);
+    const createdTrade = await TradeDetails.create(buyOrderDetails);
     console.log(`Trade Created:`, createdTrade);
     const tradeId = createdTrade._id;
 
@@ -453,7 +455,7 @@ async function placeShortOrder(symbol, marginAmount) {
 
     console.log(`shortOrderDetails`, shortOrderDetails);
 
-    const createdTrade = await TradeDetailsSchema.create(buyOrderDetails);
+    const createdTrade = await TradeDetails.create(buyOrderDetails);
     console.log(`Trade Created:`, createdTrade);
     const tradeId = createdTrade._id;
 
@@ -480,7 +482,7 @@ async function placeShortOrder(symbol, marginAmount) {
 
     console.log(`details`, details);
 
-    await TradeDetailsSchema.findOneAndUpdate(
+    await TradeDetails.findOneAndUpdate(
       { _id: tradeId, createdBy: ENVUSERID },
       {
         $set: {
@@ -517,7 +519,7 @@ setInterval(async () => {
   if (maxSpendPerTrade >= 1.6) {
     for (const sym of symbols) {
       try {
-        const trades = await TradeDetailsSchema.find({
+        const trades = await TradeDetails.find({
           symbol: sym,
           status: "0",
           createdBy: ENVUSERID,
@@ -548,7 +550,7 @@ setInterval(async () => {
 // setInterval(async () => {
 //   for (const sym of symbols) {
 //     try {
-//       const trades = await TradeDetailsSchema.find({
+//       const trades = await TradeDetails.find({
 //         symbol: sym,
 //         status: "0",
 //         createdBy: ENVUSERID,
@@ -578,7 +580,7 @@ setInterval(async () => {
 //         const priceMap = await binance.futuresPrices();
 //         const currentPrice = parseFloat(priceMap[sym]);
 
-//         const tradeResponse = await TradeDetailsSchema.find({
+//         const tradeResponse = await TradeDetails.find({
 //           symbol: sym,
 //           status: "0",
 //           createdBy: ENVUSERID,
