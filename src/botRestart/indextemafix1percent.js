@@ -15,7 +15,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["SOLUSDT", "INJUSDT", "BOIUSDT", "DOGEUSDT", "ONTUSDT"];
+const symbols = ["SOLUSDT", "INJUSDT", "BIOUSDT", "DOGEUSDT", "ONTUSDT"];
 
 function calculateTEMA(prices, period) {
   if (!prices || prices.length < period) {
