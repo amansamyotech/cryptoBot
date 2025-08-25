@@ -598,6 +598,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 //   }
 // }, 3000);
 
+console.log(`Connecting to MongoDB...`);
 async function createTrade() {
   try {
     await TradeDetails.create({
