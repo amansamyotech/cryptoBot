@@ -25,7 +25,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const ENVUSERID = process.env.USER_ID || "68a5c721b414893e08247236";
+const ENVUSERID = process.env.USER_ID || "68abfbaefba13b46a8c12f99";
 
 async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
   console.log(`tradeDetails`, tradeDetails);
@@ -541,7 +541,7 @@ setInterval(async () => {
   if (maxSpendPerTrade >= 1.6) {
     for (const sym of symbols) {
       try {
-        const trades = await TradeDetails.find({
+        const trades = await TradeDetails.findOne({
           symbol: sym,
           status: "0",
           createdBy: ENVUSERID,
@@ -565,14 +565,22 @@ setInterval(async () => {
 
 setInterval(async () => {
   for (const sym of symbols) {
-    await checkOrders(sym);
+    const trades = await TradeDetails.findOne({
+      symbol: sym,
+      status: "0",
+      createdBy: ENVUSERID,
+    });
+
+    if (trades) {
+      await checkOrders(sym);
+    }
   }
 }, 4000);
 
 setInterval(async () => {
   for (const sym of symbols) {
     try {
-      const trades = await TradeDetails.find({
+      const trades = await TradeDetails.findOne({
         symbol: sym,
         status: "0",
         createdBy: ENVUSERID,
