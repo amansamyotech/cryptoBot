@@ -123,11 +123,22 @@ async function closePosition(symbol, tradeDetails) {
     // Verify we still have an open position
     const positions = await binance.futuresPositionRisk({ symbol: symbol });
     const position = positions.find((p) => p.symbol === symbol);
+
+    if (!position || position.positionAmt === undefined) {
+      console.warn(`[${symbol}] Position data not found or undefined`);
+
+      await TradeDetails.findOneAndUpdate(
+        { _id: objectId, createdBy: ENVUSERID },
+        { status: "1" }
+      );
+
+      return true;
+    }
     const positionSize = Math.abs(parseFloat(position.positionAmt));
 
     if (positionSize === 0) {
       console.log(`[${symbol}] No open position found - already closed`);
-      return true; // Consider it successful if already closed
+      return true;
     }
 
     console.log(
