@@ -28,6 +28,8 @@ const binance = new Binance().options({
 const ENVUSERID = process.env.USER_ID || "68a5c721b414893e08247236";
 
 async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
+    console.log(`tradeDetails`,tradeDetails);
+    
   try {
     const {
       stopLossOrderId,
