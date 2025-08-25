@@ -20,7 +20,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const ENVUSERID = process.env.USER_ID || "68abfd1efba13b46a8c12fad";
+const ENVUSERID = process.env.USER_ID || "68a5c721b414893e08247236";
 
 async function manageProfitAndExit(symbol, tradeDetails, currentPrice) {
   try {
