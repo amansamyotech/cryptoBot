@@ -1,6 +1,6 @@
 const Binance = require("node-binance-api");
 
-const { TradeDetailsSchema } = require("../backend/models/tradeDetails.js");
+const TradeDetails = require("../backend/models/tradeDetails.js");
 
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
@@ -12,8 +12,8 @@ const binance = new Binance().options({
 const ENVUSERID = process.env.USER_ID || "68a5c721b414893e08247236";
 async function checkOrders(symbol) {
   try {
-    const foundTread = await TradeDetailsSchema.findOne({
-      symbol: symbol,
+    const foundTread = await TradeDetails.findOne({
+      symbol,
       createdBy: ENVUSERID,
     });
 
@@ -39,7 +39,7 @@ async function checkOrders(symbol) {
     ) {
       console.log(`Stop loss order filled for ${symbol}`);
 
-      await TradeDetailsSchema.findOneAndUpdate(
+      await TradeDetails.findOneAndUpdate(
         {
           _id: objectId,
           createdBy: ENVUSERID,
