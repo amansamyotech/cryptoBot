@@ -12,6 +12,7 @@ const {
   PROFIT_LOCK_ROI,
   symbols,
 } = require("./config/const.js");
+const { default: mongoose } = require("mongoose");
 const isProcessing = {};
 
 const binance = new Binance().options({
@@ -602,7 +603,7 @@ TradeDetails.insertOne({
   side: "LONG",
   placeOrderId: "1234567890",
   quantity: "0.01",
-  LongTimeCoinPrice: NumberDecimal("30000.50"),
+  LongTimeCoinPrice: mongoose.Types.Decimal128.fromString("30000.50"),
   stopLossPrice: "29500.00",
   isProfit: false,
   stopLossCancelled: false,
@@ -613,7 +614,7 @@ TradeDetails.insertOne({
   leverage: "10",
   marginUsed: "100",
   profitOrderId: "5566778899",
-  ShortTimeCurrentPrice: NumberDecimal("0"),
+  ShortTimeCurrentPrice: mongoose.Types.Decimal128.fromString("0"),
   status: "0",
   createdBy: ObjectId("68a5c721b414893e08247236"), // <-- replace this with your actual User ID
   createdAt: new Date(),
