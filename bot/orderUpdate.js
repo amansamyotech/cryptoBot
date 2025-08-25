@@ -20,16 +20,13 @@ async function checkOrders(symbol) {
     if (!foundTread) return;
     console.log(`foundTread`, foundTread);
 
-    const { tradeDetails } = response.data?.data;
-    const { stopLossOrderId, objectId } = tradeDetails;
-
-    if (!stopLossOrderId) {
+    if (!foundTread?.stopLossOrderId) {
       console.log(`No stopLossOrderId found for ${symbol}`);
       return;
     }
 
     const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: parseInt(stopLossOrderId),
+      orderId: parseInt(foundTread?.stopLossOrderId),
     });
     console.log(`stopLossStatus`, stopLossStatus?.status);
 
@@ -41,7 +38,7 @@ async function checkOrders(symbol) {
 
       await TradeDetails.findOneAndUpdate(
         {
-          _id: objectId,
+          _id: foundTread?._id,
           createdBy: ENVUSERID,
         },
         { status: "1" },

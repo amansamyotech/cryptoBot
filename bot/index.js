@@ -503,13 +503,13 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await decide25TEMA(symbol);
   console.log(`decision`, decision);
 
-//   if (decision === "LONG") {
-//     await placeBuyOrder(symbol, maxSpendPerTrade);
-//   } else if (decision === "SHORT") {
-//     await placeShortOrder(symbol, maxSpendPerTrade);
-//   } else {
-//     console.log(`No trade signal for ${symbol}`);
-//   }
+  //   if (decision === "LONG") {
+  //     await placeBuyOrder(symbol, maxSpendPerTrade);
+  //   } else if (decision === "SHORT") {
+  //     await placeShortOrder(symbol, maxSpendPerTrade);
+  //   } else {
+  //     console.log(`No trade signal for ${symbol}`);
+  //   }
 }
 
 setInterval(async () => {
@@ -551,53 +551,53 @@ setInterval(async () => {
   }
 }, 4000);
 
-// setInterval(async () => {
-//   for (const sym of symbols) {
-//     try {
-//       const trades = await TradeDetails.find({
-//         symbol: sym,
-//         status: "0",
-//         createdBy: ENVUSERID,
-//       });
+setInterval(async () => {
+  for (const sym of symbols) {
+    try {
+      const trades = await TradeDetails.find({
+        symbol: sym,
+        status: "0",
+        createdBy: ENVUSERID,
+      });
 
-//       let status = trades.length;
+      let status = trades.length;
 
-//       if (status) {
-//         // Trade is open
-//         if (isProcessing[sym]) {
-//           console.log(
-//             `[${sym}] Skipping profit management — already processing.`
-//           );
-//           continue;
-//         }
-//         isProcessing[sym] = true;
+      if (status) {
+        // Trade is open
+        if (isProcessing[sym]) {
+          console.log(
+            `[${sym}] Skipping profit management — already processing.`
+          );
+          continue;
+        }
+        isProcessing[sym] = true;
 
-//         // Confirm position is still open
-//         const positions = await binance.futuresPositionRisk({ symbol: sym });
-//         const pos = positions.find((p) => p.symbol === sym);
-//         if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
-//           console.log(`[${sym}] Position already closed. Skipping.`);
-//           continue;
-//         }
+        // Confirm position is still open
+        const positions = await binance.futuresPositionRisk({ symbol: sym });
+        const pos = positions.find((p) => p.symbol === sym);
+        if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
+          console.log(`[${sym}] Position already closed. Skipping.`);
+          continue;
+        }
 
-//         // Get current price and trade details
-//         const priceMap = await binance.futuresPrices();
-//         const currentPrice = parseFloat(priceMap[sym]);
+        // Get current price and trade details
+        const priceMap = await binance.futuresPrices();
+        const currentPrice = parseFloat(priceMap[sym]);
 
-//         const tradeResponse = await TradeDetails.find({
-//           symbol: sym,
-//           status: "0",
-//           createdBy: ENVUSERID,
-//         });
+        const tradeResponse = await TradeDetails.find({
+          symbol: sym,
+          status: "0",
+          createdBy: ENVUSERID,
+        });
 
-//         if (tradeResponse.length) {
-//           await manageProfitAndExit(sym, tradeResponse, currentPrice);
-//         }
-//       }
-//     } catch (err) {
-//       console.error(`Error with ${sym}:`, err.message);
-//     } finally {
-//       isProcessing[sym] = false;
-//     }
-//   }
-// }, 3000);
+        if (tradeResponse.length) {
+          await manageProfitAndExit(sym, tradeResponse, currentPrice);
+        }
+      }
+    } catch (err) {
+      console.error(`Error with ${sym}:`, err.message);
+    } finally {
+      isProcessing[sym] = false;
+    }
+  }
+}, 3000);
