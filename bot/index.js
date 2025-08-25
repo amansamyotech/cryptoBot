@@ -601,38 +601,5 @@ setInterval(async () => {
 //   }
 // }, 3000);
 
-console.log(`Connecting to MongoDB...`);
-async function createTrade() {
-  try {
-    await TradeDetails.create({
-      symbol: "BTCUSDT",
-      side: "LONG",
-      placeOrderId: "1234567890",
-      quantity: "0.01",
-      LongTimeCoinPrice: mongoose.Types.Decimal128.fromString("30000.50"),
-      stopLossPrice: "29500.00",
-      isProfit: false,
-      stopLossCancelled: false,
-      isBreakevenSet: false,
-      stopLossOrderId: "9876543210",
-      takeProfitOrderId: "1122334455",
-      takeProfitPrice: "31000.00",
-      leverage: "10",
-      marginUsed: "100",
-      profitOrderId: "5566778899",
-      ShortTimeCurrentPrice: mongoose.Types.Decimal128.fromString("0"),
-      status: "0",
-      createdBy: new mongoose.Types.ObjectId("68a5c721b414893e08247236"),
-    });
-    console.log("Trade inserted successfully!");
-  } catch (err) {
-    console.error("Insertion error:", err);
-  }
-}
 
-  console.log(`hii`);
-
-  createTrade();
-
-  console.log(`MongoDB connected!`);
 
