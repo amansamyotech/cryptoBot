@@ -58,9 +58,9 @@ function calculateTEMA(prices, period) {
 }
 const interval = "1m";
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -1;
-const PROFIT_TRIGGER_ROI = 1.5;
-const PROFIT_LOCK_ROI = 1;
+const STOP_LOSS_ROI = -1.5;
+const PROFIT_TRIGGER_ROI = 2;
+const PROFIT_LOCK_ROI = 1.5;
 
 // Function to check for TEMA crossover
 async function checkTEMACrossover(symbol, side) {
