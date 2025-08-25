@@ -14,7 +14,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["TRXUSDT", "QTUMUSDT", "DOGEUSDT", "LDOUSDT"];
+const symbols = ["TRXUSDT", "QTUMUSDT", "BIOUSDT", "DOGEUSDT", "LDOUSDT"];
 
 async function getUsdtBalance() {
   try {
@@ -611,7 +611,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 // Main trading interval
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 1;
+  const usableBalance = totalBalance - 0.4;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
