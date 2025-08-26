@@ -5,12 +5,16 @@ const TradeDetailsSchema = new Schema(
   {
     symbol: {
       type: String,
+      required: true,
     },
-    side: { type: String },
+    side: {
+      type: String,
+      required: true,
+    },
     placeOrderId: {
       type: String,
+      required: true,
     },
-
     quantity: {
       type: String,
     },
@@ -32,7 +36,6 @@ const TradeDetailsSchema = new Schema(
       type: Boolean,
       default: false,
     },
-
     stopLossOrderId: {
       type: String,
     },
@@ -51,11 +54,9 @@ const TradeDetailsSchema = new Schema(
     profitOrderId: {
       type: String,
     },
-
     ShortTimeCurrentPrice: {
       type: Types.Decimal128,
     },
-
     status: {
       type: String,
       default: "0",
@@ -66,7 +67,6 @@ const TradeDetailsSchema = new Schema(
       required: true,
     },
   },
-
   {
     timestamps: true,
   }
