@@ -500,4 +500,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 30000);
+}, 3000);
