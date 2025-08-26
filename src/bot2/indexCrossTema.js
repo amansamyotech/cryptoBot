@@ -3,8 +3,12 @@ const axios = require("axios");
 const { getCandles } = require("./helper/getCandles.js");
 const isProcessing = {};
 
+const BUFFER_PERCENTAGE = 0.00025;
+
+const lastProcessedCandleEntry = {};
+const lastProcessedCandleExit = {};
+
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
-const TEMA_BUFFER = 0.0005
 
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
@@ -26,6 +30,18 @@ async function getUsdtBalance() {
     console.error("Error fetching balance:", err);
     return 0;
   }
+}
+
+function getTEMApercentage(tema15, tema21) {
+  const total = tema15 + tema21;
+
+  const percent15 = (tema15 / total) * 100;
+  const percent21 = (tema21 / total) * 100;
+
+  return {
+    percent15,
+    percent21,
+  };
 }
 
 function calculateTEMA(prices, period) {
@@ -67,7 +83,37 @@ function calculateTEMA(prices, period) {
 
   return tema;
 }
+
 const LEVERAGE = 3;
+
+// Function to check if a new candle has formed
+async function hasNewCandleFormed(symbol, type = "entry") {
+  try {
+    const candles = await getCandles(symbol, "5m", 2);
+    if (candles.length < 2) return false;
+
+    const latestCandleTime = candles[candles.length - 1].openTime;
+    const trackingObject =
+      type === "entry" ? lastProcessedCandleEntry : lastProcessedCandleExit;
+    const lastProcessed = trackingObject[symbol];
+
+    // If this is the first check or we have a new candle
+    if (!lastProcessed || latestCandleTime > lastProcessed) {
+      console.log(
+        `[${symbol}] New candle detected for ${type} at ${new Date(
+          latestCandleTime
+        ).toISOString()}`
+      );
+      trackingObject[symbol] = latestCandleTime;
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error(`Error checking new candle for ${symbol}:`, error.message);
+    return false;
+  }
+}
 
 // Function to check TEMA conditions for entry
 async function checkTEMAEntry(symbol) {
@@ -85,19 +131,26 @@ async function checkTEMAEntry(symbol) {
     const currentTEMA15 = tema15[tema15.length - 1];
     const currentTEMA21 = tema21[tema21.length - 1];
 
+    const { percent15, percent21 } = getTEMApercentage(
+      currentTEMA15,
+      currentTEMA21
+    );
+    console.log(`percent15`, percent15);
+    console.log(`percent21 `, percent21);
+
     console.log(
-      `[${symbol}] Current TEMA15: ${currentTEMA15.toFixed(
-        4
-      )}, TEMA21: ${currentTEMA21.toFixed(4)}`
+      `[${symbol}] Current TEMA15: ${percent15.toFixed(
+        5
+      )}, TEMA21: ${percent21.toFixed(5)}`
     );
 
-    // Long entry: TEMA15 > TEMA21
-    if (currentTEMA15 > currentTEMA21 + TEMA_BUFFER) {
+    //  Long entry: TEMA15 > TEMA21
+    if (percent15 > percent21 + BUFFER_PERCENTAGE) {
       console.log(`[${symbol}] LONG signal - TEMA15 > TEMA21`);
       return "LONG";
     }
-    // Short entry: TEMA21 > TEMA15
-    else if (currentTEMA21 > currentTEMA15 + +TEMA_BUFFER) {
+    //    Short entry: TEMA21 > TEMA15
+    else if (percent21 > percent15 + BUFFER_PERCENTAGE) {
       console.log(`[${symbol}] SHORT signal - TEMA21 > TEMA15`);
       return "SHORT";
     }
@@ -125,19 +178,24 @@ async function checkTEMAExit(symbol, side) {
     const currentTEMA15 = tema15[tema15.length - 1];
     const currentTEMA21 = tema21[tema21.length - 1];
 
+    const { percent15, percent21 } = getTEMApercentage(
+      currentTEMA15,
+      currentTEMA21
+    );
+
     console.log(
-      `[${symbol}] Exit check - TEMA15: ${currentTEMA15.toFixed(
+      `[${symbol}] Exit check - TEMA15: ${percent15.toFixed(
         4
-      )}, TEMA21: ${currentTEMA21.toFixed(4)}`
+      )}, TEMA21: ${percent21.toFixed(5)}`
     );
 
     // Long exit: TEMA21 > TEMA15
-    if (side === "LONG" && currentTEMA21 > currentTEMA15) {
+    if (side === "LONG" && percent21 > percent15 + BUFFER_PERCENTAGE) {
       console.log(`[${symbol}] LONG exit signal - TEMA21 > TEMA15`);
       return true;
     }
     // Short exit: TEMA15 > TEMA21
-    else if (side === "SHORT" && currentTEMA15 > currentTEMA21) {
+    else if (side === "SHORT" && percent15 > percent21 + BUFFER_PERCENTAGE) {
       console.log(`[${symbol}] SHORT exit signal - TEMA15 > TEMA21`);
       return true;
     }
@@ -330,20 +388,30 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
+  // Check if a new candle has formed before making entry decision
+  const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
+
+  if (!hasNewCandle) {
+    console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
+    return;
+  }
+
   const decision = await checkTEMAEntry(symbol);
 
   if (decision === "LONG") {
+    console.log(`[${symbol}] 🚀 Executing LONG entry after candle close`);
     await placeBuyOrder(symbol, maxSpendPerTrade);
   } else if (decision === "SHORT") {
+    console.log(`[${symbol}] 🔻 Executing SHORT entry after candle close`);
     await placeShortOrder(symbol, maxSpendPerTrade);
   } else {
-    console.log(`No trade signal for ${symbol}`);
+    console.log(`[${symbol}] No trade signal after candle close`);
   }
 }
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 1;
+  const usableBalance = totalBalance - 4;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
@@ -390,11 +458,21 @@ setInterval(async () => {
         }
         isProcessing[sym] = true;
 
+        // Check if a new candle has formed before checking exit conditions
+        const hasNewCandle = await hasNewCandleFormed(sym);
+
+        if (!hasNewCandle) {
+          console.log(`[${sym}] No new candle formed yet, skipping exit check`);
+          isProcessing[sym] = false;
+          continue;
+        }
+
         // Confirm position is still open
         const positions = await binance.futuresPositionRisk({ symbol: sym });
         const pos = positions.find((p) => p.symbol === sym);
         if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
           console.log(`[${sym}] Position already closed. Skipping.`);
+          isProcessing[sym] = false;
           continue;
         }
 
@@ -410,7 +488,7 @@ setInterval(async () => {
 
           if (shouldExit) {
             console.log(
-              `[${sym}] ⚡ TEMA exit condition met - CLOSING POSITION ⚡`
+              `[${sym}] ⚡ TEMA exit condition met after candle close - CLOSING POSITION ⚡`
             );
 
             const closeResult = await closePosition(sym, tradeDetails);
@@ -422,7 +500,9 @@ setInterval(async () => {
               console.error(`[${sym}] ❌ Failed to close position`);
             }
           } else {
-            console.log(`[${sym}] TEMA exit condition not met yet`);
+            console.log(
+              `[${sym}] TEMA exit condition not met after candle close`
+            );
           }
         }
       }
