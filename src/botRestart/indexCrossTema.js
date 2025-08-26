@@ -14,7 +14,7 @@ const binance = new Binance().options({
 });
 
 // const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
-const symbols = ["DOGEUSDT"];
+const symbols = ["SOLUSDT"];
 
 function getTEMApercentage(tema15, tema21) {
   const total = tema15 + tema21;
