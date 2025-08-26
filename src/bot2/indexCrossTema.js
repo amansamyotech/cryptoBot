@@ -1,0 +1,434 @@
+const Binance = require("node-binance-api");
+const axios = require("axios");
+const { getCandles } = require("./helper/getCandles.js");
+const isProcessing = {};
+
+const API_ENDPOINT = "http://localhost:3001/api/buySell/";
+
+const binance = new Binance().options({
+  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  useServerTime: true,
+  test: false,
+});
+
+const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
+
+async function getUsdtBalance() {
+  try {
+    const account = await binance.futuresBalance();
+    const usdtBalance = parseFloat(
+      account.find((asset) => asset.asset === "USDT")?.balance || 0
+    );
+    return usdtBalance;
+  } catch (err) {
+    console.error("Error fetching balance:", err);
+    return 0;
+  }
+}
+
+function calculateTEMA(prices, period) {
+  if (!prices || prices.length < period) {
+    console.warn(
+      `Not enough data points for TEMA calculation. Need: ${period}, Have: ${prices.length}`
+    );
+    return [];
+  }
+
+  const k = 2 / (period + 1);
+  const ema1 = [];
+  const ema2 = [];
+  const ema3 = [];
+
+  // Calculate first EMA
+  ema1[0] = prices[0];
+  for (let i = 1; i < prices.length; i++) {
+    ema1[i] = prices[i] * k + ema1[i - 1] * (1 - k);
+  }
+
+  // Calculate second EMA (EMA of EMA1)
+  ema2[0] = ema1[0];
+  for (let i = 1; i < ema1.length; i++) {
+    ema2[i] = ema1[i] * k + ema2[i - 1] * (1 - k);
+  }
+
+  // Calculate third EMA (EMA of EMA2)
+  ema3[0] = ema2[0];
+  for (let i = 1; i < ema2.length; i++) {
+    ema3[i] = ema2[i] * k + ema3[i - 1] * (1 - k);
+  }
+
+  // Calculate TEMA
+  const tema = [];
+  for (let i = 0; i < prices.length; i++) {
+    tema[i] = 3 * ema1[i] - 3 * ema2[i] + ema3[i];
+  }
+
+  return tema;
+}
+const LEVERAGE = 3;
+
+// Function to check TEMA conditions for entry
+async function checkTEMAEntry(symbol) {
+  try {
+    const candles = await getCandles(symbol, "5m", 1000);
+    const closes = candles.map((k) => parseFloat(k.close));
+    const tema15 = calculateTEMA(closes, 15);
+    const tema21 = calculateTEMA(closes, 21);
+
+    if (tema15.length < 1 || tema21.length < 1) {
+      console.warn(`[${symbol}] Not enough data to calculate TEMA`);
+      return "HOLD";
+    }
+
+    const currentTEMA15 = tema15[tema15.length - 1];
+    const currentTEMA21 = tema21[tema21.length - 1];
+
+    console.log(
+      `[${symbol}] Current TEMA15: ${currentTEMA15.toFixed(
+        4
+      )}, TEMA21: ${currentTEMA21.toFixed(4)}`
+    );
+
+    // Long entry: TEMA15 > TEMA21
+    if (currentTEMA15 > currentTEMA21) {
+      console.log(`[${symbol}] LONG signal - TEMA15 > TEMA21`);
+      return "LONG";
+    }
+    // Short entry: TEMA21 > TEMA15
+    else if (currentTEMA21 > currentTEMA15) {
+      console.log(`[${symbol}] SHORT signal - TEMA21 > TEMA15`);
+      return "SHORT";
+    }
+
+    return "HOLD";
+  } catch (error) {
+    console.error(`Error checking TEMA entry for ${symbol}:`, error.message);
+    return "HOLD";
+  }
+}
+
+// Function to check TEMA conditions for exit
+async function checkTEMAExit(symbol, side) {
+  try {
+    const candles = await getCandles(symbol, "5m", 1000);
+    const closes = candles.map((k) => parseFloat(k.close));
+    const tema15 = calculateTEMA(closes, 15);
+    const tema21 = calculateTEMA(closes, 21);
+
+    if (tema15.length < 1 || tema21.length < 1) {
+      console.warn(`[${symbol}] Not enough data to calculate TEMA for exit`);
+      return false;
+    }
+
+    const currentTEMA15 = tema15[tema15.length - 1];
+    const currentTEMA21 = tema21[tema21.length - 1];
+
+    console.log(
+      `[${symbol}] Exit check - TEMA15: ${currentTEMA15.toFixed(
+        4
+      )}, TEMA21: ${currentTEMA21.toFixed(4)}`
+    );
+
+    // Long exit: TEMA21 > TEMA15
+    if (side === "LONG" && currentTEMA21 > currentTEMA15) {
+      console.log(`[${symbol}] LONG exit signal - TEMA21 > TEMA15`);
+      return true;
+    }
+    // Short exit: TEMA15 > TEMA21
+    else if (side === "SHORT" && currentTEMA15 > currentTEMA21) {
+      console.log(`[${symbol}] SHORT exit signal - TEMA15 > TEMA21`);
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error(`Error checking TEMA exit for ${symbol}:`, error.message);
+    return false;
+  }
+}
+
+async function closePosition(symbol, tradeDetails) {
+  try {
+    const { side, quantity, objectId } = tradeDetails;
+    const qty = parseFloat(quantity);
+
+    // Verify we still have an open position
+    const positions = await binance.futuresPositionRisk({ symbol: symbol });
+    const position = positions.find((p) => p.symbol === symbol);
+    const positionSize = Math.abs(parseFloat(position.positionAmt));
+
+    if (positionSize === 0) {
+      console.log(`[${symbol}] No open position found - already closed`);
+      return true;
+    }
+
+    console.log(
+      `[${symbol}] Current position size: ${positionSize}, Trade quantity: ${qty}`
+    );
+
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const quantityPrecision = symbolInfo.quantityPrecision;
+
+    const qtyToClose = Math.min(positionSize, qty).toFixed(quantityPrecision);
+
+    let closeOrder;
+    if (side === "LONG") {
+      closeOrder = await binance.futuresMarketSell(symbol, qtyToClose, {
+        reduceOnly: true,
+      });
+    } else if (side === "SHORT") {
+      closeOrder = await binance.futuresMarketBuy(symbol, qtyToClose, {
+        reduceOnly: true,
+      });
+    }
+
+    console.log(
+      `[${symbol}] Position closed via TEMA exit - Order ID: ${closeOrder.orderId}`
+    );
+
+    // Update database to mark trade as closed
+    await axios.put(`${API_ENDPOINT}${objectId}`, {
+      data: { status: "1" },
+    });
+
+    return true;
+  } catch (error) {
+    console.error(`[${symbol}] Error closing position:`, error.message);
+    if (error.code === -2019) {
+      console.log(`[${symbol}] Position already closed (margin insufficient)`);
+      return true;
+    }
+    return false;
+  }
+}
+
+async function placeBuyOrder(symbol, marginAmount) {
+  try {
+    try {
+      await binance.futuresMarginType(symbol, "ISOLATED");
+      console.log(`[${symbol}] Margin type set to ISOLATED.`);
+    } catch (err) {
+      const msg = err?.body || err?.message || "";
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
+      } else {
+        console.warn(`[${symbol}] Error setting margin type:`, msg);
+      }
+    }
+    await binance.futuresLeverage(symbol, LEVERAGE);
+    console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
+
+    const price = (await binance.futuresPrices())[symbol];
+    const entryPrice = parseFloat(price);
+    const positionValue = marginAmount * LEVERAGE;
+    const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
+
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const quantityPrecision = symbolInfo.quantityPrecision;
+    const qtyFixed = quantity.toFixed(quantityPrecision);
+
+    console.log(`LONG Order Details for ${symbol}:`);
+    console.log(`Entry Price: ${entryPrice}`);
+    console.log(`Quantity: ${qtyFixed}`);
+    console.log(`Margin Used: ${marginAmount}`);
+    console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
+
+    const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
+    console.log(`Bought ${symbol} at ${entryPrice}`);
+
+    const buyOrderDetails = {
+      side: "LONG",
+      symbol,
+      quantity: qtyFixed,
+      LongTimeCoinPrice: entryPrice,
+      placeOrderId: buyOrder.orderId,
+      marginUsed: marginAmount,
+      leverage: LEVERAGE,
+      positionValue: positionValue,
+    };
+
+    console.log(`buyOrderDetails`, buyOrderDetails);
+
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: buyOrderDetails,
+    });
+    console.log(`Trade Response:`, tradeResponse?.data);
+  } catch (error) {
+    console.error(`Error placing LONG order for ${symbol}:`, error);
+  }
+}
+
+async function placeShortOrder(symbol, marginAmount) {
+  try {
+    try {
+      await binance.futuresMarginType(symbol, "ISOLATED");
+      console.log(`[${symbol}] Margin type set to ISOLATED.`);
+    } catch (err) {
+      const msg = err?.body || err?.message || "";
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
+      } else {
+        console.warn(`[${symbol}] Error setting margin type:`, msg);
+      }
+    }
+    await binance.futuresLeverage(symbol, LEVERAGE);
+    console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
+
+    const price = (await binance.futuresPrices())[symbol];
+    const entryPrice = parseFloat(price);
+    const positionValue = marginAmount * LEVERAGE;
+    const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
+
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const quantityPrecision = symbolInfo.quantityPrecision;
+    const qtyFixed = quantity.toFixed(quantityPrecision);
+
+    console.log(`SHORT Order Details for ${symbol}:`);
+    console.log(`Entry Price: ${entryPrice}`);
+    console.log(`Quantity: ${qtyFixed}`);
+    console.log(`Margin Used: ${marginAmount}`);
+    console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
+
+    const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
+    console.log(`Shorted ${symbol} at ${entryPrice}`);
+
+    const shortOrderDetails = {
+      side: "SHORT",
+      symbol,
+      quantity: qtyFixed,
+      ShortTimeCurrentPrice: entryPrice,
+      placeOrderId: shortOrder.orderId,
+      marginUsed: marginAmount,
+      leverage: LEVERAGE,
+      positionValue: positionValue,
+    };
+
+    console.log(`shortOrderDetails`, shortOrderDetails);
+
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: shortOrderDetails,
+    });
+    console.log(`Trade Response:`, tradeResponse?.data);
+  } catch (error) {
+    console.error(`Error placing SHORT order for ${symbol}:`, error);
+  }
+}
+
+async function processSymbol(symbol, maxSpendPerTrade) {
+  const decision = await checkTEMAEntry(symbol);
+
+  if (decision === "LONG") {
+    await placeBuyOrder(symbol, maxSpendPerTrade);
+  } else if (decision === "SHORT") {
+    await placeShortOrder(symbol, maxSpendPerTrade);
+  } else {
+    console.log(`No trade signal for ${symbol}`);
+  }
+}
+
+setInterval(async () => {
+  const totalBalance = await getUsdtBalance();
+  const usableBalance = totalBalance - 1;
+  const maxSpendPerTrade = usableBalance / symbols.length;
+
+  console.log(`Total Balance: ${totalBalance} USDT`);
+  console.log(`Usable Balance: ${usableBalance} USDT`);
+  console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
+  if (maxSpendPerTrade >= 1.6) {
+    for (const sym of symbols) {
+      try {
+        const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+          symbols: sym,
+        });
+
+        let status = response?.data?.data.status;
+
+        if (status == true) {
+          await processSymbol(sym, maxSpendPerTrade);
+        } else {
+          console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+        }
+      } catch (err) {
+        console.error(`Error with ${sym}:`, err.message);
+      }
+    }
+  } else {
+    console.log("not enough amount");
+  }
+}, 6000);
+
+// Exit monitoring interval
+setInterval(async () => {
+  for (const sym of symbols) {
+    try {
+      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+        symbols: sym,
+      });
+
+      let status = response?.data?.data.status;
+
+      if (status === false) {
+        // Trade is open
+        if (isProcessing[sym]) {
+          console.log(`[${sym}] Skipping exit check — already processing.`);
+          continue;
+        }
+        isProcessing[sym] = true;
+
+        // Confirm position is still open
+        const positions = await binance.futuresPositionRisk({ symbol: sym });
+        const pos = positions.find((p) => p.symbol === sym);
+        if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
+          console.log(`[${sym}] Position already closed. Skipping.`);
+          continue;
+        }
+
+        // Get trade details
+        const tradeResponse = await axios.get(
+          `${API_ENDPOINT}find-treads/${sym}`
+        );
+        const { found, tradeDetails } = tradeResponse.data?.data;
+
+        if (found) {
+          // Check TEMA exit condition
+          const shouldExit = await checkTEMAExit(sym, tradeDetails.side);
+
+          if (shouldExit) {
+            console.log(
+              `[${sym}] ⚡ TEMA exit condition met - CLOSING POSITION ⚡`
+            );
+
+            const closeResult = await closePosition(sym, tradeDetails);
+            if (closeResult) {
+              console.log(
+                `[${sym}] ✅ Position successfully closed via TEMA exit`
+              );
+            } else {
+              console.error(`[${sym}] ❌ Failed to close position`);
+            }
+          } else {
+            console.log(`[${sym}] TEMA exit condition not met yet`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`Error with ${sym}:`, err.message);
+    } finally {
+      isProcessing[sym] = false;
+    }
+  }
+}, 3000);
