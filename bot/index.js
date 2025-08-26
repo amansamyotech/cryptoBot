@@ -642,7 +642,7 @@ const leverage = parseInt(process.env.LEVERAGE);
 const stopLossRoi = parseFloat(process.env.STOP_LOSS_ROI);
 const profitTriggerRoi = parseFloat(process.env.PROFIT_TRIGGER_ROI);
 const profitLockRoi = parseFloat(process.env.PROFIT_LOCK_ROI);
-const symbols = JSON.parse(process.env.SYMBOLS);
+const symbols = process.env.SYMBOLS
 
 console.log({
   binanceApiKey,
