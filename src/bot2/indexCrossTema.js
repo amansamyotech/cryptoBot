@@ -4,6 +4,7 @@ const { getCandles } = require("./helper/getCandles.js");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
+const TEMA_BUFFER = 0.0005
 
 const binance = new Binance().options({
   APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
@@ -91,12 +92,12 @@ async function checkTEMAEntry(symbol) {
     );
 
     // Long entry: TEMA15 > TEMA21
-    if (currentTEMA15 > currentTEMA21) {
+    if (currentTEMA15 > currentTEMA21 + TEMA_BUFFER) {
       console.log(`[${symbol}] LONG signal - TEMA15 > TEMA21`);
       return "LONG";
     }
     // Short entry: TEMA21 > TEMA15
-    else if (currentTEMA21 > currentTEMA15) {
+    else if (currentTEMA21 > currentTEMA15 + +TEMA_BUFFER) {
       console.log(`[${symbol}] SHORT signal - TEMA21 > TEMA15`);
       return "SHORT";
     }
