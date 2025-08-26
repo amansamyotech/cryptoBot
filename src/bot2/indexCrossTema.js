@@ -89,7 +89,7 @@ const LEVERAGE = 3;
 // Function to check if a new candle has formed
 async function hasNewCandleFormed(symbol, type = "entry") {
   try {
-    const candles = await getCandles(symbol, "5m", 2);
+    const candles = await getCandles(symbol, "3m", 2);
     if (candles.length < 2) return false;
 
     const latestCandleTime = candles[candles.length - 1].openTime;
@@ -118,7 +118,7 @@ async function hasNewCandleFormed(symbol, type = "entry") {
 // Function to check TEMA conditions for entry
 async function checkTEMAEntry(symbol) {
   try {
-    const candles = await getCandles(symbol, "5m", 1000);
+    const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
@@ -165,7 +165,7 @@ async function checkTEMAEntry(symbol) {
 // Function to check TEMA conditions for exit
 async function checkTEMAExit(symbol, side) {
   try {
-    const candles = await getCandles(symbol, "5m", 1000);
+    const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
