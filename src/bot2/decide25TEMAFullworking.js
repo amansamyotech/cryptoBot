@@ -297,4 +297,4 @@ async function decide25TEMA(symbol) {
   }
 }
 
-module.exports = { decide25TEMA, calculateTEMA };
+module.exports = { decide25TEMA, calculateTEMA , isSidewaysMarket };

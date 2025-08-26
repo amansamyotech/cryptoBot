@@ -1,6 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { getCandles } = require("./helper/getCandles.js");
+const { isSidewaysMarket } = require("./decide25TEMAFullworking");
 const isProcessing = {};
 
 const BUFFER_PERCENTAGE = 0.00025;
@@ -120,6 +121,12 @@ async function checkTEMAEntry(symbol) {
   try {
     const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
+
+    if (isSidewaysMarket(candles)) {
+      console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
+      return "HOLD";
+    }
+
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
 
