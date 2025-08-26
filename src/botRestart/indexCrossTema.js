@@ -59,7 +59,7 @@ const LEVERAGE = 3;
 // Function to check TEMA conditions for entry
 async function checkTEMAEntry(symbol) {
   try {
-    const candles = await getCandles(symbol, "5m", 1000);
+    const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
@@ -99,7 +99,7 @@ async function checkTEMAEntry(symbol) {
 // Function to check TEMA conditions for exit
 async function checkTEMAExit(symbol, side) {
   try {
-    const candles = await getCandles(symbol, "5m", 1000);
+    const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
     const tema15 = calculateTEMA(closes, 15);
     const tema21 = calculateTEMA(closes, 21);
