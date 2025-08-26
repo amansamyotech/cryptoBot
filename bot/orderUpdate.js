@@ -1,3 +1,4 @@
+require('dotenv').config();
 const Binance = require("node-binance-api");
 
 const TradeDetails = require("../backend/models/tradeDetails.js");
