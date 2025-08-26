@@ -16,13 +16,19 @@ const binance = new Binance().options({
 const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
 
 function getTEMApercentage(tema15, tema21) {
-  const avg = (tema15 + tema21) / 2;
-  const percent15 = ((tema15 - avg) / avg) * 100;
-  const percent21 = ((tema21 - avg) / avg) * 100;
+  // 1. सबसे पहले दोनों नंबरों का कुल योग निकालें
+  const total = tema15 + tema21;
 
-  return { percent15, percent21 };
+  // 2. अब हर नंबर का कुल योग में से प्रतिशत निकालें
+  const percent15 = (tema15 / total) * 100;
+  const percent21 = (tema21 / total) * 100;
+
+  // 3. दोनों प्रतिशत मान वापस भेजें
+  return {
+    percent15,
+    percent21,
+  };
 }
-
 function calculateTEMA(prices, period) {
   if (!prices || prices.length < period) {
     console.warn(
