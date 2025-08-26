@@ -3,7 +3,7 @@ const axios = require("axios");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { getCandles } = require("./helper/getCandles");
 const isProcessing = {};
-const TEMA_BUFFER = 0.0005;
+const TEMA_BUFFER = 0.0003;
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
