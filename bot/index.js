@@ -632,7 +632,8 @@
 // }, 3000);
 
 
-require('dotenv').config();
+require('dotenv').config({ path: '../.env' });
+
 
 const binanceApiKey = process.env.BINANCE_APIKEY;
 const binanceSecretKey = process.env.BINANCE_SECRETKEY;
