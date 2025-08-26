@@ -13,17 +13,15 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
+// const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
+const symbols = ["DOGEUSDT"];
 
 function getTEMApercentage(tema15, tema21) {
-  // 1. सबसे पहले दोनों नंबरों का कुल योग निकालें
   const total = tema15 + tema21;
 
-  // 2. अब हर नंबर का कुल योग में से प्रतिशत निकालें
   const percent15 = (tema15 / total) * 100;
   const percent21 = (tema21 / total) * 100;
 
-  // 3. दोनों प्रतिशत मान वापस भेजें
   return {
     percent15,
     percent21,
