@@ -3,7 +3,6 @@ const axios = require("axios");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { getCandles } = require("./helper/getCandles");
 const isProcessing = {};
-const TEMA_BUFFER = 0.0003;
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
@@ -15,6 +14,16 @@ const binance = new Binance().options({
 });
 
 const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
+
+function getTEMApercentage(tema15, tema21) {
+  const percent15 = ((tema15 - tema21) / tema21) * 100;
+  const percent21 = ((tema21 - tema15) / tema15) * 100;
+
+  return {
+    percent15,
+    percent21,
+  };
+}
 
 function calculateTEMA(prices, period) {
   if (!prices || prices.length < period) {
@@ -73,22 +82,29 @@ async function checkTEMAEntry(symbol) {
     const currentTEMA15 = tema15[tema15.length - 1];
     const currentTEMA21 = tema21[tema21.length - 1];
 
-    console.log(
-      `[${symbol}] Current TEMA15: ${currentTEMA15.toFixed(
-        4
-      )}, TEMA21: ${currentTEMA21.toFixed(4)}`
+    const { percent15, percent21 } = getTEMApercentage(
+      currentTEMA15,
+      currentTEMA21
     );
+    console.log(`percent15`, percent15);
+    console.log(`percent21 `, percent21);
+
+    // console.log(
+    //   `[${symbol}] Current TEMA15: ${currentTEMA15.toFixed(
+    //     4
+    //   )}, TEMA21: ${currentTEMA21.toFixed(4)}`
+    // );
 
     // Long entry: TEMA15 > TEMA21
-    if (currentTEMA15 > currentTEMA21 + TEMA_BUFFER) {
-      console.log(`[${symbol}] LONG signal - TEMA15 > TEMA21`);
-      return "LONG";
-    }
-    // Short entry: TEMA21 > TEMA15
-    else if (currentTEMA21 > currentTEMA15 + TEMA_BUFFER) {
-      console.log(`[${symbol}] SHORT signal - TEMA21 > TEMA15`);
-      return "SHORT";
-    }
+    // if (currentTEMA15 > currentTEMA21) {
+    //   console.log(`[${symbol}] LONG signal - TEMA15 > TEMA21`);
+    //   return "LONG";
+    // }
+    // // Short entry: TEMA21 > TEMA15
+    // else if (currentTEMA21 > currentTEMA15) {
+    //   console.log(`[${symbol}] SHORT signal - TEMA21 > TEMA15`);
+    //   return "SHORT";
+    // }
 
     return "HOLD";
   } catch (error) {
@@ -420,4 +436,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 30000);
+}, 3000);
