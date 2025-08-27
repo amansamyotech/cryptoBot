@@ -1,8 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { checkOrders } = require("./orderCheck2Fun");
-const { getCandles } = require("../botRestart/helper/getCandles");
-const { isSidewaysMarket } = require("./decide25TEMAFullworking");
+const { checkTEMAEntry } = require("./indexCrossTema");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -35,58 +34,6 @@ const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 1.2;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
-
-function getTEMApercentage(tema15, tema21) {
-  const total = tema15 + tema21;
-
-  const percent15 = (tema15 / total) * 100;
-  const percent21 = (tema21 / total) * 100;
-
-  return {
-    percent15,
-    percent21,
-  };
-}
-
-function calculateTEMA(prices, period) {
-  if (!prices || prices.length < period) {
-    console.warn(
-      `Not enough data points for TEMA calculation. Need: ${period}, Have: ${prices.length}`
-    );
-    return [];
-  }
-
-  const k = 2 / (period + 1);
-  const ema1 = [];
-  const ema2 = [];
-  const ema3 = [];
-
-  // Calculate first EMA
-  ema1[0] = prices[0];
-  for (let i = 1; i < prices.length; i++) {
-    ema1[i] = prices[i] * k + ema1[i - 1] * (1 - k);
-  }
-
-  // Calculate second EMA (EMA of EMA1)
-  ema2[0] = ema1[0];
-  for (let i = 1; i < ema1.length; i++) {
-    ema2[i] = ema1[i] * k + ema2[i - 1] * (1 - k);
-  }
-
-  // Calculate third EMA (EMA of EMA2)
-  ema3[0] = ema2[0];
-  for (let i = 1; i < ema2.length; i++) {
-    ema3[i] = ema2[i] * k + ema3[i - 1] * (1 - k);
-  }
-
-  // Calculate TEMA
-  const tema = [];
-  for (let i = 0; i < prices.length; i++) {
-    tema[i] = 3 * ema1[i] - 3 * ema2[i] + ema3[i];
-  }
-
-  return tema;
-}
 
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
@@ -756,154 +703,18 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 
-// Function to check if a new candle has formed
-async function hasNewCandleFormed(symbol, type = "entry") {
-  try {
-    const candles = await getCandles(symbol, "3m", 2);
-    if (candles.length < 2) return false;
-
-    const latestCandleTime = candles[candles.length - 1].openTime;
-    const trackingObject =
-      type === "entry" ? lastProcessedCandleEntry : lastProcessedCandleExit;
-    const lastProcessed = trackingObject[symbol];
-
-    // If this is the first check or we have a new candle
-    if (!lastProcessed || latestCandleTime > lastProcessed) {
-      console.log(
-        `[${symbol}] New candle detected for ${type} at ${new Date(
-          latestCandleTime
-        ).toISOString()}`
-      );
-      trackingObject[symbol] = latestCandleTime;
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error(`Error checking new candle for ${symbol}:`, error.message);
-    return false;
-  }
-}
-
-// Function to check TEMA conditions for entry
-async function checkTEMAEntry(symbol) {
-  try {
-    const candles = await getCandles(symbol, "3m", 1000);
-    const closes = candles.map((k) => parseFloat(k.close));
-
-    if (isSidewaysMarket(candles)) {
-      console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
-      return "HOLD";
-    }
-
-    const tema15 = calculateTEMA(closes, 15);
-    const tema21 = calculateTEMA(closes, 21);
-
-    if (tema15.length < 1 || tema21.length < 1) {
-      console.warn(`[${symbol}] Not enough data to calculate TEMA`);
-      return "HOLD";
-    }
-
-    const currentTEMA15 = tema15[tema15.length - 1];
-    const currentTEMA21 = tema21[tema21.length - 1];
-
-    const { percent15, percent21 } = getTEMApercentage(
-      currentTEMA15,
-      currentTEMA21
-    );
-    console.log(`percent15`, percent15);
-    console.log(`percent21 `, percent21);
-
-    console.log(
-      `[${symbol}] Current TEMA15: ${percent15.toFixed(
-        5
-      )}, TEMA21: ${percent21.toFixed(5)}`
-    );
-
-    //  Long entry: TEMA15 > TEMA21
-    if (percent15 > percent21 + BUFFER_PERCENTAGE) {
-      console.log(`[${symbol}] LONG signal - TEMA15 > TEMA21`);
-      return "LONG";
-    }
-    //    Short entry: TEMA21 > TEMA15
-    else if (percent21 > percent15 + BUFFER_PERCENTAGE) {
-      console.log(`[${symbol}] SHORT signal - TEMA21 > TEMA15`);
-      return "SHORT";
-    }
-
-    return "HOLD";
-  } catch (error) {
-    console.error(`Error checking TEMA entry for ${symbol}:`, error.message);
-    return "HOLD";
-  }
-}
-
-// Function to check TEMA conditions for exit
-async function checkTEMAExit(symbol, side) {
-  try {
-    const candles = await getCandles(symbol, "3m", 1000);
-    const closes = candles.map((k) => parseFloat(k.close));
-    const tema15 = calculateTEMA(closes, 15);
-    const tema21 = calculateTEMA(closes, 21);
-
-    if (tema15.length < 1 || tema21.length < 1) {
-      console.warn(`[${symbol}] Not enough data to calculate TEMA for exit`);
-      return false;
-    }
-
-    const currentTEMA15 = tema15[tema15.length - 1];
-    const currentTEMA21 = tema21[tema21.length - 1];
-
-    const { percent15, percent21 } = getTEMApercentage(
-      currentTEMA15,
-      currentTEMA21
-    );
-
-    console.log(
-      `[${symbol}] Exit check - TEMA15: ${percent15.toFixed(
-        4
-      )}, TEMA21: ${percent21.toFixed(5)}`
-    );
-
-    // Long exit: TEMA21 > TEMA15
-    if (side === "LONG" && percent21 > percent15 + BUFFER_PERCENTAGE) {
-      console.log(`[${symbol}] LONG exit signal - TEMA21 > TEMA15`);
-      return true;
-    }
-    // Short exit: TEMA15 > TEMA21
-    else if (side === "SHORT" && percent15 > percent21 + BUFFER_PERCENTAGE) {
-      console.log(`[${symbol}] SHORT exit signal - TEMA15 > TEMA21`);
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error(`Error checking TEMA exit for ${symbol}:`, error.message);
-    return false;
-  }
-}
-
 async function processSymbol(symbol, maxSpendPerTrade) {
-  // Check if a new candle has formed before making entry decision
-  const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
-
-  if (!hasNewCandle) {
-    console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
-    return;
-  }
-
   const decision = await checkTEMAEntry(symbol);
 
   if (decision === "LONG") {
-    console.log(`[${symbol}] 🚀 Executing LONG entry after candle close`);
     await placeBuyOrder(symbol, maxSpendPerTrade);
   } else if (decision === "SHORT") {
-    console.log(`[${symbol}] 🔻 Executing SHORT entry after candle close`);
     await placeShortOrder(symbol, maxSpendPerTrade);
   } else {
-    console.log(`[${symbol}] No trade signal after candle close`);
+    console.log(`No trade signal for ${symbol}`);
   }
 }
+
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
   const usableBalance = totalBalance - 1;

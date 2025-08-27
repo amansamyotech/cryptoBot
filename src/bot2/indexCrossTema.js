@@ -407,10 +407,10 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
   if (decision === "LONG") {
     console.log(`[${symbol}] 🚀 Executing LONG entry after candle close`);
-    await placeBuyOrder(symbol, maxSpendPerTrade);
+    // await placeBuyOrder(symbol, maxSpendPerTrade);
   } else if (decision === "SHORT") {
     console.log(`[${symbol}] 🔻 Executing SHORT entry after candle close`);
-    await placeShortOrder(symbol, maxSpendPerTrade);
+    // await placeShortOrder(symbol, maxSpendPerTrade);
   } else {
     console.log(`[${symbol}] No trade signal after candle close`);
   }
@@ -520,3 +520,5 @@ setInterval(async () => {
     }
   }
 }, 3000);
+
+module.exports = { checkTEMAEntry };
