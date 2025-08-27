@@ -35,6 +35,88 @@ const TRAILING_START_ROI = 1.2;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
+async function checkTEMAExit(symbol, tradeDetails) {
+  try {
+    const { side } = tradeDetails;
+
+    // Get current TEMA signal (opposite of entry)
+    const currentSignal = await checkTEMAEntry(symbol);
+
+    // For LONG position - exit if TEMA gives SHORT signal
+    if (side === "LONG" && currentSignal === "SHORT") {
+      console.log(
+        `[${symbol}] LONG Exit: TEMA crossed down. Closing position before stop loss.`
+      );
+      return true;
+    }
+
+    // For SHORT position - exit if TEMA gives LONG signal
+    if (side === "SHORT" && currentSignal === "LONG") {
+      console.log(
+        `[${symbol}] SHORT Exit: TEMA crossed up. Closing position before stop loss.`
+      );
+      return true;
+    }
+
+    return false;
+  } catch (err) {
+    console.error(`[${symbol}] Error checking TEMA exit:`, err.message);
+    return false;
+  }
+}
+
+async function executeTEMAExit(symbol, tradeDetails) {
+  try {
+    const { quantity, objectId, stopLossOrderId } = tradeDetails;
+    const side = tradeDetails.side;
+
+    // Cancel existing stop loss order first
+    if (stopLossOrderId) {
+      try {
+        await binance.futuresCancel(symbol, stopLossOrderId);
+        console.log(`[${symbol}] Canceled stop loss order: ${stopLossOrderId}`);
+      } catch (err) {
+        if (err.code !== -2011 && err.code !== -1102) {
+          console.warn(
+            `[${symbol}] Failed to cancel stop loss: ${err.message}`
+          );
+        }
+      }
+    }
+
+    // Close position with market order
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const quantityPrecision = symbolInfo.quantityPrecision;
+    const qtyFixed = parseFloat(quantity).toFixed(quantityPrecision);
+
+    let exitOrder;
+    if (side === "LONG") {
+      exitOrder = await binance.futuresMarketSell(symbol, qtyFixed, {
+        reduceOnly: true,
+      });
+    } else {
+      exitOrder = await binance.futuresMarketBuy(symbol, qtyFixed, {
+        reduceOnly: true,
+      });
+    }
+
+    console.log(
+      `[${symbol}] TEMA Exit executed - Order ID: ${exitOrder.orderId}`
+    );
+
+    // Update database to mark trade as closed
+    await axios.put(`${API_ENDPOINT}${objectId}`, {
+      data: { status: "1" },
+    });
+
+    return true;
+  } catch (err) {
+    console.error(`[${symbol}] Error executing TEMA exit:`, err.message);
+    return false;
+  }
+}
+
 async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
   try {
     const {
@@ -717,7 +799,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 1;
+  const usableBalance = totalBalance - 4;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
@@ -776,6 +858,23 @@ setInterval(async () => {
           console.log(`[${sym}] Position already closed. Skipping trailing.`);
           // Optionally: Update DB to close trade, but assume checkOrders handles
           continue;
+        }
+
+        const tradeResponse = await axios.get(
+          `${API_ENDPOINT}find-treads/${sym}`
+        );
+        const { found, tradeDetails } = tradeResponse.data?.data;
+
+        if (found) {
+          // Check TEMA exit first
+          const shouldExit = await checkTEMAExit(sym, tradeDetails);
+          if (shouldExit) {
+            const exitSuccess = await executeTEMAExit(sym, tradeDetails);
+            if (exitSuccess) {
+              console.log(`[${sym}] Position closed due to TEMA exit signal`);
+              continue; // Skip trailing stop loss for this symbol
+            }
+          }
         }
 
         await trailStopLoss(sym);
