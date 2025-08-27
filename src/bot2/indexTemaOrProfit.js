@@ -866,15 +866,44 @@ setInterval(async () => {
         const { found, tradeDetails } = tradeResponse.data?.data;
 
         if (found) {
-          // Check TEMA exit first
-          const shouldExit = await checkTEMAExit(sym, tradeDetails);
-          if (shouldExit) {
-            const exitSuccess = await executeTEMAExit(sym, tradeDetails);
-            if (exitSuccess) {
-              console.log(`[${sym}] Position closed due to TEMA exit signal`);
-              continue; // Skip trailing stop loss for this symbol
+          const priceMap = await binance.futuresPrices();
+          const currentPrice = parseFloat(priceMap[sym]);
+          let roi = 0;
+
+          if (tradeDetails.side === "LONG") {
+            const entryPrice = parseFloat(
+              tradeDetails.LongTimeCoinPrice.$numberDecimal
+            );
+            const qty = parseFloat(tradeDetails.quantity);
+            const margin = parseFloat(tradeDetails.marginUsed);
+            const pnl = (currentPrice - entryPrice) * qty;
+            roi = (pnl / margin) * 100;
+          } else if (tradeDetails.side === "SHORT") {
+            const entryPrice = parseFloat(
+              tradeDetails.ShortTimeCurrentPrice.$numberDecimal
+            );
+            const qty = parseFloat(tradeDetails.quantity);
+            const margin = parseFloat(tradeDetails.marginUsed);
+            const pnl = (entryPrice - currentPrice) * qty;
+            roi = (pnl / margin) * 100;
+          }
+
+          // TEMA exit check sirf tab karo jab ROI 1% positive ho ya 1% negative ho
+          if (roi >= 1 || roi <= -1) {
+            const shouldExit = await checkTEMAExit(sym, tradeDetails);
+            if (shouldExit) {
+              const exitSuccess = await executeTEMAExit(sym, tradeDetails);
+              if (exitSuccess) {
+                console.log(
+                  `[${sym}] Position closed due to TEMA exit signal at ROI: ${roi.toFixed(
+                    2
+                  )}%`
+                );
+                continue;
+              }
             }
           }
+          // **NAYA CODE KHATAM**
         }
 
         await trailStopLoss(sym);
