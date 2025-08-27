@@ -108,8 +108,8 @@ async function checkTEMAEntry(symbol) {
   try {
     const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
-    const tema15 = calculateTEMA(closes, 15);
-    const tema21 = calculateTEMA(closes, 21);
+    const tema15 = calculateTEMA(closes, 21);
+    const tema21 = calculateTEMA(closes, 40);
 
     if (tema15.length < 1 || tema21.length < 1) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA`);
@@ -155,8 +155,8 @@ async function checkTEMAExit(symbol, side) {
   try {
     const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
-    const tema15 = calculateTEMA(closes, 15);
-    const tema21 = calculateTEMA(closes, 21);
+    const tema15 = calculateTEMA(closes, 21);
+    const tema21 = calculateTEMA(closes, 40);
 
     if (tema15.length < 1 || tema21.length < 1) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA for exit`);
@@ -388,10 +388,10 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
   if (decision === "LONG") {
     console.log(`[${symbol}] 🚀 Executing LONG entry after candle close`);
-    await placeBuyOrder(symbol, maxSpendPerTrade);
+    // await placeBuyOrder(symbol, maxSpendPerTrade);
   } else if (decision === "SHORT") {
     console.log(`[${symbol}] 🔻 Executing SHORT entry after candle close`);
-    await placeShortOrder(symbol, maxSpendPerTrade);
+    // await placeShortOrder(symbol, maxSpendPerTrade);
   } else {
     console.log(`[${symbol}] No trade signal after candle close`);
   }
@@ -501,3 +501,8 @@ setInterval(async () => {
     }
   }
 }, 3000);
+
+module.exports = {
+  checkTEMAEntry,
+  hasNewCandleFormed,
+};

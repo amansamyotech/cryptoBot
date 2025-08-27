@@ -521,4 +521,4 @@ setInterval(async () => {
   }
 }, 3000);
 
-module.exports = { checkTEMAEntry };
+module.exports = { checkTEMAEntry , hasNewCandleFormed };
