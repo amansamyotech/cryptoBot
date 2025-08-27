@@ -13,7 +13,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["BNBUSDT", "SOLUSDT", "INJUSDT", "XRPUSDT", "NEARUSDT"];
+const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
 
 async function getUsdtBalance() {
   try {
@@ -744,13 +744,13 @@ setInterval(async () => {
   } else {
     console.log("not enough amount");
   }
-}, 4500);
+}, 6000);
 
 setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 2000);
+}, 4000);
 
 setInterval(async () => {
   for (const sym of symbols) {
@@ -786,4 +786,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 1000);
+}, 5000);
