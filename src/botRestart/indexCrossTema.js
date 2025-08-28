@@ -108,8 +108,8 @@ async function checkTEMAEntry(symbol) {
   try {
     const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
-    const tema15 = calculateTEMA(closes, 21);
-    const tema21 = calculateTEMA(closes, 40);
+    const tema15 = calculateTEMA(closes, 15);
+    const tema21 = calculateTEMA(closes, 25);
 
     if (tema15.length < 1 || tema21.length < 1) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA`);
@@ -155,8 +155,8 @@ async function checkTEMAExit(symbol, side) {
   try {
     const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((k) => parseFloat(k.close));
-    const tema15 = calculateTEMA(closes, 21);
-    const tema21 = calculateTEMA(closes, 40);
+    const tema15 = calculateTEMA(closes, 15);
+    const tema21 = calculateTEMA(closes, 25);
 
     if (tema15.length < 1 || tema21.length < 1) {
       console.warn(`[${symbol}] Not enough data to calculate TEMA for exit`);
