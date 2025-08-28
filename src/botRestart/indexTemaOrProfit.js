@@ -681,9 +681,11 @@ async function placeBuyOrder(symbol, marginAmount) {
       stopLossOrderId: stopLossOrder.orderId,
     };
     console.log(`details`, details);
-    await axios.put(`${API_ENDPOINT}${tradeId}`, {
-      data: details,
-    });
+    setTimeout(async () => {
+      await axios.put(`${API_ENDPOINT}${tradeId}`, {
+        data: details,
+      });
+    }, 2000);
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
   }
@@ -779,9 +781,11 @@ async function placeShortOrder(symbol, marginAmount) {
 
     console.log(`details`, details);
 
-    await axios.put(`${API_ENDPOINT}${tradeId}`, {
-      data: details,
-    });
+    setTimeout(async () => {
+      await axios.put(`${API_ENDPOINT}${tradeId}`, {
+        data: details,
+      });
+    }, 2000);
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
   }
