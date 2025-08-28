@@ -3,7 +3,6 @@ const axios = require("axios");
 const { getUsdtBalance } = require("./helper/getBalance");
 const { getCandles } = require("./helper/getCandles");
 const isProcessing = {};
-const BUFFER_PERCENTAGE = 0.00025;
 
 // Track last processed candle timestamp for each symbol (separate for entry and exit)
 const lastProcessedCandleEntry = {};
@@ -133,12 +132,12 @@ async function checkTEMAEntry(symbol) {
     );
 
     //  Long entry: TEMA15 > TEMA21
-    if (percent15 > percent21 + BUFFER_PERCENTAGE) {
+    if (percent15 > percent21) {
       console.log(`[${symbol}] LONG signal - TEMA15 > TEMA21`);
       return "LONG";
     }
     //    Short entry: TEMA21 > TEMA15
-    else if (percent21 > percent15 + BUFFER_PERCENTAGE) {
+    else if (percent21 > percent15) {
       console.log(`[${symbol}] SHORT signal - TEMA21 > TEMA15`);
       return "SHORT";
     }
@@ -178,12 +177,12 @@ async function checkTEMAExit(symbol, side) {
     );
 
     // Long exit: TEMA21 > TEMA15
-    if (side === "LONG" && percent21 > percent15 + BUFFER_PERCENTAGE) {
+    if (side === "LONG" && percent21 > percent15) {
       console.log(`[${symbol}] LONG exit signal - TEMA21 > TEMA15`);
       return true;
     }
     // Short exit: TEMA15 > TEMA21
-    else if (side === "SHORT" && percent15 > percent21 + BUFFER_PERCENTAGE) {
+    else if (side === "SHORT" && percent15 > percent21) {
       console.log(`[${symbol}] SHORT exit signal - TEMA15 > TEMA21`);
       return true;
     }
@@ -399,7 +398,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 4;
+  const usableBalance = totalBalance - 6;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
