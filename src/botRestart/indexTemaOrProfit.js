@@ -905,7 +905,7 @@ setInterval(async () => {
           }
 
           // TEMA exit check sirf tab karo jab ROI 1% positive ho ya 1% negative ho
-          if (roi >= 1 || roi <= -1) {
+          if (roi >= 0.5 || roi <= -0.5) {
             const shouldExit = await checkTEMAExit(sym, tradeDetails);
             if (shouldExit) {
               const exitSuccess = await executeTEMAExit(sym, tradeDetails);
