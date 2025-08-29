@@ -793,46 +793,42 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
+  // const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
 
-  if (!hasNewCandle) {
-    console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
-    return;
-  }
+  // if (!hasNewCandle) {
+  //   console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
+  //   return;
+  // }
 
   const candles = await getCandles(symbol, "3m", 1000);
 
-  if (isSidewaysMarket(candles)) {
-    console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
-    return "HOLD";
-  }
-
   const decision = await checkTEMAEntry(symbol);
+  console.log("decision", decision);
 
   const lastSide = lastTradeSide[symbol] || null;
-  if (lastSide) {
-    console.log(`[${symbol}] Last trade was: ${lastSide}`);
+  // if (lastSide) {
+  //   console.log(`[${symbol}] Last trade was: ${lastSide}`);
 
-    if (lastSide === "LONG" && decision === "LONG") {
-      console.log(`[${symbol}] Last trade was LONG, skipping LONG signal`);
-      return;
-    }
+  //   if (lastSide === "LONG" && decision === "LONG") {
+  //     console.log(`[${symbol}] Last trade was LONG, skipping LONG signal`);
+  //     return;
+  //   }
 
-    if (lastSide === "SHORT" && decision === "SHORT") {
-      console.log(`[${symbol}] Last trade was SHORT, skipping SHORT signal`);
-      return;
-    }
-  } else {
-    console.log(`[${symbol}] No previous trades, allowing any trade`);
-  }
+  //   if (lastSide === "SHORT" && decision === "SHORT") {
+  //     console.log(`[${symbol}] Last trade was SHORT, skipping SHORT signal`);
+  //     return;
+  //   }
+  // } else {
+  //   console.log(`[${symbol}] No previous trades, allowing any trade`);
+  // }
 
-  if (decision === "LONG") {
-    await placeBuyOrder(symbol, maxSpendPerTrade);
-  } else if (decision === "SHORT") {
-    await placeShortOrder(symbol, maxSpendPerTrade);
-  } else {
-    console.log(`No trade signal for ${symbol}`);
-  }
+  // if (decision === "LONG") {
+  //   await placeBuyOrder(symbol, maxSpendPerTrade);
+  // } else if (decision === "SHORT") {
+  //   await placeShortOrder(symbol, maxSpendPerTrade);
+  // } else {
+  //   console.log(`No trade signal for ${symbol}`);
+  // }
 }
 
 setInterval(async () => {
