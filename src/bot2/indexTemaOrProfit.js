@@ -33,8 +33,8 @@ async function getUsdtBalance() {
 }
 
 const LEVERAGE = 10;
-const STOP_LOSS_ROI = -2;
-const TRAILING_START_ROI = 3;
+const STOP_LOSS_ROI = -3; // Changed from -2 to -3
+const TRAILING_START_ROI = 1; // Changed from 3 to 1
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
@@ -147,10 +147,10 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= TRAILING_START_ROI) {
-      const targetROI = roi - 1;
-      const targetPnL = (targetROI / 100) * margin;
+      // Calculate new stop loss with 3% buffer from current price
+      const bufferPnL = (3 / 100) * margin; // 3% buffer
       const newStop = parseFloat(
-        (entryPrice + targetPnL / qty).toFixed(pricePrecision)
+        (currentPrice - bufferPnL / qty).toFixed(pricePrecision)
       );
 
       const roundedCurrent = parseFloat(currentPrice.toFixed(pricePrecision));
@@ -164,16 +164,14 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
       console.log(`oldStop: ${oldStop}`);
       console.log(`roundedCurrent: ${roundedCurrent}`);
       console.log(`newStop: ${newStop}`);
-      console.log(`targetPnL: ${targetPnL}`);
-      console.log(`targetROI: ${targetROI}`);
+      console.log(`bufferPnL: ${bufferPnL}`);
+      console.log(`roi: ${roi}`);
 
       if (newStop > oldStop) {
         console.log(
           `[${symbol}] LONG ROI ${roi.toFixed(
             2
-          )}% → Updating SL from ${oldStop} to ${newStop} (Target ROI: ${targetROI.toFixed(
-            2
-          )}%)`
+          )}% → Updating SL from ${oldStop} to ${newStop} (3% buffer from current price)`
         );
 
         // Cleanup existing STOP_MARKET SELL orders
@@ -340,6 +338,7 @@ async function trailStopLossForLong(symbol, tradeDetails, currentPrice) {
     console.error(`[${symbol}] Error trailing LONG stop-loss:`, err.message);
   }
 }
+
 async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
   try {
     const {
@@ -367,10 +366,10 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
     const qtyFixed = qty.toFixed(quantityPrecision);
 
     if (roi >= TRAILING_START_ROI) {
-      const targetROI = roi - 1;
-      const targetPnL = (targetROI / 100) * margin;
+      // Calculate new stop loss with 3% buffer from current price
+      const bufferPnL = (3 / 100) * margin; // 3% buffer
       const newStop = parseFloat(
-        (entryPrice - targetPnL / qty).toFixed(pricePrecision)
+        (currentPrice + bufferPnL / qty).toFixed(pricePrecision)
       );
 
       const roundedStop = parseFloat(newStop.toFixed(pricePrecision));
@@ -387,16 +386,14 @@ async function trailStopLossForShort(symbol, tradeDetails, currentPrice) {
       console.log(`roundedStop: ${roundedStop}`);
       console.log(`roundedCurrent: ${roundedCurrent}`);
       console.log(`newStop: ${newStop}`);
-      console.log(`targetPnL: ${targetPnL}`);
-      console.log(`targetROI: ${targetROI}`);
+      console.log(`bufferPnL: ${bufferPnL}`);
+      console.log(`roi: ${roi}`);
 
       if (roundedStop < oldStop) {
         console.log(
           `[${symbol}] SHORT ROI ${roi.toFixed(
             2
-          )}% → Updating SL from ${oldStop} to ${roundedStop} (Target ROI: ${targetROI.toFixed(
-            2
-          )}%)`
+          )}% → Updating SL from ${oldStop} to ${roundedStop} (3% buffer from current price)`
         );
 
         // Cleanup existing STOP_MARKET BUY orders
