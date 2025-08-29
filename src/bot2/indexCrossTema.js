@@ -1,6 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { getCandles } = require("./helper/getCandles.js");
+const { getUsdtBalance } = require("../botRestart/helper/getBalance.js");
 
 const isProcessing = {};
 
