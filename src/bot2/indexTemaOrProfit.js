@@ -15,7 +15,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["SOLUSDT", "INJUSDT", "XRPUSDT", "DOGEUSDT"];
+const symbols = ["DOGEUSDT"];
 
 async function getUsdtBalance() {
   try {
@@ -30,10 +30,9 @@ async function getUsdtBalance() {
   }
 }
 
-const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
-const TRAILING_START_ROI = 1.2;
+const TRAILING_START_ROI = 3;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
 
@@ -681,9 +680,9 @@ async function placeBuyOrder(symbol, marginAmount) {
       stopLossOrderId: stopLossOrder.orderId,
     };
     console.log(`details`, details);
-    await axios.put(`${API_ENDPOINT}${tradeId}`, {
-      data: details,
-    });
+      await axios.put(`${API_ENDPOINT}${tradeId}`, {
+        data: details,
+      });
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
   }
@@ -778,10 +777,10 @@ async function placeShortOrder(symbol, marginAmount) {
     };
 
     console.log(`details`, details);
-
-    await axios.put(`${API_ENDPOINT}${tradeId}`, {
-      data: details,
-    });
+    
+      await axios.put(`${API_ENDPOINT}${tradeId}`, {
+        data: details,
+      });
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
   }
@@ -815,7 +814,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 4;
+  const usableBalance = totalBalance - 8;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
@@ -848,7 +847,7 @@ setInterval(async () => {
   for (const sym of symbols) {
     await checkOrders(sym);
   }
-}, 5000);
+}, 15000);
 
 setInterval(async () => {
   for (const sym of symbols) {
@@ -870,9 +869,22 @@ setInterval(async () => {
         // Confirm position is open (sync with DB)
         const positions = await binance.futuresPositionRisk({ symbol: sym });
         const pos = positions.find((p) => p.symbol === sym);
-        if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
-          console.log(`[${sym}] Position already closed. Skipping trailing.`);
-          // Optionally: Update DB to close trade, but assume checkOrders handles
+        if (!pos || Math.abs(parseFloat(pos.positionAmt || 0)) === 0) {
+          console.log(
+            `[${sym}] Position already closed or doesn't exist. Updating DB to close trade.`
+          );
+
+          const tradeResponse = await axios.get(
+            `${API_ENDPOINT}find-treads/${sym}`
+          );
+          const { found, tradeDetails } = tradeResponse.data?.data;
+
+          if (found) {
+            await axios.put(`${API_ENDPOINT}${tradeDetails._id}`, {
+              data: { status: "1" },
+            });
+            console.log(`[${sym}] DB updated: Trade marked as closed.`);
+          }
           continue;
         }
 
@@ -905,7 +917,7 @@ setInterval(async () => {
           }
 
           // TEMA exit check sirf tab karo jab ROI 1% positive ho ya 1% negative ho
-          if (roi >= 1 || roi <= -1) {
+          if (roi >= 0.5 || roi <= -0.5) {
             const shouldExit = await checkTEMAExit(sym, tradeDetails);
             if (shouldExit) {
               const exitSuccess = await executeTEMAExit(sym, tradeDetails);
@@ -930,4 +942,4 @@ setInterval(async () => {
       isProcessing[sym] = false;
     }
   }
-}, 6000);
+}, 10000);

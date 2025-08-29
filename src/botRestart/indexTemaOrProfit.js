@@ -30,7 +30,6 @@ async function getUsdtBalance() {
   }
 }
 
-const interval = "1m";
 const LEVERAGE = 3;
 const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 3;
@@ -874,9 +873,22 @@ setInterval(async () => {
         // Confirm position is open (sync with DB)
         const positions = await binance.futuresPositionRisk({ symbol: sym });
         const pos = positions.find((p) => p.symbol === sym);
-        if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
-          console.log(`[${sym}] Position already closed. Skipping trailing.`);
-          // Optionally: Update DB to close trade, but assume checkOrders handles
+        if (!pos || Math.abs(parseFloat(pos.positionAmt || 0)) === 0) {
+          console.log(
+            `[${sym}] Position already closed or doesn't exist. Updating DB to close trade.`
+          );
+
+          const tradeResponse = await axios.get(
+            `${API_ENDPOINT}find-treads/${sym}`
+          );
+          const { found, tradeDetails } = tradeResponse.data?.data;
+
+          if (found) {
+            await axios.put(`${API_ENDPOINT}${tradeDetails._id}`, {
+              data: { status: "1" },
+            });
+            console.log(`[${sym}] DB updated: Trade marked as closed.`);
+          }
           continue;
         }
 
