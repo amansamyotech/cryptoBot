@@ -398,110 +398,110 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   }
 }
 
-setInterval(async () => {
-  const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 6;
-  const maxSpendPerTrade = usableBalance / symbols.length;
+// setInterval(async () => {
+//   const totalBalance = await getUsdtBalance();
+//   const usableBalance = totalBalance - 6;
+//   const maxSpendPerTrade = usableBalance / symbols.length;
 
-  console.log(`Total Balance: ${totalBalance} USDT`);
-  console.log(`Usable Balance: ${usableBalance} USDT`);
-  console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
-  if (maxSpendPerTrade >= 1.6) {
-    for (const sym of symbols) {
-      try {
-        const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-          symbols: sym,
-        });
+//   console.log(`Total Balance: ${totalBalance} USDT`);
+//   console.log(`Usable Balance: ${usableBalance} USDT`);
+//   console.log(`Max Spend Per Trade: ${maxSpendPerTrade} USDT`);
+//   if (maxSpendPerTrade >= 1.6) {
+//     for (const sym of symbols) {
+//       try {
+//         const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+//           symbols: sym,
+//         });
 
-        let status = response?.data?.data.status;
+//         let status = response?.data?.data.status;
 
-        if (status == true) {
-          await processSymbol(sym, maxSpendPerTrade);
-        } else {
-          console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
-        }
-      } catch (err) {
-        console.error(`Error with ${sym}:`, err.message);
-      }
-    }
-  } else {
-    console.log("not enough amount");
-  }
-}, 6000);
+//         if (status == true) {
+//           await processSymbol(sym, maxSpendPerTrade);
+//         } else {
+//           console.log(`TRADE ALREADY OPEN FOR SYMBOL: ${sym}`);
+//         }
+//       } catch (err) {
+//         console.error(`Error with ${sym}:`, err.message);
+//       }
+//     }
+//   } else {
+//     console.log("not enough amount");
+//   }
+// }, 6000);
 
-// Exit monitoring interval
-setInterval(async () => {
-  for (const sym of symbols) {
-    try {
-      const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
-        symbols: sym,
-      });
+// // Exit monitoring interval
+// setInterval(async () => {
+//   for (const sym of symbols) {
+//     try {
+//       const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+//         symbols: sym,
+//       });
 
-      let status = response?.data?.data.status;
+//       let status = response?.data?.data.status;
 
-      if (status === false) {
-        // Trade is open
-        if (isProcessing[sym]) {
-          console.log(`[${sym}] Skipping exit check — already processing.`);
-          continue;
-        }
-        isProcessing[sym] = true;
+//       if (status === false) {
+//         // Trade is open
+//         if (isProcessing[sym]) {
+//           console.log(`[${sym}] Skipping exit check — already processing.`);
+//           continue;
+//         }
+//         isProcessing[sym] = true;
 
-        // Check if a new candle has formed before checking exit conditions
-        const hasNewCandle = await hasNewCandleFormed(sym);
+//         // Check if a new candle has formed before checking exit conditions
+//         const hasNewCandle = await hasNewCandleFormed(sym);
 
-        if (!hasNewCandle) {
-          console.log(`[${sym}] No new candle formed yet, skipping exit check`);
-          isProcessing[sym] = false;
-          continue;
-        }
+//         if (!hasNewCandle) {
+//           console.log(`[${sym}] No new candle formed yet, skipping exit check`);
+//           isProcessing[sym] = false;
+//           continue;
+//         }
 
-        // Confirm position is still open
-        const positions = await binance.futuresPositionRisk({ symbol: sym });
-        const pos = positions.find((p) => p.symbol === sym);
-        if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
-          console.log(`[${sym}] Position already closed. Skipping.`);
-          isProcessing[sym] = false;
-          continue;
-        }
+//         // Confirm position is still open
+//         const positions = await binance.futuresPositionRisk({ symbol: sym });
+//         const pos = positions.find((p) => p.symbol === sym);
+//         if (Math.abs(parseFloat(pos.positionAmt)) === 0) {
+//           console.log(`[${sym}] Position already closed. Skipping.`);
+//           isProcessing[sym] = false;
+//           continue;
+//         }
 
-        // Get trade details
-        const tradeResponse = await axios.get(
-          `${API_ENDPOINT}find-treads/${sym}`
-        );
-        const { found, tradeDetails } = tradeResponse.data?.data;
+//         // Get trade details
+//         const tradeResponse = await axios.get(
+//           `${API_ENDPOINT}find-treads/${sym}`
+//         );
+//         const { found, tradeDetails } = tradeResponse.data?.data;
 
-        if (found) {
-          // Check TEMA exit condition
-          const shouldExit = await checkTEMAExit(sym, tradeDetails.side);
+//         if (found) {
+//           // Check TEMA exit condition
+//           const shouldExit = await checkTEMAExit(sym, tradeDetails.side);
 
-          if (shouldExit) {
-            console.log(
-              `[${sym}] ⚡ TEMA exit condition met after candle close - CLOSING POSITION ⚡`
-            );
+//           if (shouldExit) {
+//             console.log(
+//               `[${sym}] ⚡ TEMA exit condition met after candle close - CLOSING POSITION ⚡`
+//             );
 
-            const closeResult = await closePosition(sym, tradeDetails);
-            if (closeResult) {
-              console.log(
-                `[${sym}] ✅ Position successfully closed via TEMA exit`
-              );
-            } else {
-              console.error(`[${sym}] ❌ Failed to close position`);
-            }
-          } else {
-            console.log(
-              `[${sym}] TEMA exit condition not met after candle close`
-            );
-          }
-        }
-      }
-    } catch (err) {
-      console.error(`Error with ${sym}:`, err.message);
-    } finally {
-      isProcessing[sym] = false;
-    }
-  }
-}, 3000);
+//             const closeResult = await closePosition(sym, tradeDetails);
+//             if (closeResult) {
+//               console.log(
+//                 `[${sym}] ✅ Position successfully closed via TEMA exit`
+//               );
+//             } else {
+//               console.error(`[${sym}] ❌ Failed to close position`);
+//             }
+//           } else {
+//             console.log(
+//               `[${sym}] TEMA exit condition not met after candle close`
+//             );
+//           }
+//         }
+//       }
+//     } catch (err) {
+//       console.error(`Error with ${sym}:`, err.message);
+//     } finally {
+//       isProcessing[sym] = false;
+//     }
+//   }
+// }, 3000);
 
 module.exports = {
   checkTEMAEntry,
