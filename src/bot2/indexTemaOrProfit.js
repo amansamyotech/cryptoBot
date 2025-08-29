@@ -1,7 +1,8 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { checkOrders } = require("./orderCheck2Fun");
-const { checkTEMAEntry, hasNewCandleFormed } = require("./indexCrossTema");
+const { hasNewCandleFormed } = require("./indexCrossTema");
+const { checkTEMAEntry } = require("./checkTEMAlogicForEntry");
 const { getCandles } = require("./helper/getCandles");
 const { isSidewaysMarket } = require("./decide25TEMAFullworking");
 const isProcessing = {};
@@ -31,7 +32,7 @@ async function getUsdtBalance() {
   }
 }
 
-const LEVERAGE = 3;
+const LEVERAGE = 10;
 const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 3;
 const INITIAL_TRAILING_ROI = 1;
@@ -836,7 +837,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 11;
+  const usableBalance = totalBalance - 6;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
