@@ -12,8 +12,8 @@ const lastProcessedCandleExit = {};
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
 const binance = new Binance().options({
-  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
-  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  APIKEY: "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
+  APISECRET: "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
   useServerTime: true,
   test: false,
 });
@@ -521,4 +521,4 @@ setInterval(async () => {
   }
 }, 3000);
 
-module.exports = { checkTEMAEntry , hasNewCandleFormed };
+module.exports = { checkTEMAEntry, hasNewCandleFormed };
