@@ -17,7 +17,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["DOGEUSDT"];
+const symbols = ["DOGEUSDT", "SOLUSDT"];
 
 async function getUsdtBalance() {
   try {
@@ -32,7 +32,7 @@ async function getUsdtBalance() {
   }
 }
 
-const LEVERAGE = 10;
+const LEVERAGE = 3;
 const STOP_LOSS_ROI = -3; // Changed from -2 to -3
 const TRAILING_START_ROI = 1; // Changed from 3 to 1
 const INITIAL_TRAILING_ROI = 1;
