@@ -1,10 +1,11 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { checkTEMAEntry, hasNewCandleFormed } = require("./indexCrossTema");
+const { hasNewCandleFormed } = require("./indexCrossTema");
 const { getCandles } = require("./helper/getCandles");
-const { checkOrders } = require("./checkOrderFun2");
 const { isSidewaysMarket } = require("./decideTradeWithEma300");
+const { checkTEMAEntry } = require("../bot2/checkTEMAlogicForEntry");
 const isProcessing = {};
+const lastTradeSide = {};
 
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
@@ -620,21 +621,14 @@ async function placeBuyOrder(symbol, marginAmount) {
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
-
-    const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
-    const stopLossPrice = parseFloat(
-      (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
-    );
 
     console.log(`LONG Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    console.log(`Stop Loss Price: ${stopLossPrice} (${STOP_LOSS_ROI}% ROI)`);
 
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
@@ -655,36 +649,8 @@ async function placeBuyOrder(symbol, marginAmount) {
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: buyOrderDetails,
     });
+    lastTradeSide[symbol] = "LONG";
     console.log(`Trade Response:`, tradeResponse?.data);
-
-    const tradeId = tradeResponse.data._id;
-    const stopLossOrder = await binance.futuresOrder(
-      "STOP_MARKET",
-      "SELL",
-      symbol,
-      qtyFixed,
-      null,
-      {
-        stopPrice: stopLossPrice,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
-    );
-    console.log(
-      `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
-    );
-    console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
-
-    const details = {
-      stopLossPrice: stopLossPrice,
-      stopLossOrderId: stopLossOrder.orderId,
-    };
-    console.log(`details`, details);
-    setTimeout(async () => {
-      await axios.put(`${API_ENDPOINT}${tradeId}`, {
-        data: details,
-      });
-    }, 2000);
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
   }
@@ -718,21 +684,14 @@ async function placeShortOrder(symbol, marginAmount) {
 
     const exchangeInfo = await binance.futuresExchangeInfo();
     const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
-
-    const stopLossPnL = (STOP_LOSS_ROI / 100) * marginAmount;
-    const stopLossPrice = parseFloat(
-      (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
-    );
 
     console.log(`SHORT Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    console.log(`Stop Loss Price: ${stopLossPrice} (${STOP_LOSS_ROI}% ROI)`);
 
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
@@ -754,37 +713,7 @@ async function placeShortOrder(symbol, marginAmount) {
       data: shortOrderDetails,
     });
     console.log(`Trade Response:`, tradeResponse?.data);
-
-    const tradeId = tradeResponse.data._id;
-
-    const stopLossOrder = await binance.futuresOrder(
-      "STOP_MARKET",
-      "BUY",
-      symbol,
-      qtyFixed,
-      null,
-      {
-        stopPrice: stopLossPrice,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
-    );
-    console.log(
-      `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
-    );
-
-    const details = {
-      stopLossPrice: stopLossPrice,
-      stopLossOrderId: stopLossOrder.orderId,
-    };
-
-    console.log(`details`, details);
-
-    setTimeout(async () => {
-      await axios.put(`${API_ENDPOINT}${tradeId}`, {
-        data: details,
-      });
-    }, 2000);
+    lastTradeSide[symbol] = "SHORT";
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
   }
@@ -800,12 +729,25 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
   const candles = await getCandles(symbol, "3m", 1000);
 
-  if (isSidewaysMarket(candles)) {
-    console.log(`⚖️ Market is sideways for ${symbol}. Decision: HOLD`);
-    return "HOLD";
-  }
-
   const decision = await checkTEMAEntry(symbol);
+  console.log("decision", decision);
+
+  const lastSide = lastTradeSide[symbol] || null;
+  if (lastSide) {
+    console.log(`[${symbol}] Last trade was: ${lastSide}`);
+
+    if (lastSide === "LONG" && decision === "LONG") {
+      console.log(`[${symbol}] Last trade was LONG, skipping LONG signal`);
+      return;
+    }
+
+    if (lastSide === "SHORT" && decision === "SHORT") {
+      console.log(`[${symbol}] Last trade was SHORT, skipping SHORT signal`);
+      return;
+    }
+  } else {
+    console.log(`[${symbol}] No previous trades, allowing any trade`);
+  }
 
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
@@ -846,12 +788,6 @@ setInterval(async () => {
     console.log("not enough amount");
   }
 }, 7000);
-
-setInterval(async () => {
-  for (const sym of symbols) {
-    await checkOrders(sym);
-  }
-}, 15000);
 
 setInterval(async () => {
   for (const sym of symbols) {
@@ -938,7 +874,7 @@ setInterval(async () => {
           // **NAYA CODE KHATAM**
         }
 
-        await trailStopLoss(sym);
+        // await trailStopLoss(sym);
       }
     } catch (err) {
       console.error(`Error with ${sym}:`, err.message);
