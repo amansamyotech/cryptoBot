@@ -127,9 +127,9 @@ async function checkTEMAEntry(symbol) {
     const closes = candles.map((c) => c.close);
 
     const tema15 = calculateTEMA(closes, 15);
-    console.log("tema15", tema15);
+    
     const tema21 = calculateTEMA(closes, 21);
-    console.log("tema15", tema21);
+    
     if (tema15.length < 2 || tema21.length < 2) return "HOLD";
 
     const prevTEMA15 = tema15[tema15.length - 2];
@@ -138,6 +138,11 @@ async function checkTEMAEntry(symbol) {
     const currTEMA21 = tema21[tema21.length - 1];
 
     const sideways = isSidewaysMarket(candles);
+console.log(`sideways`,sideways);
+console.log(`prevTEMA15 < prevTEMA21`,prevTEMA15 < prevTEMA21);
+console.log(`currTEMA15 > currTEMA21`,currTEMA15 > currTEMA21);
+
+
 
     if (!sideways && prevTEMA15 < prevTEMA21 && currTEMA15 > currTEMA21) {
       return "LONG"; // crossover up
