@@ -5,6 +5,7 @@ const { checkTEMAEntry, hasNewCandleFormed } = require("./indexCrossTema");
 const { getCandles } = require("./helper/getCandles");
 const { isSidewaysMarket } = require("./decide25TEMAFullworking");
 const isProcessing = {};
+const lastTradeSide = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
@@ -680,9 +681,11 @@ async function placeBuyOrder(symbol, marginAmount) {
       stopLossOrderId: stopLossOrder.orderId,
     };
     console.log(`details`, details);
-      await axios.put(`${API_ENDPOINT}${tradeId}`, {
-        data: details,
-      });
+    await axios.put(`${API_ENDPOINT}${tradeId}`, {
+      data: details,
+    });
+
+    lastTradeSide[symbol] = "LONG";
   } catch (error) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
   }
@@ -777,10 +780,12 @@ async function placeShortOrder(symbol, marginAmount) {
     };
 
     console.log(`details`, details);
-    
-      await axios.put(`${API_ENDPOINT}${tradeId}`, {
-        data: details,
-      });
+
+    await axios.put(`${API_ENDPOINT}${tradeId}`, {
+      data: details,
+    });
+
+    lastTradeSide[symbol] = "SHORT";
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
   }
@@ -803,6 +808,23 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
   const decision = await checkTEMAEntry(symbol);
 
+  const lastSide = lastTradeSide[symbol] || null;
+  if (lastSide) {
+    console.log(`[${symbol}] Last trade was: ${lastSide}`);
+
+    if (lastSide === "LONG" && decision === "LONG") {
+      console.log(`[${symbol}] Last trade was LONG, skipping LONG signal`);
+      return;
+    }
+
+    if (lastSide === "SHORT" && decision === "SHORT") {
+      console.log(`[${symbol}] Last trade was SHORT, skipping SHORT signal`);
+      return;
+    }
+  } else {
+    console.log(`[${symbol}] No previous trades, allowing any trade`);
+  }
+
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
   } else if (decision === "SHORT") {
@@ -814,7 +836,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 8;
+  const usableBalance = totalBalance - 9;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
