@@ -760,7 +760,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
-  const usableBalance = totalBalance - 12;
+  const usableBalance = totalBalance - 7;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
@@ -857,7 +857,7 @@ setInterval(async () => {
           }
 
           // TEMA exit check sirf tab karo jab ROI 1% positive ho ya 1% negative ho
-          if (roi >= 0.5 || roi <= -0.5) {
+          if (roi >= 0.2 || roi <= -0.2) {
             const shouldExit = await checkTEMAExit(sym, tradeDetails);
             if (shouldExit) {
               const exitSuccess = await executeTEMAExit(sym, tradeDetails);
