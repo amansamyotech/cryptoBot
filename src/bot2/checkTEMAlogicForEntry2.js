@@ -148,7 +148,7 @@ async function checkTEMAEntry(symbol) {
     const currTEMA21 = tema21[tema21.length - 1];
 
     const sideways = isSidewaysMarket(candles);
-    const highVolume = isHighVolume(candles, 20, 1.5);
+    const highVolume = isHighVolume(candles, 20, 0.5);
 
     if (!sideways && highVolume && currTEMA15 > currTEMA21) {
       return "LONG"; // crossover up
