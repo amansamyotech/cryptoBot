@@ -121,7 +121,7 @@ function isSidewaysMarket(
 }
 
 // === Final Entry Function ===
-async function checkTEMAEntry(symbol) {
+async function checkTEMAEntry2(symbol) {
   try {
     const candles = await getCandles(symbol, "3m", 1000);
     const closes = candles.map((c) => c.close);
@@ -151,4 +151,4 @@ async function checkTEMAEntry(symbol) {
   }
 }
 
-module.exports = { checkTEMAEntry };
+module.exports = { checkTEMAEntry2 };

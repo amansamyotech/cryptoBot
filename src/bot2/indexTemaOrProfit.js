@@ -3,6 +3,7 @@ const axios = require("axios");
 const { checkOrders } = require("./orderCheck2Fun");
 const { hasNewCandleFormed } = require("./indexCrossTema");
 const { checkTEMAEntry } = require("./checkTEMAlogicForEntry2");
+const { checkTEMAEntry2 } = require("./checkTEMAlogicForEntry");
 const { getCandles } = require("./helper/getCandles");
 const { isSidewaysMarket } = require("./decide25TEMAFullworking");
 const isProcessing = {};
@@ -33,7 +34,7 @@ async function getUsdtBalance() {
 }
 
 const LEVERAGE = 3;
-const STOP_LOSS_ROI = -3; // Changed from -2 to -3
+const STOP_LOSS_ROI = -2; // Changed from -2 to -3
 const TRAILING_START_ROI = 1; // Changed from 3 to 1
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
@@ -43,7 +44,7 @@ async function checkTEMAExit(symbol, tradeDetails) {
     const { side } = tradeDetails;
 
     // Get current TEMA signal (opposite of entry)
-    const currentSignal = await checkTEMAEntry(symbol);
+    const currentSignal = await checkTEMAEntry2(symbol);
 
     // For LONG position - exit if TEMA gives SHORT signal
     if (side === "LONG" && currentSignal === "SHORT") {
@@ -790,14 +791,14 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
+  // const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
 
-  if (!hasNewCandle) {
-    console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
-    return;
-  }
+  // if (!hasNewCandle) {
+  //   console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
+  //   return;
+  // }
 
-  const candles = await getCandles(symbol, "3m", 1000);
+  // const candles = await getCandles(symbol, "3m", 1000);
 
   const decision = await checkTEMAEntry(symbol);
   console.log("decision", decision);
