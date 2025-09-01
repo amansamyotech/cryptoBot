@@ -2,8 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { hasNewCandleFormed } = require("./indexCrossTema");
 const { getCandles } = require("./helper/getCandles");
-const { isSidewaysMarket } = require("./decideTradeWithEma300");
-const { checkTEMAEntry } = require("../bot2/checkTEMAlogicForEntry");
+const { checkTEMAEntry2 } = require("../bot2/checkTEMAlogicForEntry");
 const isProcessing = {};
 const lastTradeSide = {};
 
@@ -36,13 +35,147 @@ const STOP_LOSS_ROI = -2;
 const TRAILING_START_ROI = 3;
 const INITIAL_TRAILING_ROI = 1;
 const ROI_STEP = 1;
+const ATR_MULTIPLIER = 2.0;
+const USE_ATR_STOP_LOSS = true;
+
+// Add this function near the top with your other functions
+async function calculateATR(symbol, period = 14, timeframe = "3m") {
+  try {
+    const candles = await getCandles(symbol, timeframe, period + 1);
+
+    if (candles.length < period + 1) {
+      console.log(`[${symbol}] Not enough candles for ATR calculation`);
+      return null;
+    }
+
+    let trueRanges = [];
+
+    for (let i = 1; i < candles.length; i++) {
+      const high = parseFloat(candles[i].high);
+      const low = parseFloat(candles[i].low);
+      const prevClose = parseFloat(candles[i - 1].close);
+
+      const tr1 = high - low;
+      const tr2 = Math.abs(high - prevClose);
+      const tr3 = Math.abs(low - prevClose);
+
+      const trueRange = Math.max(tr1, tr2, tr3);
+      trueRanges.push(trueRange);
+    }
+
+    // Calculate ATR (Simple Moving Average of True Range)
+    const atr =
+      trueRanges.slice(-period).reduce((sum, tr) => sum + tr, 0) / period;
+
+    console.log(`[${symbol}] ATR (${period}): ${atr.toFixed(8)}`);
+    return atr;
+  } catch (error) {
+    console.error(`[${symbol}] Error calculating ATR:`, error.message);
+    return null;
+  }
+}
+
+async function setATRStopLoss(
+  symbol,
+  side,
+  entryPrice,
+  quantity,
+  orderId,
+  marginUsed,
+  leverage
+) {
+  try {
+    if (!USE_ATR_STOP_LOSS) {
+      console.log(
+        `[${symbol}] ATR stop loss disabled, using percentage-based stop loss`
+      );
+      return null;
+    }
+
+    const atr = await calculateATR(symbol);
+    if (!atr) {
+      console.log(
+        `[${symbol}] Could not calculate ATR, skipping ATR stop loss`
+      );
+      return null;
+    }
+
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
+    const qtyFixed = parseFloat(quantity).toFixed(quantityPrecision);
+
+    let stopPrice;
+    let orderSide;
+
+    if (side === "LONG") {
+      // For LONG: Stop loss below entry price
+      stopPrice = entryPrice - atr * ATR_MULTIPLIER;
+      orderSide = "SELL";
+    } else if (side === "SHORT") {
+      // For SHORT: Stop loss above entry price
+      stopPrice = entryPrice + atr * ATR_MULTIPLIER;
+      orderSide = "BUY";
+    } else {
+      console.log(`[${symbol}] Invalid side: ${side}`);
+      return null;
+    }
+
+    stopPrice = parseFloat(stopPrice.toFixed(pricePrecision));
+
+    console.log(`[${symbol}] Setting ATR Stop Loss:`);
+    console.log(`Entry Price: ${entryPrice}`);
+    console.log(`ATR: ${atr.toFixed(8)}`);
+    console.log(`ATR Multiplier: ${ATR_MULTIPLIER}`);
+    console.log(`Stop Price: ${stopPrice}`);
+    console.log(`Side: ${side} -> Stop Order Side: ${orderSide}`);
+
+    // Place ATR-based stop loss order
+    const stopLossOrder = await binance.futuresOrder(
+      "STOP_MARKET",
+      orderSide,
+      symbol,
+      qtyFixed,
+      null,
+      {
+        stopPrice: stopPrice,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+
+    console.log(
+      `[${symbol}] ATR Stop Loss placed: Order ID ${stopLossOrder.orderId}`
+    );
+
+    // Update database with ATR stop loss details
+    const updateData = {
+      stopLossPrice: stopPrice,
+      stopLossOrderId: stopLossOrder.orderId,
+      atrValue: atr,
+      atrMultiplier: ATR_MULTIPLIER,
+      stopLossType: "ATR",
+    };
+
+    await axios.put(`${API_ENDPOINT}${orderId}`, {
+      data: updateData,
+    });
+
+    console.log(`[${symbol}] Database updated with ATR stop loss details`);
+    return stopLossOrder.orderId;
+  } catch (error) {
+    console.error(`[${symbol}] Error setting ATR stop loss:`, error.message);
+    return null;
+  }
+}
 
 async function checkTEMAExit(symbol, tradeDetails) {
   try {
     const { side } = tradeDetails;
 
     // Get current TEMA signal (opposite of entry)
-    const currentSignal = await checkTEMAEntry(symbol);
+    const currentSignal = await checkTEMAEntry2(symbol);
 
     // For LONG position - exit if TEMA gives SHORT signal
     if (side === "LONG" && currentSignal === "SHORT") {
@@ -649,6 +782,20 @@ async function placeBuyOrder(symbol, marginAmount) {
     const tradeResponse = await axios.post(API_ENDPOINT, {
       data: buyOrderDetails,
     });
+
+    const tradeId = tradeResponse.data._id;
+
+    if (tradeId) {
+      await setATRStopLoss(
+        symbol,
+        "LONG",
+        entryPrice,
+        qtyFixed,
+        tradeId,
+        marginAmount,
+        LEVERAGE
+      );
+    }
     lastTradeSide[symbol] = "LONG";
     console.log(`Trade Response:`, tradeResponse?.data);
   } catch (error) {
@@ -713,6 +860,19 @@ async function placeShortOrder(symbol, marginAmount) {
       data: shortOrderDetails,
     });
     console.log(`Trade Response:`, tradeResponse?.data);
+
+    const tradeId = tradeResponse.data._id;
+    if (tradeId) {
+      await setATRStopLoss(
+        symbol,
+        "SHORT",
+        entryPrice,
+        qtyFixed,
+        tradeId,
+        marginAmount,
+        LEVERAGE
+      );
+    }
     lastTradeSide[symbol] = "SHORT";
   } catch (error) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
@@ -729,7 +889,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 
   const candles = await getCandles(symbol, "3m", 1000);
 
-  const decision = await checkTEMAEntry(symbol);
+  const decision = await checkTEMAEntry2(symbol);
   console.log("decision", decision);
 
   const lastSide = lastTradeSide[symbol] || null;
@@ -874,7 +1034,7 @@ setInterval(async () => {
           // **NAYA CODE KHATAM**
         }
 
-        // await trailStopLoss(sym);
+        await trailStopLoss(sym);
       }
     } catch (err) {
       console.error(`Error with ${sym}:`, err.message);
