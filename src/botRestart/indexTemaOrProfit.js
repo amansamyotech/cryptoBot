@@ -3,6 +3,8 @@ const axios = require("axios");
 const { hasNewCandleFormed } = require("./indexCrossTema");
 const { getCandles } = require("./helper/getCandles");
 const { checkTEMAEntry2 } = require("../bot2/checkTEMAlogicForEntry");
+const { checkOrders } = require("./orderCheckFun");
+
 const isProcessing = {};
 const lastTradeSide = {};
 
@@ -1041,5 +1043,11 @@ setInterval(async () => {
     } finally {
       isProcessing[sym] = false;
     }
+  }
+}, 10000);
+
+setInterval(async () => {
+  for (const sym of symbols) {
+    await checkOrders(sym);
   }
 }, 10000);
