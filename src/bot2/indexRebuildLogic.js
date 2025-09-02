@@ -34,6 +34,18 @@ const LEVERAGE = 3;
 const ATR_LENGTH = 14;
 const ATR_MULTIPLIER_SL = 2.0;
 const ATR_MULTIPLIER_TP = 3.0;
+
+function getTEMApercentage(tema15, tema21) {
+  const total = tema15 + tema21;
+
+  const tema15 = (tema15 / total) * 100;
+  const tema21 = (tema21 / total) * 100;
+
+  return {
+    tema15,
+    tema21,
+  };
+}
 function calculateTEMA(prices, length) {
   if (prices.length < length * 3) return null;
 
@@ -74,7 +86,7 @@ function calculateTEMA(prices, length) {
 async function getTEMA(symbol, length) {
   try {
     const candles = await getCandles(symbol, "3m", length * 3 + 10);
-      const closes = candles.map((c) => c.close);
+    const closes = candles.map((c) => c.close);
     return calculateTEMA(closes, length);
   } catch (err) {
     console.error(`Error calculating TEMA for ${symbol}:`, err.message);
@@ -84,12 +96,14 @@ async function getTEMA(symbol, length) {
 
 async function checkTEMAEntry(symbol) {
   try {
-    const tema15 = await getTEMA(symbol, 15);
+    const tema15WP = await getTEMA(symbol, 15);
 
-    console.log(`tema15`,tema15);
-    
-    const tema21 = await getTEMA(symbol, 21);
-    console.log(`tema21`,tema21);
+    console.log(`tema15`, tema15);
+
+    const tema21WP = await getTEMA(symbol, 21);
+    console.log(`tema21`, tema21);
+
+    const { tema15, tema21 } = getTEMApercentage(tema15WP, tema21WP);
 
     if (!tema15 || !tema21) {
       console.log(`[${symbol}] Could not calculate TEMA values`);
