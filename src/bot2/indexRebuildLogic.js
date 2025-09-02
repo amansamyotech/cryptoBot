@@ -38,12 +38,12 @@ const ATR_MULTIPLIER_TP = 3.0;
 function getTEMApercentage(tema15, tema21) {
   const total = tema15 + tema21;
 
-  const tema15 = (tema15 / total) * 100;
-  const tema21 = (tema21 / total) * 100;
+  const percent15 = (tema15 / total) * 100;
+  const percent21 = (tema21 / total) * 100;
 
   return {
-    tema15,
-    tema21,
+    percent15,
+    percent21,
   };
 }
 function calculateTEMA(prices, length) {
@@ -96,17 +96,18 @@ async function getTEMA(symbol, length) {
 
 async function checkTEMAEntry(symbol) {
   try {
-    const tema15WP = await getTEMA(symbol, 15);
+    const tema15 = await getTEMA(symbol, 15);
 
     console.log(`tema15`, tema15);
 
-    const tema21WP = await getTEMA(symbol, 21);
+    const tema21 = await getTEMA(symbol, 21);
     console.log(`tema21`, tema21);
 
-    const { tema15, tema21 } = getTEMApercentage(tema15WP, tema21WP);
-    console.log(`Percentage - TEMA 15: ${tema15}%, TEMA 21: ${tema21}%`);
+    const { percent15, percent21 } = getTEMApercentage(tema15, tema21);
+    console.log(`percent15, percent21`,percent15, percent21);
+    
 
-    if (!tema15 || !tema21) {
+    if (!percent15 || !percent21) {
       console.log(`[${symbol}] Could not calculate TEMA values`);
       return "HOLD";
     }
@@ -125,8 +126,8 @@ async function checkTEMAEntry(symbol) {
     if (!prevTema15 || !prevTema21) return "HOLD";
 
     // Check for crossover
-    const longCondition = prevTema15 <= prevTema21 && tema15 > tema21; // Cross above
-    const shortCondition = prevTema15 >= prevTema21 && tema15 < tema21; // Cross below
+    const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
+    const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
 
     if (longCondition) {
       console.log(`[${symbol}] TEMA 15 crossed above TEMA 21 - LONG signal`);
@@ -190,15 +191,15 @@ async function checkTEMAExit(symbol, tradeDetails) {
     // Get current TEMA signals
     const tema15 = await getTEMA(symbol, 15);
     const tema21 = await getTEMA(symbol, 21);
-
+    const { percent15, percent21 } = getTEMApercentage(tema15, tema21);
     // For LONG position - exit if TEMA 15 crosses below TEMA 21
-    if (side === "LONG" && tema15 < tema21) {
+    if (side === "LONG" && percent15 < percent21) {
       console.log(`[${symbol}] LONG Exit: TEMA 15 crossed below TEMA 21`);
       return true;
     }
 
     // For SHORT position - exit if TEMA 15 crosses above TEMA 21
-    if (side === "SHORT" && tema15 > tema21) {
+    if (side === "SHORT" && percent15 > percent21) {
       console.log(`[${symbol}] SHORT Exit: TEMA 15 crossed above TEMA 21`);
       return true;
     }
