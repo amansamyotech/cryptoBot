@@ -74,8 +74,8 @@ function calculateTEMA(prices, length) {
 async function getTEMA(symbol, length) {
   try {
     const candles = await getCandles(symbol, "3m", length * 3 + 10);
-    const closePrices = candles.map((candle) => parseFloat(candle[4])); // Close prices
-    return calculateTEMA(closePrices, length);
+      const closes = candles.map((c) => c.close);
+    return calculateTEMA(closes, length);
   } catch (err) {
     console.error(`Error calculating TEMA for ${symbol}:`, err.message);
     return null;
