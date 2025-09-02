@@ -85,7 +85,11 @@ async function getTEMA(symbol, length) {
 async function checkTEMAEntry(symbol) {
   try {
     const tema15 = await getTEMA(symbol, 15);
+
+    console.log(`tema15`,tema15);
+    
     const tema21 = await getTEMA(symbol, 21);
+    console.log(`tema21`,tema21);
 
     if (!tema15 || !tema21) {
       console.log(`[${symbol}] Could not calculate TEMA values`);
