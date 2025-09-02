@@ -127,10 +127,10 @@ async function checkTEMAEntry(symbol) {
     // Check for crossover
 
     //main line
-    // const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
-    // const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
-    const longCondition = percent15 > percent21; // Cross above
-    const shortCondition = percent15 < percent21; // Cross below
+    const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
+    const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
+    // const longCondition = percent15 > percent21; // Cross above
+    // const shortCondition = percent15 < percent21; // Cross below
 
     if (longCondition) {
       console.log(`[${symbol}] TEMA 15 crossed above TEMA 21 - LONG signal`);
@@ -193,15 +193,28 @@ async function checkTEMAExit(symbol, tradeDetails) {
     // Get current TEMA signals
     const tema15 = await getTEMA(symbol, 15);
     const tema21 = await getTEMA(symbol, 21);
+
+    const candles = await getCandles(symbol, "3m", 100);
+    const closePrices = candles.map((c) => c.close);
+
+    if (closePrices.length < 50) return "HOLD";
+
+    // Calculate previous TEMA values
+    const prevClosePrices = closePrices.slice(0, -1);
+    const prevTema15 = calculateTEMA(prevClosePrices, 15);
+    const prevTema21 = calculateTEMA(prevClosePrices, 21);
+
+    if (!prevTema15 || !prevTema21) return "HOLD";
+
     const { percent15, percent21 } = getTEMApercentage(tema15, tema21);
     // For LONG position - exit if TEMA 15 crosses below TEMA 21
-    if (side === "LONG" && percent15 < percent21) {
+    if (side === "LONG" && prevTema15 >= prevTema21 && percent15 < percent21) {
       console.log(`[${symbol}] LONG Exit: TEMA 15 crossed below TEMA 21`);
       return true;
     }
 
     // For SHORT position - exit if TEMA 15 crosses above TEMA 21
-    if (side === "SHORT" && percent15 > percent21) {
+    if (side === "SHORT" && prevTema15 <= prevTema21 && percent15 > percent21) {
       console.log(`[${symbol}] SHORT Exit: TEMA 15 crossed above TEMA 21`);
       return true;
     }
