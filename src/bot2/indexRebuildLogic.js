@@ -104,6 +104,7 @@ async function checkTEMAEntry(symbol) {
     console.log(`tema21`, tema21);
 
     const { tema15, tema21 } = getTEMApercentage(tema15WP, tema21WP);
+    console.log(`Percentage - TEMA 15: ${tema15}%, TEMA 21: ${tema21}%`);
 
     if (!tema15 || !tema21) {
       console.log(`[${symbol}] Could not calculate TEMA values`);
