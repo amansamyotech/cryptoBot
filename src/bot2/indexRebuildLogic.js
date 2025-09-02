@@ -121,6 +121,7 @@ async function checkTEMAEntry(symbol) {
     const prevClosePrices = closePrices.slice(0, -1);
     const prevTema15 = calculateTEMA(prevClosePrices, 15);
     const prevTema21 = calculateTEMA(prevClosePrices, 21);
+    console.log(`prevTema15 || !prevTema21`, prevTema15, prevTema21);
 
     if (!prevTema15 || !prevTema21) return "HOLD";
 
@@ -203,6 +204,7 @@ async function checkTEMAExit(symbol, tradeDetails) {
     const prevClosePrices = closePrices.slice(0, -1);
     const prevTema15 = calculateTEMA(prevClosePrices, 15);
     const prevTema21 = calculateTEMA(prevClosePrices, 21);
+    console.log(`prevTema15 || !prevTema21`, prevTema15, prevTema21);
 
     if (!prevTema15 || !prevTema21) return "HOLD";
 
@@ -656,7 +658,7 @@ setInterval(async () => {
         const positions = await binance.futuresPositionRisk({ symbol: sym });
         const pos = positions.find((p) => p.symbol === sym);
         if (!pos || Math.abs(parseFloat(pos.positionAmt || 0)) === 0) {
-          console.log( 
+          console.log(
             `[${sym}] Position already closed or doesn't exist. Updating DB to close trade.`
           );
 
