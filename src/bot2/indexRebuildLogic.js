@@ -305,6 +305,12 @@ async function placeBuyOrder(symbol, marginAmount) {
     const stopLossPrice = parseFloat(
       (entryPrice - atr * atrMultiplierSL).toFixed(pricePrecision)
     );
+
+    console.log(`entryPrice`,entryPrice);
+    console.log(`atr`,atr);
+    console.log(`atrMultiplierSL`,atrMultiplierSL);
+    
+    
     console.log(`entryPrice - atr * atrMultiplierSL`,entryPrice - atr * atrMultiplierSL);
     console.log(`stopLossPrice`, stopLossPrice);
 
