@@ -313,7 +313,7 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    console.log(`Stop Loss Price: ${stopLossPrice} (${STOP_LOSS_ROI}% ROI)`);
+    
 
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
@@ -348,9 +348,6 @@ async function placeBuyOrder(symbol, marginAmount) {
         reduceOnly: true,
         timeInForce: "GTC",
       }
-    );
-    console.log(
-      `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
     );
     console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
 
@@ -435,7 +432,7 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    console.log(`Stop Loss Price: ${stopLossPrice} (${STOP_LOSS_ROI}% ROI)`);
+    
 
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
@@ -472,10 +469,7 @@ async function placeShortOrder(symbol, marginAmount) {
         timeInForce: "GTC",
       }
     );
-    console.log(
-      `Stop Loss set at ${stopLossPrice} for ${symbol} (${STOP_LOSS_ROI}% ROI)`
-    );
-
+    
     const takeProfitOrder = await binance.futuresOrder(
       "TAKE_PROFIT_MARKET",
       "BUY",
