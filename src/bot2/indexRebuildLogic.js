@@ -656,7 +656,7 @@ setInterval(async () => {
         const positions = await binance.futuresPositionRisk({ symbol: sym });
         const pos = positions.find((p) => p.symbol === sym);
         if (!pos || Math.abs(parseFloat(pos.positionAmt || 0)) === 0) {
-          console.log(
+          console.log( 
             `[${sym}] Position already closed or doesn't exist. Updating DB to close trade.`
           );
 
