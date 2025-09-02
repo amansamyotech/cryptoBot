@@ -439,6 +439,15 @@ async function placeShortOrder(symbol, marginAmount) {
     const takeProfitPrice = parseFloat(
       (entryPrice - atr * atrMultiplierTP).toFixed(pricePrecision)
     );
+
+    console.log(`entryPrice`,entryPrice);
+    console.log(`atr`,atr);
+    console.log(`atrMultiplierSL`,atrMultiplierSL);
+    
+    
+    console.log(`entryPrice - atr * atrMultiplierSL`,entryPrice - atr * atrMultiplierSL);
+    console.log(`stopLossPrice`, stopLossPrice);
+
     console.log(`SHORT Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
