@@ -113,7 +113,7 @@ async function checkTEMAEntry(symbol) {
 
     // Get previous TEMA values to detect crossover
     const candles = await getCandles(symbol, "3m", 100);
-    const closePrices =  candles.map((c) => c.close);
+    const closePrices = candles.map((c) => c.close);
 
     if (closePrices.length < 50) return "HOLD";
 
@@ -129,7 +129,7 @@ async function checkTEMAEntry(symbol) {
     //main line
     // const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
     // const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
-    const longCondition =  percent15 > percent21; // Cross above
+    const longCondition = percent15 > percent21; // Cross above
     const shortCondition = percent15 < percent21; // Cross below
 
     if (longCondition) {
@@ -305,15 +305,21 @@ async function placeBuyOrder(symbol, marginAmount) {
     const stopLossPrice = parseFloat(
       (entryPrice - atr * atrMultiplierSL).toFixed(pricePrecision)
     );
+    console.log(`entryPrice - atr * atrMultiplierSL`,entryPrice - atr * atrMultiplierSL);
+    console.log(`stopLossPrice`, stopLossPrice);
+
     const takeProfitPrice = parseFloat(
       (entryPrice + atr * atrMultiplierTP).toFixed(pricePrecision)
     );
+    console.log(`entryPrice + atr * atrMultiplierTP`,entryPrice + atr * atrMultiplierTP);
+    
+    console.log(`takeProfitPrice`, takeProfitPrice);
+
     console.log(`LONG Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    
 
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
@@ -432,7 +438,6 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(`Quantity: ${qtyFixed}`);
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-    
 
     const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
     console.log(`Shorted ${symbol} at ${entryPrice}`);
@@ -469,7 +474,7 @@ async function placeShortOrder(symbol, marginAmount) {
         timeInForce: "GTC",
       }
     );
-    
+
     const takeProfitOrder = await binance.futuresOrder(
       "TAKE_PROFIT_MARKET",
       "BUY",
