@@ -153,9 +153,9 @@ function calculateATR(candles, length = ATR_LENGTH) {
   const trueRanges = [];
 
   for (let i = 1; i < candles.length; i++) {
-    const high = parseFloat(candles[i][2]);
-    const low = parseFloat(candles[i][3]);
-    const prevClose = parseFloat(candles[i - 1][4]);
+    const high = candles[i].high;
+    const low = candles[i].low;
+    const prevClose = candles[i - 1].close;
 
     const tr1 = high - low;
     const tr2 = Math.abs(high - prevClose);
@@ -164,12 +164,10 @@ function calculateATR(candles, length = ATR_LENGTH) {
     trueRanges.push(Math.max(tr1, tr2, tr3));
   }
 
-  // Calculate SMA of true ranges for initial ATR
   if (trueRanges.length < length) return null;
 
   let atr = trueRanges.slice(0, length).reduce((a, b) => a + b, 0) / length;
 
-  // Apply EMA smoothing for remaining periods
   const multiplier = 2 / (length + 1);
   for (let i = length; i < trueRanges.length; i++) {
     atr = trueRanges[i] * multiplier + atr * (1 - multiplier);
@@ -306,19 +304,24 @@ async function placeBuyOrder(symbol, marginAmount) {
       (entryPrice - atr * atrMultiplierSL).toFixed(pricePrecision)
     );
 
-    console.log(`entryPrice`,entryPrice);
-    console.log(`atr`,atr);
-    console.log(`atrMultiplierSL`,atrMultiplierSL);
-    
-    
-    console.log(`entryPrice - atr * atrMultiplierSL`,entryPrice - atr * atrMultiplierSL);
+    console.log(`entryPrice`, entryPrice);
+    console.log(`atr`, atr);
+    console.log(`atrMultiplierSL`, atrMultiplierSL);
+
+    console.log(
+      `entryPrice - atr * atrMultiplierSL`,
+      entryPrice - atr * atrMultiplierSL
+    );
     console.log(`stopLossPrice`, stopLossPrice);
 
     const takeProfitPrice = parseFloat(
       (entryPrice + atr * atrMultiplierTP).toFixed(pricePrecision)
     );
-    console.log(`entryPrice + atr * atrMultiplierTP`,entryPrice + atr * atrMultiplierTP);
-    
+    console.log(
+      `entryPrice + atr * atrMultiplierTP`,
+      entryPrice + atr * atrMultiplierTP
+    );
+
     console.log(`takeProfitPrice`, takeProfitPrice);
 
     console.log(`LONG Order Details for ${symbol}:`);
@@ -440,12 +443,14 @@ async function placeShortOrder(symbol, marginAmount) {
       (entryPrice - atr * atrMultiplierTP).toFixed(pricePrecision)
     );
 
-    console.log(`entryPrice`,entryPrice);
-    console.log(`atr`,atr);
-    console.log(`atrMultiplierSL`,atrMultiplierSL);
-    
-    
-    console.log(`entryPrice - atr * atrMultiplierSL`,entryPrice - atr * atrMultiplierSL);
+    console.log(`entryPrice`, entryPrice);
+    console.log(`atr`, atr);
+    console.log(`atrMultiplierSL`, atrMultiplierSL);
+
+    console.log(
+      `entryPrice - atr * atrMultiplierSL`,
+      entryPrice - atr * atrMultiplierSL
+    );
     console.log(`stopLossPrice`, stopLossPrice);
 
     console.log(`SHORT Order Details for ${symbol}:`);
