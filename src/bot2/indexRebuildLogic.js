@@ -104,8 +104,7 @@ async function checkTEMAEntry(symbol) {
     console.log(`tema21`, tema21);
 
     const { percent15, percent21 } = getTEMApercentage(tema15, tema21);
-    console.log(`percent15, percent21`,percent15, percent21);
-    
+    console.log(`percent15, percent21`, percent15, percent21);
 
     if (!percent15 || !percent21) {
       console.log(`[${symbol}] Could not calculate TEMA values`);
@@ -126,8 +125,12 @@ async function checkTEMAEntry(symbol) {
     if (!prevTema15 || !prevTema21) return "HOLD";
 
     // Check for crossover
-    const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
-    const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
+
+    //main line
+    // const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
+    // const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
+    const longCondition =  percent15 > percent21; // Cross above
+    const shortCondition = percent15 < percent21; // Cross below
 
     if (longCondition) {
       console.log(`[${symbol}] TEMA 15 crossed above TEMA 21 - LONG signal`);
