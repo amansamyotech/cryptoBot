@@ -113,7 +113,7 @@ async function checkTEMAEntry(symbol) {
 
     // Get previous TEMA values to detect crossover
     const candles = await getCandles(symbol, "3m", 50);
-    const closePrices = candles.map((candle) => parseFloat(candle[4]));
+    const closePrices =  candles.map((c) => c.close);
 
     if (closePrices.length < 50) return "HOLD";
 
