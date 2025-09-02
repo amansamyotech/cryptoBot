@@ -33,7 +33,7 @@ async function getUsdtBalance() {
 const LEVERAGE = 3;
 const ATR_LENGTH = 14;
 const ATR_MULTIPLIER_SL = 2.0;
-const ATR_MULTIPLIER_TP = 3.0;
+const ATR_MULTIPLIER_TP = 4.0;
 
 function getTEMApercentage(tema15, tema21) {
   const total = tema15 + tema21;
@@ -185,6 +185,7 @@ async function getATR(symbol, length = ATR_LENGTH) {
     return null;
   }
 }
+
 async function checkTEMAExit(symbol, tradeDetails) {
   try {
     const { side } = tradeDetails;
@@ -211,7 +212,6 @@ async function checkTEMAExit(symbol, tradeDetails) {
     return false;
   }
 }
-
 async function cancelAllOpenOrders(symbol) {
   try {
     const openOrders = await binance.futuresOpenOrders(symbol);
@@ -231,7 +231,6 @@ async function cancelAllOpenOrders(symbol) {
     console.error(`[${symbol}] Error fetching open orders: ${err.message}`);
   }
 }
-
 async function executeTEMAExit(symbol, tradeDetails) {
   try {
     const { quantity, objectId, stopLossOrderId } = tradeDetails;
@@ -284,7 +283,6 @@ async function executeTEMAExit(symbol, tradeDetails) {
     return false;
   }
 }
-
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     try {
@@ -420,7 +418,6 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.error(`Error placing LONG order for ${symbol}:`, error);
   }
 }
-
 async function placeShortOrder(symbol, marginAmount) {
   try {
     try {
@@ -551,14 +548,13 @@ async function placeShortOrder(symbol, marginAmount) {
     console.error(`Error placing SHORT order for ${symbol}:`, error);
   }
 }
-
 async function processSymbol(symbol, maxSpendPerTrade) {
-  // const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
+  const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
 
-  // if (!hasNewCandle) {
-  //   console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
-  //   return;
-  // }
+  if (!hasNewCandle) {
+    console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
+    return;
+  }
 
   const decision = await checkTEMAEntry(symbol);
   console.log("decision", decision);
@@ -694,7 +690,7 @@ setInterval(async () => {
           }
 
           // TEMA exit check sirf tab karo jab ROI 1% positive ho ya 1% negative ho
-          if (roi >= 0.5 || roi <= -0.5) {
+          if (roi >= 0.2 || roi <= -0.2) {
             const shouldExit = await checkTEMAExit(sym, tradeDetails);
             if (shouldExit) {
               const exitSuccess = await executeTEMAExit(sym, tradeDetails);

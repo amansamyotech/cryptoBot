@@ -19,44 +19,63 @@ async function checkOrderForIndexRebuild(symbol) {
     const { stopLossOrderId, takeProfitOrderId, objectId } = tradeDetails;
     if (!stopLossOrderId && !takeProfitOrderId) return;
 
-    // Fetch order statuses
+    // Check order statuses
     const orders = [];
     if (stopLossOrderId) {
-      const stopLossRes = await binance.futuresOrderStatus(symbol, {
-        orderId: parseInt(stopLossOrderId),
-      });
-      orders.push({ id: stopLossOrderId, status: stopLossRes?.status });
+      try {
+        const res = await binance.futuresOrderStatus(symbol, {
+          orderId: parseInt(stopLossOrderId),
+        });
+        orders.push({ id: stopLossOrderId, status: res?.status });
+      } catch (e) {
+        orders.push({ id: stopLossOrderId, status: "ERROR" });
+      }
     }
     if (takeProfitOrderId) {
-      const takeProfitRes = await binance.futuresOrderStatus(symbol, {
-        orderId: parseInt(takeProfitOrderId),
-      });
-      orders.push({ id: takeProfitOrderId, status: takeProfitRes?.status });
+      try {
+        const res = await binance.futuresOrderStatus(symbol, {
+          orderId: parseInt(takeProfitOrderId),
+        });
+        orders.push({ id: takeProfitOrderId, status: res?.status });
+      } catch (e) {
+        orders.push({ id: takeProfitOrderId, status: "ERROR" });
+      }
     }
 
-    // Check if any order is FILLED
-    const anyFilled = orders.some((o) => o.status === "FILLED");
-    if (anyFilled) {
-      console.log(
-        `An order is FILLED for ${symbol}. Cancelling all other open orders...`
-      );
+    // Check if any order is FILLED, CANCELED, or EXPIRED
+    const shouldClose = orders.some(
+      (o) =>
+        o.status === "FILLED" ||
+        o.status === "CANCELED" ||
+        o.status === "EXPIRED" ||
+        o.status === "ERROR"
+    );
 
-      // Cancel all orders that are not FILLED
-      for (const o of orders) {
-        if (o.status === "NEW") {
-          await binance.futuresCancel(symbol, { orderId: parseInt(o.id) });
-          console.log(`Cancelled orderId ${o.id} for ${symbol}`);
+    if (shouldClose) {
+      console.log(`Closing trade for ${symbol}. Order statuses:`, orders);
+
+      // Cancel all open orders for symbol
+      try {
+        await binance.futuresCancelAll(symbol);
+      } catch (e) {
+        console.log(
+          `Cancel all failed for ${symbol}, trying individual cancel`
+        );
+        for (const order of orders) {
+          if (order.status === "NEW") {
+            try {
+              await binance.futuresCancel(symbol, parseInt(order.id));
+            } catch (err) {}
+          }
         }
       }
 
       // Update DB
       await axios.put(`${API_ENDPOINT}${objectId}`, { data: { status: "1" } });
-      console.log(`Trade marked as closed in DB for ${symbol}`);
-    } else {
-      console.log(`No order FILLED yet for ${symbol}. No action taken.`);
+      console.log(`Trade closed for ${symbol}`);
     }
   } catch (error) {
-    console.error("Error checking order statuses:", error);
+    console.error(`Error for ${symbol}:`, error.message);
   }
 }
 
