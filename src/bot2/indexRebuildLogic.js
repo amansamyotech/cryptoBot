@@ -212,10 +212,32 @@ async function checkTEMAExit(symbol, tradeDetails) {
   }
 }
 
+async function cancelAllOpenOrders(symbol) {
+  try {
+    const openOrders = await binance.futuresOpenOrders(symbol);
+    if (openOrders.length === 0) return;
+
+    for (const order of openOrders) {
+      try {
+        await binance.futuresCancel(symbol, order.orderId);
+        console.log(`[${symbol}] Canceled open order: ${order.orderId}`);
+      } catch (err) {
+        console.warn(
+          `[${symbol}] Failed to cancel order ${order.orderId}: ${err.message}`
+        );
+      }
+    }
+  } catch (err) {
+    console.error(`[${symbol}] Error fetching open orders: ${err.message}`);
+  }
+}
+
 async function executeTEMAExit(symbol, tradeDetails) {
   try {
     const { quantity, objectId, stopLossOrderId } = tradeDetails;
     const side = tradeDetails.side;
+
+    await cancelAllOpenOrders(symbol);
 
     if (stopLossOrderId) {
       try {
