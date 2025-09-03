@@ -128,10 +128,10 @@ async function checkTEMAEntry(symbol) {
     // Check for crossover
 
     //main line
-    const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
-    const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
-    // const longCondition = percent15 > percent21; // Cross above
-    // const shortCondition = percent15 < percent21; // Cross below
+    // const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
+    // const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
+    const longCondition = percent15 > percent21; // Cross above
+    const shortCondition = percent15 < percent21; // Cross below
 
     if (longCondition) {
       console.log(`[${symbol}] TEMA 15 crossed above TEMA 21 - LONG signal`);
@@ -189,6 +189,13 @@ async function getATR(symbol, length = ATR_LENGTH) {
 
 async function checkTEMAExit(symbol, tradeDetails) {
   try {
+    const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
+
+    if (!hasNewCandle) {
+      console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
+      return;
+    }
+
     const { side } = tradeDetails;
 
     // Get current TEMA signals
@@ -291,7 +298,7 @@ async function executeTEMAExit(symbol, tradeDetails) {
       data: { status: "1" },
     });
 
-    lastTradeSide[symbol] = null;
+    // lastTradeSide[symbol] = null;
     return true;
   } catch (err) {
     console.error(`[${symbol}] Error executing TEMA exit:`, err.message);
