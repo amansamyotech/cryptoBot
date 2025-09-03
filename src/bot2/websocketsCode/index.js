@@ -1,6 +1,5 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
-const { checkOrderForIndexRebuild } = require("./checkOrderForIndexRebuild");
 const isProcessing = {};
 const lastTradeSide = {};
 
@@ -31,14 +30,14 @@ function initializeWebSockets() {
 
     // Kline WebSocket for 3m candles
     binance.websockets.chart(symbol, "3m", (symbol, interval, chart) => {
-      const candles = Object.values(chart).map(c => ({
+      const candles = Object.values(chart).map((c) => ({
         time: c.closeTime,
         open: parseFloat(c.open),
         high: parseFloat(c.high),
         low: parseFloat(c.low),
         close: parseFloat(c.close),
         volume: parseFloat(c.volume),
-        isFinal: !c.isCandleIncomplete
+        isFinal: !c.isCandleIncomplete,
       }));
       candleData[symbol] = candles.sort((a, b) => a.time - b.time);
     });
@@ -67,7 +66,7 @@ async function cacheExchangeInfo() {
   exchangeInfo.symbols.forEach((s) => {
     exchangeInfoCache[s.symbol] = {
       pricePrecision: s.pricePrecision,
-      quantityPrecision: s.quantityPrecision
+      quantityPrecision: s.quantityPrecision,
     };
   });
 }
@@ -122,18 +121,22 @@ async function getTEMA(symbol, length) {
   try {
     const candles = candleData[symbol] || [];
     if (candles.length < length * 3 + 10) {
-      const historical = await binance.futuresCandles(symbol, "3m", { limit: length * 3 + 10 });
-      candleData[symbol] = historical.map(c => ({
+      const historical = await binance.futuresCandles(symbol, "3m", {
+        limit: length * 3 + 10,
+      });
+      candleData[symbol] = historical.map((c) => ({
         time: c[6],
         open: parseFloat(c[1]),
         high: parseFloat(c[2]),
         low: parseFloat(c[3]),
         close: parseFloat(c[4]),
         volume: parseFloat(c[5]),
-        isFinal: true
+        isFinal: true,
       }));
     }
-    const closes = candleData[symbol].slice(-length * 3 - 10).map(c => c.close);
+    const closes = candleData[symbol]
+      .slice(-length * 3 - 10)
+      .map((c) => c.close);
     return calculateTEMA(closes, length);
   } catch (err) {
     console.error(`Error calculating TEMA for ${symbol}:`, err.message);
@@ -146,7 +149,10 @@ async function hasNewCandleFormed(symbol, type) {
   if (!candles.length) return false;
   const latestCandle = candles[candles.length - 1];
   if (!latestCandle.isFinal) return false;
-  if (lastCandleTime[symbol][type] === 0 || lastCandleTime[symbol][type] < latestCandle.time) {
+  if (
+    lastCandleTime[symbol][type] === 0 ||
+    lastCandleTime[symbol][type] < latestCandle.time
+  ) {
     lastCandleTime[symbol][type] = latestCandle.time;
     return true;
   }
@@ -169,7 +175,7 @@ async function checkTEMAEntry(symbol) {
 
     const candles = candleData[symbol].slice(-100);
     if (candles.length < 50) return "HOLD";
-    const closePrices = candles.map(c => c.close);
+    const closePrices = candles.map((c) => c.close);
     const prevClosePrices = closePrices.slice(0, -1);
     const prevTema15 = calculateTEMA(prevClosePrices, 15);
     const prevTema21 = calculateTEMA(prevClosePrices, 21);
@@ -222,15 +228,17 @@ async function getATR(symbol, length = ATR_LENGTH) {
   try {
     const candles = candleData[symbol] || [];
     if (candles.length < length + 20) {
-      const historical = await binance.futuresCandles(symbol, "3m", { limit: length + 20 });
-      candleData[symbol] = historical.map(c => ({
+      const historical = await binance.futuresCandles(symbol, "3m", {
+        limit: length + 20,
+      });
+      candleData[symbol] = historical.map((c) => ({
         time: c[6],
         open: parseFloat(c[1]),
         high: parseFloat(c[2]),
         low: parseFloat(c[3]),
         close: parseFloat(c[4]),
         volume: parseFloat(c[5]),
-        isFinal: true
+        isFinal: true,
       }));
     }
     return calculateATR(candleData[symbol].slice(-length - 20), length);
@@ -253,7 +261,7 @@ async function checkTEMAExit(symbol, tradeDetails) {
     const tema21 = await getTEMA(symbol, 21);
     const candles = candleData[symbol].slice(-100);
     if (candles.length < 50) return false;
-    const closePrices = candles.map(c => c.close);
+    const closePrices = candles.map((c) => c.close);
     const prevClosePrices = closePrices.slice(0, -1);
     const prevTema15 = calculateTEMA(prevClosePrices, 15);
     const prevTema21 = calculateTEMA(prevClosePrices, 21);
@@ -286,7 +294,9 @@ async function cancelAllOpenOrders(symbol) {
         await binance.futuresCancel(symbol, order.orderId);
         console.log(`[${symbol}] Canceled open order: ${order.orderId}`);
       } catch (err) {
-        console.warn(`[${symbol}] Failed to cancel order ${order.orderId}: ${err.message}`);
+        console.warn(
+          `[${symbol}] Failed to cancel order ${order.orderId}: ${err.message}`
+        );
       }
     }
   } catch (err) {
@@ -305,7 +315,9 @@ async function executeTEMAExit(symbol, tradeDetails) {
         console.log(`[${symbol}] Canceled stop loss order: ${stopLossOrderId}`);
       } catch (err) {
         if (err.code !== -2011 && err.code !== -1102) {
-          console.warn(`[${symbol}] Failed to cancel stop loss: ${err.message}`);
+          console.warn(
+            `[${symbol}] Failed to cancel stop loss: ${err.message}`
+          );
         }
       }
     }
@@ -316,11 +328,17 @@ async function executeTEMAExit(symbol, tradeDetails) {
 
     let exitOrder;
     if (side === "LONG") {
-      exitOrder = await binance.futuresMarketSell(symbol, qtyFixed, { reduceOnly: true });
+      exitOrder = await binance.futuresMarketSell(symbol, qtyFixed, {
+        reduceOnly: true,
+      });
     } else {
-      exitOrder = await binance.futuresMarketBuy(symbol, qtyFixed, { reduceOnly: true });
+      exitOrder = await binance.futuresMarketBuy(symbol, qtyFixed, {
+        reduceOnly: true,
+      });
     }
-    console.log(`[${symbol}] TEMA Exit executed - Order ID: ${exitOrder.orderId}`);
+    console.log(
+      `[${symbol}] TEMA Exit executed - Order ID: ${exitOrder.orderId}`
+    );
     await axios.put(`${API_ENDPOINT}${objectId}`, { data: { status: "1" } });
     return true;
   } catch (err) {
@@ -336,8 +354,13 @@ async function placeBuyOrder(symbol, marginAmount) {
       console.log(`[${symbol}] Margin type set to ISOLATED.`);
     } catch (err) {
       const msg = err?.body || err?.message || "";
-      if (msg.includes("No need to change") || msg.includes("margin type cannot be changed")) {
-        console.log(`[${symbol}] Margin type already ISOLATED or cannot be changed right now.`);
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
       } else {
         console.warn(`[${symbol}] Error setting margin type:`, msg);
       }
@@ -345,7 +368,8 @@ async function placeBuyOrder(symbol, marginAmount) {
     await binance.futuresLeverage(symbol, LEVERAGE);
     console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
 
-    const entryPrice = priceData[symbol] || parseFloat((await binance.futuresPrices())[symbol]);
+    const entryPrice =
+      priceData[symbol] || parseFloat((await binance.futuresPrices())[symbol]);
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
     const symbolInfo = exchangeInfoCache[symbol] || {};
@@ -356,8 +380,12 @@ async function placeBuyOrder(symbol, marginAmount) {
     const atr = await getATR(symbol, ATR_LENGTH);
     const atrMultiplierSL = ATR_MULTIPLIER_SL;
     const atrMultiplierTP = ATR_MULTIPLIER_TP;
-    const stopLossPrice = parseFloat((entryPrice - atr * atrMultiplierSL).toFixed(pricePrecision));
-    const takeProfitPrice = parseFloat((entryPrice + atr * atrMultiplierTP).toFixed(pricePrecision));
+    const stopLossPrice = parseFloat(
+      (entryPrice - atr * atrMultiplierSL).toFixed(pricePrecision)
+    );
+    const takeProfitPrice = parseFloat(
+      (entryPrice + atr * atrMultiplierTP).toFixed(pricePrecision)
+    );
 
     console.log(`LONG Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
@@ -379,7 +407,9 @@ async function placeBuyOrder(symbol, marginAmount) {
       positionValue: positionValue,
     };
 
-    const tradeResponse = await axios.post(API_ENDPOINT, { data: buyOrderDetails });
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: buyOrderDetails,
+    });
     console.log(`Trade Response:`, tradeResponse?.data);
     const tradeId = tradeResponse.data._id;
 
@@ -399,7 +429,9 @@ async function placeBuyOrder(symbol, marginAmount) {
       null,
       { stopPrice: takeProfitPrice, reduceOnly: true, timeInForce: "GTC" }
     );
-    console.log(`Take Profit set at ${takeProfitPrice} for ${symbol} (ATR-based)`);
+    console.log(
+      `Take Profit set at ${takeProfitPrice} for ${symbol} (ATR-based)`
+    );
 
     const details = {
       stopLossPrice: stopLossPrice,
@@ -421,8 +453,13 @@ async function placeShortOrder(symbol, marginAmount) {
       console.log(`[${symbol}] Margin type set to ISOLATED.`);
     } catch (err) {
       const msg = err?.body || err?.message || "";
-      if (msg.includes("No need to change") || msg.includes("margin type cannot be changed")) {
-        console.log(`[${symbol}] Margin type already ISOLATED or cannot be changed right now.`);
+      if (
+        msg.includes("No need to change") ||
+        msg.includes("margin type cannot be changed")
+      ) {
+        console.log(
+          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
+        );
       } else {
         console.warn(`[${symbol}] Error setting margin type:`, msg);
       }
@@ -430,7 +467,8 @@ async function placeShortOrder(symbol, marginAmount) {
     await binance.futuresLeverage(symbol, LEVERAGE);
     console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
 
-    const entryPrice = priceData[symbol] || parseFloat((await binance.futuresPrices())[symbol]);
+    const entryPrice =
+      priceData[symbol] || parseFloat((await binance.futuresPrices())[symbol]);
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
     const symbolInfo = exchangeInfoCache[symbol] || {};
@@ -441,8 +479,12 @@ async function placeShortOrder(symbol, marginAmount) {
     const atr = await getATR(symbol, ATR_LENGTH);
     const atrMultiplierSL = ATR_MULTIPLIER_SL;
     const atrMultiplierTP = ATR_MULTIPLIER_TP;
-    const stopLossPrice = parseFloat((entryPrice + atr * atrMultiplierSL).toFixed(pricePrecision));
-    const takeProfitPrice = parseFloat((entryPrice - atr * atrMultiplierTP).toFixed(pricePrecision));
+    const stopLossPrice = parseFloat(
+      (entryPrice + atr * atrMultiplierSL).toFixed(pricePrecision)
+    );
+    const takeProfitPrice = parseFloat(
+      (entryPrice - atr * atrMultiplierTP).toFixed(pricePrecision)
+    );
 
     console.log(`SHORT Order Details for ${symbol}:`);
     console.log(`Entry Price: ${entryPrice}`);
@@ -464,7 +506,9 @@ async function placeShortOrder(symbol, marginAmount) {
       positionValue: positionValue,
     };
 
-    const tradeResponse = await axios.post(API_ENDPOINT, { data: shortOrderDetails });
+    const tradeResponse = await axios.post(API_ENDPOINT, {
+      data: shortOrderDetails,
+    });
     console.log(`Trade Response:`, tradeResponse?.data);
     const tradeId = tradeResponse.data._id;
 
@@ -484,7 +528,9 @@ async function placeShortOrder(symbol, marginAmount) {
       null,
       { stopPrice: takeProfitPrice, reduceOnly: true, timeInForce: "GTC" }
     );
-    console.log(`Take Profit set at ${takeProfitPrice} for ${symbol} (ATR-based)`);
+    console.log(
+      `Take Profit set at ${takeProfitPrice} for ${symbol} (ATR-based)`
+    );
 
     const details = {
       stopLossPrice: stopLossPrice,
@@ -550,7 +596,9 @@ async function processSymbol(symbol, maxSpendPerTrade) {
     if (maxSpendPerTrade >= 1) {
       for (const sym of symbols) {
         try {
-          const response = await axios.post(`${API_ENDPOINT}check-symbols`, { symbols: sym });
+          const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+            symbols: sym,
+          });
           let status = response?.data?.data.status;
           if (status === true) {
             await processSymbol(sym, maxSpendPerTrade);
@@ -569,7 +617,9 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   setInterval(async () => {
     for (const sym of symbols) {
       try {
-        const response = await axios.post(`${API_ENDPOINT}check-symbols`, { symbols: sym });
+        const response = await axios.post(`${API_ENDPOINT}check-symbols`, {
+          symbols: sym,
+        });
         let status = response?.data?.data.status;
         if (status === false) {
           if (isProcessing[sym]) {
@@ -581,29 +631,43 @@ async function processSymbol(symbol, maxSpendPerTrade) {
           const positions = await binance.futuresPositionRisk({ symbol: sym });
           const pos = positions.find((p) => p.symbol === sym);
           if (!pos || Math.abs(parseFloat(pos.positionAmt || 0)) === 0) {
-            console.log(`[${sym}] Position already closed or doesn't exist. Updating DB to close trade.`);
-            const tradeResponse = await axios.get(`${API_ENDPOINT}find-treads/${sym}`);
+            console.log(
+              `[${sym}] Position already closed or doesn't exist. Updating DB to close trade.`
+            );
+            const tradeResponse = await axios.get(
+              `${API_ENDPOINT}find-treads/${sym}`
+            );
             const { found, tradeDetails } = tradeResponse.data?.data;
             if (found) {
-              await axios.put(`${API_ENDPOINT}${tradeDetails._id}`, { data: { status: "1" } });
+              await axios.put(`${API_ENDPOINT}${tradeDetails._id}`, {
+                data: { status: "1" },
+              });
               console.log(`[${sym}] DB updated: Trade marked as closed.`);
             }
             continue;
           }
 
-          const tradeResponse = await axios.get(`${API_ENDPOINT}find-treads/${sym}`);
+          const tradeResponse = await axios.get(
+            `${API_ENDPOINT}find-treads/${sym}`
+          );
           const { found, tradeDetails } = tradeResponse.data?.data;
           if (found) {
-            const currentPrice = priceData[sym] || parseFloat((await binance.futuresPrices())[sym]);
+            const currentPrice =
+              priceData[sym] ||
+              parseFloat((await binance.futuresPrices())[sym]);
             let roi = 0;
             if (tradeDetails.side === "LONG") {
-              const entryPrice = parseFloat(tradeDetails.LongTimeCoinPrice.$numberDecimal);
+              const entryPrice = parseFloat(
+                tradeDetails.LongTimeCoinPrice.$numberDecimal
+              );
               const qty = parseFloat(tradeDetails.quantity);
               const margin = parseFloat(tradeDetails.marginUsed);
               const pnl = (currentPrice - entryPrice) * qty;
               roi = (pnl / margin) * 100;
             } else if (tradeDetails.side === "SHORT") {
-              const entryPrice = parseFloat(tradeDetails.ShortTimeCurrentPrice.$numberDecimal);
+              const entryPrice = parseFloat(
+                tradeDetails.ShortTimeCurrentPrice.$numberDecimal
+              );
               const qty = parseFloat(tradeDetails.quantity);
               const margin = parseFloat(tradeDetails.marginUsed);
               const pnl = (entryPrice - currentPrice) * qty;
@@ -615,7 +679,11 @@ async function processSymbol(symbol, maxSpendPerTrade) {
               if (shouldExit) {
                 const exitSuccess = await executeTEMAExit(sym, tradeDetails);
                 if (exitSuccess) {
-                  console.log(`[${sym}] Position closed due to TEMA exit signal at ROI: ${roi.toFixed(2)}%`);
+                  console.log(
+                    `[${sym}] Position closed due to TEMA exit signal at ROI: ${roi.toFixed(
+                      2
+                    )}%`
+                  );
                   continue;
                 }
               }
