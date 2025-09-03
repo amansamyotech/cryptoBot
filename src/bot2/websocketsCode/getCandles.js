@@ -1,8 +1,8 @@
 const Binance = require("node-binance-api");
 
 const binance = new Binance().options({
-  APIKEY: "YOUR_API_KEY",
-  APISECRET: "YOUR_API_SECRET",
+  APIKEY: "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
+  APISECRET: "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
   useServerTime: true,
   test: false,
 });
