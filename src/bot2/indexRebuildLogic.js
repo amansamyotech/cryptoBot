@@ -31,9 +31,9 @@ async function getUsdtBalance() {
 }
 
 const LEVERAGE = 3;
-const ATR_LENGTH = 14;
+const ATR_LENGTH = 25;
 const ATR_MULTIPLIER_SL = 2.0;
-const ATR_MULTIPLIER_TP = 4.0;
+const ATR_MULTIPLIER_TP = 3.0;
 
 function getTEMApercentage(tema15, tema21) {
   const total = tema15 + tema21;
