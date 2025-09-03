@@ -103,5 +103,7 @@ module.exports = {
   getCandles, // Same function, same usage!
 };
 
-const candles = await getCandles("DOGEUSDT", "3m", 100);
-console.log(`candles`, candles);
+(async () => {
+  const candles = await getCandles("DOGEUSDT", "3m", 100);
+  console.log("candles", candles);
+})();
