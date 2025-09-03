@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { checkOrderForIndexRebuild } = require("./checkOrderForIndexRebuild");
 const { hasNewCandleFormed } = require("./indexCrossTema");
-const { getCandles } = require("./helper/getCandles");
+const { getCandles } = require("./websocketsCode/getCandles");
 const isProcessing = {};
 const lastTradeSide = {};
 

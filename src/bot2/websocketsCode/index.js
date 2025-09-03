@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { checkOrderForIndexRebuild } = require("./checkOrderForIndexRebuild");
 const { hasNewCandleFormed } = require("./indexCrossTema");
-const { getCandles } = require("./helper/getCandles");
+const { getCandles } = require("./getCandles");
 const isProcessing = {};
 const lastTradeSide = {};
 
@@ -82,7 +82,6 @@ function calculateTEMA(prices, length) {
 
   return tema[tema.length - 1]; // Return latest TEMA value
 }
-
 async function getTEMA(symbol, length) {
   try {
     const candles = await getCandles(symbol, "3m", length * 3 + 10);
@@ -93,7 +92,6 @@ async function getTEMA(symbol, length) {
     return null;
   }
 }
-
 async function checkTEMAEntry(symbol) {
   try {
     const tema15 = await getTEMA(symbol, 15);
@@ -147,7 +145,6 @@ async function checkTEMAEntry(symbol) {
     return "HOLD";
   }
 }
-
 function calculateATR(candles, length = ATR_LENGTH) {
   if (candles.length < length + 1) return null;
 
@@ -176,7 +173,6 @@ function calculateATR(candles, length = ATR_LENGTH) {
 
   return atr;
 }
-
 async function getATR(symbol, length = ATR_LENGTH) {
   try {
     const candles = await getCandles(symbol, "3m", length + 20);
@@ -186,7 +182,6 @@ async function getATR(symbol, length = ATR_LENGTH) {
     return null;
   }
 }
-
 async function checkTEMAExit(symbol, tradeDetails) {
   try {
     const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
