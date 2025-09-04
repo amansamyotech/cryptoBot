@@ -324,6 +324,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
+      createdBy: ENVUSERID,
     };
 
     console.log(`buyOrderDetails`, buyOrderDetails);
@@ -452,6 +453,7 @@ async function placeShortOrder(symbol, marginAmount) {
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
+      createdBy: ENVUSERID,
     };
 
     console.log(`shortOrderDetails`, shortOrderDetails);
