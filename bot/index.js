@@ -3,7 +3,7 @@ const { checkOrderForIndexRebuild } = require("./orderUpdate.js");
 const { getCandles } = require("../helper/getCandlesWebSokcets.js");
 const {
   calculateTEMA,
-  getTEMApercentage
+  getTEMApercentage,
 } = require("../helper/calculateTEMA.js");
 const { getUsdtBalance } = require("../helper/getBalance.js");
 const {
@@ -36,8 +36,6 @@ const LEVERAGE = 3;
 const ATR_LENGTH = 25;
 const ATR_MULTIPLIER_SL = 2.0;
 const ATR_MULTIPLIER_TP = 3.0;
-
-
 
 async function checkTEMAEntry(symbol) {
   try {
@@ -513,12 +511,12 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  // const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
+  const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
 
-  // if (!hasNewCandle) {
-  //   console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
-  //   return;
-  // }
+  if (!hasNewCandle) {
+    console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
+    return;
+  }
 
   const decision = await checkTEMAEntry(symbol);
   console.log("decision", decision);
