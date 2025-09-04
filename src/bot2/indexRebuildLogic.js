@@ -128,10 +128,10 @@ async function checkTEMAEntry(symbol) {
     // Check for crossover
 
     //main line
-    // const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
-    // const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
-    const longCondition = percent15 > percent21; // Cross above
-    const shortCondition = percent15 < percent21; // Cross below
+    const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
+    const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
+    // const longCondition = percent15 > percent21; // Cross above
+    // const shortCondition = percent15 < percent21; // Cross below
 
     if (longCondition) {
       console.log(`[${symbol}] TEMA 15 crossed above TEMA 21 - LONG signal`);
