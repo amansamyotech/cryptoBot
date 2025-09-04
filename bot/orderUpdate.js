@@ -1,57 +1,98 @@
-require('dotenv').config({ path: '../.env' });
+require("dotenv").config({ path: "../.env" });
 const Binance = require("node-binance-api");
 const TradeDetails = require("../backend/models/tradeDetails.js");
+
 const binance = new Binance().options({
-  APIKEY: "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
-  APISECRET: "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+  APIKEY:
+    process.env.BINANCE_APIKEY ||
+    "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
+  APISECRET:
+    process.env.BINANCE_SECRETKEY ||
+    "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
   useServerTime: true,
   test: false,
 });
 
 const ENVUSERID = process.env.USER_ID || "68abfbaefba13b46a8c12f99";
-async function checkOrders(symbol) {
+
+async function checkOrderForIndexRebuild(symbol) {
   try {
     const foundTread = await TradeDetails.findOne({
       symbol,
+      status: "0",
       createdBy: ENVUSERID,
     });
 
     if (!foundTread) return;
-    console.log(`foundTread`, foundTread);
+    const { stopLossOrderId, takeProfitOrderId } = foundTread;
+    if (!stopLossOrderId && !takeProfitOrderId) return;
 
-    if (!foundTread?.stopLossOrderId) {
-      console.log(`No stopLossOrderId found for ${symbol}`);
-      return;
+    // Check order statuses
+    const orders = [];
+    if (stopLossOrderId) {
+      try {
+        const res = await binance.futuresOrderStatus(symbol, {
+          orderId: parseInt(stopLossOrderId),
+        });
+        orders.push({ id: stopLossOrderId, status: res?.status });
+      } catch (e) {
+        orders.push({ id: stopLossOrderId, status: "ERROR" });
+      }
+    }
+    if (takeProfitOrderId) {
+      try {
+        const res = await binance.futuresOrderStatus(symbol, {
+          orderId: parseInt(takeProfitOrderId),
+        });
+        orders.push({ id: takeProfitOrderId, status: res?.status });
+      } catch (e) {
+        orders.push({ id: takeProfitOrderId, status: "ERROR" });
+      }
     }
 
-    const stopLossStatus = await binance.futuresOrderStatus(symbol, {
-      orderId: parseInt(foundTread?.stopLossOrderId),
-    });
-    console.log(`stopLossStatus`, stopLossStatus?.status);
+    // Check if any order is FILLED, CANCELED, or EXPIRED
+    const shouldClose = orders.some(
+      (o) =>
+        o.status === "FILLED" ||
+        o.status === "CANCELED" ||
+        o.status === "EXPIRED" ||
+        o.status === "ERROR"
+    );
 
-    if (
-      stopLossStatus?.status === "FILLED" ||
-      stopLossStatus?.status === "EXPIRED"
-    ) {
-      console.log(`Stop loss order filled for ${symbol}`);
+    if (shouldClose) {
+      console.log(`Closing trade for ${symbol}. Order statuses:`, orders);
 
+      // Cancel all open orders for symbol
+      try {
+        await binance.futuresCancelAll(symbol);
+      } catch (e) {
+        console.log(
+          `Cancel all failed for ${symbol}, trying individual cancel`
+        );
+        for (const order of orders) {
+          if (order.status === "NEW") {
+            try {
+              await binance.futuresCancel(symbol, parseInt(order.id));
+            } catch (err) {
+              console.log(`err`, err);
+            }
+          }
+        }
+      }
+
+      // Update DB
       await TradeDetails.findOneAndUpdate(
         {
           _id: foundTread?._id,
-          createdBy: ENVUSERID,
         },
         { status: "1" },
         { new: true }
       );
-      console.log(`Trade marked as closed in DB for ${symbol}`);
-    } else {
-      console.log(
-        `Stop loss order not filled yet for ${symbol}. No action taken.`
-      );
+      console.log(`Trade closed for ${symbol}`);
     }
   } catch (error) {
-    console.error("Error checking stop loss order status:", error);
+    console.error(`Error for ${symbol}:`, error.message);
   }
 }
 
-module.exports = { checkOrders };
+module.exports = { checkOrderForIndexRebuild };

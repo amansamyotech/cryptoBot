@@ -38,5 +38,18 @@ function calculateTEMA(prices, period) {
   return tema;
 }
 
+function getTEMApercentage(tema15, tema21) {
+  const total = tema15 + tema21;
 
-module.exports = { calculateTEMA };
+  const percent15 = (tema15 / total) * 100;
+  const percent21 = (tema21 / total) * 100;
+
+  return {
+    percent15,
+    percent21,
+  };
+}
+
+
+
+module.exports = { calculateTEMA , getTEMApercentage };

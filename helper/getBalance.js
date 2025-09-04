@@ -4,10 +4,10 @@ const Binance = require("node-binance-api");
 const binance = new Binance().options({
   APIKEY:
     process.env.BINANCE_APIKEY ||
-    "whfiekZqKdkwa9fEeUupVdLZTNxBqP1OCEuH2pjyImaWt51FdpouPPrCawxbsupK",
+    "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
   APISECRET:
     process.env.BINANCE_SECRETKEY ||
-    "E4IcteWOQ6r9qKrBZJoBy4R47nNPBDepVXMnS3Lf2Bz76dlu0QZCNh82beG2rHq4",
+    "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
   useServerTime: true,
   test: false,
 });
