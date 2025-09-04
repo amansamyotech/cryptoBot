@@ -2,7 +2,8 @@ const Binance = require("node-binance-api");
 const { checkOrderForIndexRebuild } = require("./orderUpdate.js");
 const { getCandles } = require("../helper/getCandlesWebSokcets.js");
 const {
-  calculateTEMA
+  calculateTEMA,
+  getTEMApercentage
 } = require("../helper/calculateTEMA.js");
 const { getUsdtBalance } = require("../helper/getBalance.js");
 const {
