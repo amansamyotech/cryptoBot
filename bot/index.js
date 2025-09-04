@@ -2,8 +2,7 @@ const Binance = require("node-binance-api");
 const { checkOrderForIndexRebuild } = require("./orderUpdate.js");
 const { getCandles } = require("../helper/getCandlesWebSokcets.js");
 const {
-  calculateTEMA,
-  getTEMApercentage,
+  calculateTEMA
 } = require("../helper/calculateTEMA.js");
 const { getUsdtBalance } = require("../helper/getBalance.js");
 const {
@@ -36,6 +35,19 @@ const LEVERAGE = 3;
 const ATR_LENGTH = 25;
 const ATR_MULTIPLIER_SL = 2.0;
 const ATR_MULTIPLIER_TP = 3.0;
+
+function getTEMApercentage(tema15, tema21) {
+  const total = tema15 + tema21;
+
+  const percent15 = (tema15 / total) * 100;
+  const percent21 = (tema21 / total) * 100;
+
+  return {
+    percent15,
+    percent21,
+  };
+}
+
 
 async function checkTEMAEntry(symbol) {
   try {
