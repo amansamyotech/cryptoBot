@@ -82,11 +82,11 @@ async function checkEntrySignal(symbol) {
       currentAdx.pdi > currentAdx.mdi;
 
     console.log(`[${symbol}] Long Condition Details:`);
-    console.log(`  Price > EMA: ${currentPrice} > ${currentEma}`);
-    console.log(`  RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi}`);
-    console.log(`  MACD > Signal: ${currentMacd.MACD} > ${currentMacd.signal}`);
-    console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx}`);
-    console.log(`  PDI > NDI: ${currentAdx.pdi} > ${currentAdx.mdi}`);
+console.log(`  Price > EMA: ${currentPrice} > ${currentEma} => ${currentPrice > currentEma}`);
+console.log(`  RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi} => ${currentRsi < PINE_INPUTS.rsiOversold}`);
+console.log(`  MACD > Signal: ${currentMacd.MACD} > ${currentMacd.signal} => ${currentMacd.MACD > currentMacd.signal}`);
+console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx} => ${currentAdx.adx > PINE_INPUTS.adxThreshold}`);
+console.log(`  PDI > NDI: ${currentAdx.pdi} > ${currentAdx.mdi} => ${currentAdx.pdi > currentAdx.mdi}`);
 
     const shortCondition =
       currentPrice < currentEma &&
@@ -96,11 +96,11 @@ async function checkEntrySignal(symbol) {
       currentAdx.mdi > currentAdx.pdi;
 
     console.log(`[${symbol}] Short Condition Details:`);
-    console.log(`  Price < EMA: ${currentPrice} < ${currentEma}`);
-    console.log(`  RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi}`);
-    console.log(`  MACD < Signal: ${currentMacd.MACD} < ${currentMacd.signal}`);
-    console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx}`);
-    console.log(`  NDI > PDI: ${currentAdx.mdi} > ${currentAdx.pdi}`);
+console.log(`  Price < EMA: ${currentPrice} < ${currentEma} => ${currentPrice < currentEma}`);
+console.log(`  RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi} => ${currentRsi > PINE_INPUTS.rsiOverbought}`);
+console.log(`  MACD < Signal: ${currentMacd.MACD} < ${currentMacd.signal} => ${currentMacd.MACD < currentMacd.signal}`);
+console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx} => ${currentAdx.adx > PINE_INPUTS.adxThreshold}`);
+console.log(`  NDI > PDI: ${currentAdx.mdi} > ${currentAdx.pdi} => ${currentAdx.mdi > currentAdx.pdi}`);
 
     // --- 4. Return Decision ---
     if (longCondition) {
