@@ -79,28 +79,28 @@ async function checkEntrySignal(symbol) {
       currentRsi < PINE_INPUTS.rsiOversold &&
       currentMacd.MACD > currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
-      currentAdx.pdi > currentAdx.ndi;
+      currentAdx.pdi > currentAdx.mdi;
 
     console.log(`[${symbol}] Long Condition Details:`);
     console.log(`  Price > EMA: ${currentPrice} > ${currentEma}`);
     console.log(`  RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi}`);
     console.log(`  MACD > Signal: ${currentMacd.MACD} > ${currentMacd.signal}`);
     console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx}`);
-    console.log(`  PDI > NDI: ${currentAdx.pdi} > ${currentAdx.ndi}`);
+    console.log(`  PDI > NDI: ${currentAdx.pdi} > ${currentAdx.mdi}`);
 
     const shortCondition =
       currentPrice < currentEma &&
       currentRsi > PINE_INPUTS.rsiOverbought &&
       currentMacd.MACD < currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
-      currentAdx.ndi > currentAdx.pdi;
+      currentAdx.mdi > currentAdx.pdi;
 
     console.log(`[${symbol}] Short Condition Details:`);
     console.log(`  Price < EMA: ${currentPrice} < ${currentEma}`);
     console.log(`  RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi}`);
     console.log(`  MACD < Signal: ${currentMacd.MACD} < ${currentMacd.signal}`);
     console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx}`);
-    console.log(`  NDI > PDI: ${currentAdx.ndi} > ${currentAdx.pdi}`);
+    console.log(`  NDI > PDI: ${currentAdx.mdi} > ${currentAdx.pdi}`);
 
     // --- 4. Return Decision ---
     if (longCondition) {
