@@ -2,7 +2,8 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { hasNewCandleFormed } = require("./indexCrossTema");
 const { getCandles } = require("./helper/getCandles");
-const { checkOrders } = require("./orderCheckFun");
+const { checkOrders } = require("./orderCheckFunForFix");
+const { checkEntrySignal } = require("./strategy");
 
 const isProcessing = {};
 const lastTradeSide = {};
@@ -91,60 +92,6 @@ async function getTEMA(symbol, length) {
   } catch (err) {
     console.error(`Error calculating TEMA for ${symbol}:`, err.message);
     return null;
-  }
-}
-
-async function checkTEMAEntry(symbol) {
-  try {
-    const tema15 = await getTEMA(symbol, 15);
-
-    console.log(`tema15`, tema15);
-
-    const tema21 = await getTEMA(symbol, 21);
-    console.log(`tema21`, tema21);
-
-    const { percent15, percent21 } = getTEMApercentage(tema15, tema21);
-    console.log(`percent15, percent21`, percent15, percent21);
-
-    if (!percent15 || !percent21) {
-      console.log(`[${symbol}] Could not calculate TEMA values`);
-      return "HOLD";
-    }
-
-    // Get previous TEMA values to detect crossover
-    const candles = await getCandles(symbol, "3m", 100);
-    const closePrices = candles.map((c) => c.close);
-
-    if (closePrices.length < 50) return "HOLD";
-
-    // Calculate previous TEMA values
-    const prevClosePrices = closePrices.slice(0, -1);
-    const prevTema15 = calculateTEMA(prevClosePrices, 15);
-    const prevTema21 = calculateTEMA(prevClosePrices, 21);
-    console.log(`prevTema15 || !prevTema21`, prevTema15, prevTema21);
-
-    if (!prevTema15 || !prevTema21) return "HOLD";
-
-    // Check for crossover
-
-    //main line
-    // const longCondition = prevTema15 <= prevTema21 && percent15 > percent21; // Cross above
-    // const shortCondition = prevTema15 >= prevTema21 && percent15 < percent21; // Cross below
-    const longCondition = percent15 > percent21; // Cross above
-    const shortCondition = percent15 < percent21; // Cross below
-
-    if (longCondition) {
-      console.log(`[${symbol}] TEMA 15 crossed above TEMA 21 - LONG signal`);
-      return "LONG";
-    } else if (shortCondition) {
-      console.log(`[${symbol}] TEMA 15 crossed below TEMA 21 - SHORT signal`);
-      return "SHORT";
-    }
-
-    return "HOLD";
-  } catch (err) {
-    console.error(`[${symbol}] Error in TEMA entry check:`, err.message);
-    return "HOLD";
   }
 }
 
@@ -476,30 +423,20 @@ async function placeBuyOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    // ATR-based Stop Loss and Take Profit
-    const atr = await getATR(symbol, ATR_LENGTH);
-    const atrMultiplierSL = ATR_MULTIPLIER_SL; // Same as Pine Script
+    // --- Fixed Percentage Stop Loss and Take Profit ---
+    const takeProfitPerc = 1.0 / 100; // 1.0%
+    const stopLossPerc = 1.0 / 100; // 1.0%
 
     const stopLossPrice = parseFloat(
-      (entryPrice - atr * atrMultiplierSL).toFixed(pricePrecision)
+      (entryPrice * (1 - stopLossPerc)).toFixed(pricePrecision)
     );
-
-    console.log(`entryPrice`, entryPrice);
-    console.log(`atr`, atr);
-    console.log(`atrMultiplierSL`, atrMultiplierSL);
+    const takeProfitPrice = parseFloat(
+      (entryPrice * (1 + takeProfitPerc)).toFixed(pricePrecision)
+    );
 
     console.log(
-      `entryPrice - atr * atrMultiplierSL`,
-      entryPrice - atr * atrMultiplierSL
+      `SL/TP prices for LONG: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
-    console.log(`stopLossPrice`, stopLossPrice);
-
-    console.log(`LONG Order Details for ${symbol}:`);
-    console.log(`Entry Price: ${entryPrice}`);
-    console.log(`Quantity: ${qtyFixed}`);
-    console.log(`Margin Used: ${marginAmount}`);
-    console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
-
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
@@ -535,10 +472,24 @@ async function placeBuyOrder(symbol, marginAmount) {
       }
     );
     console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
+    const takeProfitOrder = await binance.futuresOrder(
+      "TAKE_PROFIT_MARKET",
+      "SELL",
+      symbol,
+      qtyFixed,
+      null,
+      {
+        stopPrice: takeProfitPrice,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
 
     const details = {
       stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
+      takeProfitPrice: takeProfitPrice,
+      takeProfitOrderId: takeProfitOrder.orderId,
     };
     console.log(`details`, details);
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
@@ -582,12 +533,19 @@ async function placeShortOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    // ATR-based Stop Loss and Take Profit
-    const atr = await getATR(symbol, ATR_LENGTH);
-    const atrMultiplierSL = ATR_MULTIPLIER_SL; // Same as Pine Script
+    // --- Fixed Percentage Stop Loss and Take Profit ---
+    const takeProfitPerc = 1.0 / 100; // 1.0%
+    const stopLossPerc = 1.0 / 100; // 1.0%
 
     const stopLossPrice = parseFloat(
-      (entryPrice + atr * atrMultiplierSL).toFixed(pricePrecision)
+      (entryPrice * (1 + stopLossPerc)).toFixed(pricePrecision)
+    );
+    const takeProfitPrice = parseFloat(
+      (entryPrice * (1 - takeProfitPerc)).toFixed(pricePrecision)
+    );
+
+    console.log(
+      `SL/TP prices for SHORT: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
 
     console.log(`entryPrice`, entryPrice);
@@ -641,10 +599,27 @@ async function placeShortOrder(symbol, marginAmount) {
         timeInForce: "GTC",
       }
     );
+    const takeProfitOrder = await binance.futuresOrder(
+      "TAKE_PROFIT_MARKET",
+      "BUY",
+      symbol,
+      qtyFixed,
+      null,
+      {
+        stopPrice: takeProfitPrice,
+        reduceOnly: true,
+        timeInForce: "GTC",
+      }
+    );
+    console.log(
+      `Take Profit set at ${takeProfitPrice} for ${symbol} (ATR-based)`
+    );
 
     const details = {
       stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
+      takeProfitPrice: takeProfitPrice,
+      takeProfitOrderId: takeProfitOrder.orderId,
     };
 
     console.log(`details`, details);
@@ -666,7 +641,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
     return;
   }
 
-  const decision = await checkTEMAEntry(symbol);
+  const decision = await checkEntrySignal(symbol);
   console.log("decision", decision);
 
   const lastSide = lastTradeSide[symbol] || null;
@@ -763,6 +738,15 @@ setInterval(async () => {
           const { found, tradeDetails } = tradeResponse.data?.data;
 
           if (found) {
+            try {
+              const res = await binance.futuresCancelAllOpenOrders(sym);
+              console.log(`✅ All open orders cancelled for ${sym}`, res);
+            } catch (e) {
+              console.log(
+                `⚠️ Failed to cancel all orders for ${sym}:`,
+                e.body || e.message
+              );
+            }
             await axios.put(`${API_ENDPOINT}${tradeDetails._id}`, {
               data: { status: "1" },
             });
@@ -800,43 +784,43 @@ setInterval(async () => {
           }
 
           // TEMA exit check sirf tab karo jab ROI 1% positive ho ya 1% negative ho
-          if (roi >= 0.2 || roi <= -0.2) {
-            const shouldExit = await checkTEMAExit(sym, tradeDetails);
-            if (shouldExit) {
-              const exitSuccess = await executeTEMAExit(sym, tradeDetails);
-              if (exitSuccess) {
-                console.log(
-                  `[${sym}] Position closed due to TEMA exit signal at ROI: ${roi.toFixed(
-                    2
-                  )}%`
-                );
-                continue;
-              }
-            }
-          }
+          // if (roi >= 0.2 || roi <= -0.2) {
+          //   const shouldExit = await checkTEMAExit(sym, tradeDetails);
+          //   if (shouldExit) {
+          //     const exitSuccess = await executeTEMAExit(sym, tradeDetails);
+          //     if (exitSuccess) {
+          //       console.log(
+          //         `[${sym}] Position closed due to TEMA exit signal at ROI: ${roi.toFixed(
+          //           2
+          //         )}%`
+          //       );
+          //       continue;
+          //     }
+          //   }
+          // }
 
-          if (roi > 2) {
-            // Start trailing when profit > 1%
-            const newStopLoss = await calculateTrailingStopLoss(
-              sym,
-              tradeDetails,
-              currentPrice
-            );
-            if (newStopLoss) {
-              const updateSuccess = await updateTrailingStopLoss(
-                sym,
-                tradeDetails,
-                newStopLoss
-              );
-              if (updateSuccess) {
-                console.log(
-                  `[${sym}] Trailing stop loss updated at ROI: ${roi.toFixed(
-                    2
-                  )}%`
-                );
-              }
-            }
-          }
+          // if (roi > 2) {
+          //   // Start trailing when profit > 1%
+          //   const newStopLoss = await calculateTrailingStopLoss(
+          //     sym,
+          //     tradeDetails,
+          //     currentPrice
+          //   );
+          //   if (newStopLoss) {
+          //     const updateSuccess = await updateTrailingStopLoss(
+          //       sym,
+          //       tradeDetails,
+          //       newStopLoss
+          //     );
+          //     if (updateSuccess) {
+          //       console.log(
+          //         `[${sym}] Trailing stop loss updated at ROI: ${roi.toFixed(
+          //           2
+          //         )}%`
+          //       );
+          //     }
+          //   }
+          // }
           // **NAYA CODE KHATAM**
         }
       }

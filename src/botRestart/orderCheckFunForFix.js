@@ -10,7 +10,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-async function orderCheckFunForFix(symbol) {
+async function checkOrders(symbol) {
   try {
     const response = await axios.get(`${API_ENDPOINT}find-treads/${symbol}`);
     console.log(`response.data?.data`, response.data?.data);
@@ -114,4 +114,4 @@ async function orderCheckFunForFix(symbol) {
     console.error("Error checking or canceling orders:", error);
   }
 }
-module.exports = { orderCheckFunForFix };
+module.exports = { checkOrders };
