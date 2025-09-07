@@ -634,12 +634,12 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
+  // const hasNewCandle = await hasNewCandleFormed(symbol, "entry");
 
-  if (!hasNewCandle) {
-    console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
-    return;
-  }
+  // if (!hasNewCandle) {
+  //   console.log(`[${symbol}] No new candle formed yet, skipping entry check`);
+  //   return;
+  // }
 
   const decision = await checkEntrySignal(symbol);
   console.log("decision", decision);
