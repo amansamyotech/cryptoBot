@@ -29,7 +29,10 @@ async function checkEntrySignal(symbol) {
 
     // --- 1. Calculate All Indicators ---
     const ema = EMA.calculate({ period: PINE_INPUTS.emaLength, values: closePrices });
+    console.log(`ema`,ema);
+    
     const rsi = RSI.calculate({ period: PINE_INPUTS.rsiLength, values: closePrices });
+    console.log(`rsi`,rsi);
     const macd = MACD.calculate({
       values: closePrices,
       fastPeriod: PINE_INPUTS.macdFast,
@@ -44,6 +47,9 @@ async function checkEntrySignal(symbol) {
       low: lowPrices,
       period: PINE_INPUTS.adxLength,
     });
+    console.log(`macd`,macd);
+    console.log(`adx`,adx);
+    
 
     // --- 2. Get the latest values for each indicator ---
     const currentPrice = closePrices[closePrices.length - 1];
