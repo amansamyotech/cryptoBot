@@ -86,7 +86,7 @@ function calculateTEMA(prices, length) {
 
 async function getTEMA(symbol, length) {
   try {
-    const candles = await getCandles(symbol, "3m", length * 3 + 10);
+    const candles = await getCandles(symbol, "5m", length * 3 + 10);
     const closes = candles.map((c) => c.close);
     return calculateTEMA(closes, length);
   } catch (err) {
@@ -126,7 +126,7 @@ function calculateATR(candles, length = ATR_LENGTH) {
 
 async function getATR(symbol, length = ATR_LENGTH) {
   try {
-    const candles = await getCandles(symbol, "3m", length + 20);
+    const candles = await getCandles(symbol, "5m", length + 20);
     return calculateATR(candles, length);
   } catch (err) {
     console.error(`Error calculating ATR for ${symbol}:`, err.message);
@@ -149,7 +149,7 @@ async function checkTEMAExit(symbol, tradeDetails) {
     const tema15 = await getTEMA(symbol, 15);
     const tema21 = await getTEMA(symbol, 21);
 
-    const candles = await getCandles(symbol, "3m", 100);
+    const candles = await getCandles(symbol, "5m", 100);
     const closePrices = candles.map((c) => c.close);
 
     if (closePrices.length < 50) return "HOLD";

@@ -16,8 +16,12 @@ const PINE_INPUTS = {
 
 async function checkEntrySignal(symbol) {
   try {
+    console.log(`\n[${symbol}] Checking entry signal...`);
+
     // Fetch enough candles for the longest indicator (EMA 50) + ADX requirements
     const candles = await getCandles(symbol, "3m", 150);
+    console.log(`[${symbol}] Fetched ${candles.length} candles.`);
+
     if (candles.length < PINE_INPUTS.emaLength) {
       console.log(`[${symbol}] Not enough candle data to calculate indicators.`);
       return "HOLD";
@@ -27,12 +31,15 @@ async function checkEntrySignal(symbol) {
     const highPrices = candles.map((c) => c.high);
     const lowPrices = candles.map((c) => c.low);
 
+    console.log(`[${symbol}] Sample close prices:`, closePrices.slice(-5));
+
     // --- 1. Calculate All Indicators ---
     const ema = EMA.calculate({ period: PINE_INPUTS.emaLength, values: closePrices });
-    console.log(`ema`,ema);
-    
+    console.log(`[${symbol}] EMA (last):`, ema[ema.length - 1]);
+
     const rsi = RSI.calculate({ period: PINE_INPUTS.rsiLength, values: closePrices });
-    console.log(`rsi`,rsi);
+    console.log(`[${symbol}] RSI (last):`, rsi[rsi.length - 1]);
+
     const macd = MACD.calculate({
       values: closePrices,
       fastPeriod: PINE_INPUTS.macdFast,
@@ -41,15 +48,15 @@ async function checkEntrySignal(symbol) {
       SimpleMAOscillator: false,
       SimpleMASignal: false,
     });
+    console.log(`[${symbol}] MACD (last):`, macd[macd.length - 1]);
+
     const adx = ADX.calculate({
       close: closePrices,
       high: highPrices,
       low: lowPrices,
       period: PINE_INPUTS.adxLength,
     });
-    console.log(`macd`,macd);
-    console.log(`adx`,adx);
-    
+    console.log(`[${symbol}] ADX (last):`, adx[adx.length - 1]);
 
     // --- 2. Get the latest values for each indicator ---
     const currentPrice = closePrices[closePrices.length - 1];
@@ -57,6 +64,8 @@ async function checkEntrySignal(symbol) {
     const currentRsi = rsi[rsi.length - 1];
     const currentMacd = macd[macd.length - 1];
     const currentAdx = adx[adx.length - 1];
+
+    console.log(`[${symbol}] Current Price: ${currentPrice}`);
 
     // Check if all indicators have valid data
     if (!currentEma || !currentRsi || !currentMacd || !currentAdx) {
@@ -72,6 +81,13 @@ async function checkEntrySignal(symbol) {
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.pdi > currentAdx.ndi;
 
+    console.log(`[${symbol}] Long Condition Details:`);
+    console.log(`  Price > EMA: ${currentPrice} > ${currentEma}`);
+    console.log(`  RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi}`);
+    console.log(`  MACD > Signal: ${currentMacd.MACD} > ${currentMacd.signal}`);
+    console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx}`);
+    console.log(`  PDI > NDI: ${currentAdx.pdi} > ${currentAdx.ndi}`);
+
     const shortCondition =
       currentPrice < currentEma &&
       currentRsi > PINE_INPUTS.rsiOverbought &&
@@ -79,18 +95,26 @@ async function checkEntrySignal(symbol) {
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.ndi > currentAdx.pdi;
 
+    console.log(`[${symbol}] Short Condition Details:`);
+    console.log(`  Price < EMA: ${currentPrice} < ${currentEma}`);
+    console.log(`  RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi}`);
+    console.log(`  MACD < Signal: ${currentMacd.MACD} < ${currentMacd.signal}`);
+    console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx}`);
+    console.log(`  NDI > PDI: ${currentAdx.ndi} > ${currentAdx.pdi}`);
+
     // --- 4. Return Decision ---
     if (longCondition) {
-      console.log(`[${symbol}] LONG signal detected.`);
+      console.log(`[${symbol}] ✅ LONG signal detected.`);
       return "LONG";
     } else if (shortCondition) {
-      console.log(`[${symbol}] SHORT signal detected.`);
+      console.log(`[${symbol}] ✅ SHORT signal detected.`);
       return "SHORT";
     }
 
+    console.log(`[${symbol}] ❌ No valid entry condition met. HOLD.`);
     return "HOLD";
   } catch (err) {
-    console.error(`[${symbol}] Error in entry signal check:`, err.message);
+    console.error(`[${symbol}] ❗ Error in entry signal check:`, err.message);
     return "HOLD";
   }
 }
