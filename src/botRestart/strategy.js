@@ -3,15 +3,15 @@ const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust p
 
 // --- Strategy Inputs ---
 const PINE_INPUTS = {
-  emaLength: 50,
+  emaLength: 9,
   rsiLength: 14,
   rsiOverbought: 40,
   rsiOversold: 56,
   macdFast: 12,
-  macdSlow: 26,
-  macdSignal: 9,
-  adxLength: 14,
-  adxThreshold: 20,
+  macdSlow: 25,
+  macdSignal: 14,
+  adxLength: 13,
+  adxThreshold: 14,
 };
 
 async function checkEntrySignal(symbol) {
