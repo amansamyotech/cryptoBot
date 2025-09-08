@@ -5,8 +5,8 @@ const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust p
 const PINE_INPUTS = {
   emaLength: 50,
   rsiLength: 14,
-  rsiOverbought: 60,
-  rsiOversold: 40,
+  rsiOverbought: 40,
+  rsiOversold: 56,
   macdFast: 12,
   macdSlow: 26,
   macdSignal: 9,
@@ -23,7 +23,9 @@ async function checkEntrySignal(symbol) {
     console.log(`[${symbol}] Fetched ${candles.length} candles.`);
 
     if (candles.length < PINE_INPUTS.emaLength) {
-      console.log(`[${symbol}] Not enough candle data to calculate indicators.`);
+      console.log(
+        `[${symbol}] Not enough candle data to calculate indicators.`
+      );
       return "HOLD";
     }
 
@@ -34,10 +36,16 @@ async function checkEntrySignal(symbol) {
     console.log(`[${symbol}] Sample close prices:`, closePrices.slice(-5));
 
     // --- 1. Calculate All Indicators ---
-    const ema = EMA.calculate({ period: PINE_INPUTS.emaLength, values: closePrices });
+    const ema = EMA.calculate({
+      period: PINE_INPUTS.emaLength,
+      values: closePrices,
+    });
     console.log(`[${symbol}] EMA (last):`, ema[ema.length - 1]);
 
-    const rsi = RSI.calculate({ period: PINE_INPUTS.rsiLength, values: closePrices });
+    const rsi = RSI.calculate({
+      period: PINE_INPUTS.rsiLength,
+      values: closePrices,
+    });
     console.log(`[${symbol}] RSI (last):`, rsi[rsi.length - 1]);
 
     const macd = MACD.calculate({
@@ -69,38 +77,78 @@ async function checkEntrySignal(symbol) {
 
     // Check if all indicators have valid data
     if (!currentEma || !currentRsi || !currentMacd || !currentAdx) {
-        console.log(`[${symbol}] One or more indicators returned null.`);
-        return "HOLD";
+      console.log(`[${symbol}] One or more indicators returned null.`);
+      return "HOLD";
     }
 
     // --- 3. Check Entry Conditions from Pine Script ---
     const longCondition =
       currentPrice > currentEma &&
-      currentRsi < PINE_INPUTS.rsiOversold &&
+      currentRsi > PINE_INPUTS.rsiOversold &&
       currentMacd.MACD > currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.pdi > currentAdx.mdi;
 
     console.log(`[${symbol}] Long Condition Details:`);
-console.log(`  Price > EMA: ${currentPrice} > ${currentEma} => ${currentPrice > currentEma}`);
-console.log(`  RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi} => ${currentRsi < PINE_INPUTS.rsiOversold}`);
-console.log(`  MACD > Signal: ${currentMacd.MACD} > ${currentMacd.signal} => ${currentMacd.MACD > currentMacd.signal}`);
-console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx} => ${currentAdx.adx > PINE_INPUTS.adxThreshold}`);
-console.log(`  PDI > NDI: ${currentAdx.pdi} > ${currentAdx.mdi} => ${currentAdx.pdi > currentAdx.mdi}`);
+    console.log(
+      `  Price > EMA: ${currentPrice} > ${currentEma} => ${
+        currentPrice > currentEma
+      }`
+    );
+    console.log(
+      `  RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi} => ${
+        currentRsi < PINE_INPUTS.rsiOversold
+      }`
+    );
+    console.log(
+      `  MACD > Signal: ${currentMacd.MACD} > ${currentMacd.signal} => ${
+        currentMacd.MACD > currentMacd.signal
+      }`
+    );
+    console.log(
+      `  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx} => ${
+        currentAdx.adx > PINE_INPUTS.adxThreshold
+      }`
+    );
+    console.log(
+      `  PDI > NDI: ${currentAdx.pdi} > ${currentAdx.mdi} => ${
+        currentAdx.pdi > currentAdx.mdi
+      }`
+    );
 
     const shortCondition =
       currentPrice < currentEma &&
-      currentRsi > PINE_INPUTS.rsiOverbought &&
+      currentRsi < PINE_INPUTS.rsiOverbought &&
       currentMacd.MACD < currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.mdi > currentAdx.pdi;
 
     console.log(`[${symbol}] Short Condition Details:`);
-console.log(`  Price < EMA: ${currentPrice} < ${currentEma} => ${currentPrice < currentEma}`);
-console.log(`  RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi} => ${currentRsi > PINE_INPUTS.rsiOverbought}`);
-console.log(`  MACD < Signal: ${currentMacd.MACD} < ${currentMacd.signal} => ${currentMacd.MACD < currentMacd.signal}`);
-console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx} => ${currentAdx.adx > PINE_INPUTS.adxThreshold}`);
-console.log(`  NDI > PDI: ${currentAdx.mdi} > ${currentAdx.pdi} => ${currentAdx.mdi > currentAdx.pdi}`);
+    console.log(
+      `  Price < EMA: ${currentPrice} < ${currentEma} => ${
+        currentPrice < currentEma
+      }`
+    );
+    console.log(
+      `  RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi} => ${
+        currentRsi > PINE_INPUTS.rsiOverbought
+      }`
+    );
+    console.log(
+      `  MACD < Signal: ${currentMacd.MACD} < ${currentMacd.signal} => ${
+        currentMacd.MACD < currentMacd.signal
+      }`
+    );
+    console.log(
+      `  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx} => ${
+        currentAdx.adx > PINE_INPUTS.adxThreshold
+      }`
+    );
+    console.log(
+      `  NDI > PDI: ${currentAdx.mdi} > ${currentAdx.pdi} => ${
+        currentAdx.mdi > currentAdx.pdi
+      }`
+    );
 
     // --- 4. Return Decision ---
     if (longCondition) {
