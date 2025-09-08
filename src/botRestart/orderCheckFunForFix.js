@@ -68,38 +68,28 @@ async function checkOrders(symbol) {
     if (isStopLossFilled || isTakeProfitFilled) {
       console.log(`One of the orders is filled for ${symbol}`);
 
-      // Cancel stop-loss if not filled and exists
-      if (stopLossOrderId && !isStopLossFilled) {
-        const recheckStopLoss = await binance.futuresOrderStatus(symbol, {
-          orderId: stopLossOrderId,
-        });
-        if (
-          recheckStopLoss?.status !== "CANCELED" &&
-          recheckStopLoss?.status !== "FILLED"
-        ) {
-          await binance.futuresCancel(symbol, { orderId: stopLossOrderId });
-          console.log(`Stop Loss order canceled for ${symbol}`);
-        } else {
-          console.log(`Stop Loss already canceled or filled for ${symbol}`);
-        }
-      }
+      // Cancel all remaining orders for this symbol
+      try {
+        const openOrders = await binance.futuresOpenOrders(symbol);
+        console.log(`Found ${openOrders.length} open orders for ${symbol}`);
 
-      // Cancel take-profit if not filled and exists
-      if (takeProfitOrderId && !isTakeProfitFilled) {
-        const recheckTakeProfit = await binance.futuresOrderStatus(symbol, {
-          orderId: takeProfitOrderId,
-        });
-        if (
-          recheckTakeProfit?.status !== "CANCELED" &&
-          recheckTakeProfit?.status !== "FILLED"
-        ) {
-          await binance.futuresCancel(symbol, { orderId: takeProfitOrderId });
-          console.log(`Take Profit order canceled for ${symbol}`);
-        } else {
-          console.log(`Take Profit already canceled or filled for ${symbol}`);
+        for (const order of openOrders) {
+          try {
+            await binance.futuresCancel(symbol, { orderId: order.orderId });
+            console.log(`Canceled order ${order.orderId} for ${symbol}`);
+          } catch (err) {
+            console.warn(
+              `Failed to cancel order ${order.orderId} for ${symbol}:`,
+              err.message
+            );
+          }
         }
+      } catch (err) {
+        console.error(
+          `Error fetching/canceling open orders for ${symbol}:`,
+          err.message
+        );
       }
-
       // Mark trade as closed
       const data = await axios.put(`${API_ENDPOINT}${objectId}`, {
         data: { status: "1" },
