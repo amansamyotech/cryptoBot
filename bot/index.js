@@ -30,7 +30,7 @@ const binance = new Binance().options({
 
 const ENVUSERID = process.env.USER_ID || "68abfbaefba13b46a8c12f99";
 
-const symbols = ["DOGEUSDT", "SOLUSDT"];
+const symbols = ["DOGEUSDT", "1000BONKUSDT"];
 
 const LEVERAGE = 3;
 const ATR_LENGTH = 25;
@@ -581,15 +581,7 @@ setInterval(async () => {
 
 setInterval(async () => {
   for (const sym of symbols) {
-    const trades = await TradeDetails.findOne({
-      symbol: sym,
-      status: "0",
-      createdBy: ENVUSERID,
-    });
-
-    if (trades) {
-      await checkOrderForIndexRebuild(sym);
-    }
+    await checkOrderForIndexRebuild(sym);
   }
 }, 10000);
 
@@ -624,6 +616,15 @@ setInterval(async () => {
             createdBy: ENVUSERID,
           });
           if (tradeResponse) {
+            try {
+              const res = await binance.futuresCancelAllOpenOrders(sym);
+              console.log(`✅ All open orders cancelled for ${sym}`, res);
+            } catch (e) {
+              console.log(
+                `⚠️ Failed to cancel all orders for ${sym}:`,
+                e.body || e.message
+              );
+            }
             await TradeDetails.findOneAndUpdate(
               { _id: tradeResponse._id, createdBy: ENVUSERID },
               { status: "1" }
