@@ -188,7 +188,7 @@ async function cancelAllOpenOrders(symbol) {
 
     for (const order of openOrders) {
       try {
-        await binance.futuresCancel(symbol,  { orderId: order.orderId });
+        await binance.futuresCancel(symbol, { orderId: order.orderId });
         console.log(`[${symbol}] Canceled open order: ${order.orderId}`);
       } catch (err) {
         console.warn(
@@ -644,22 +644,22 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   const decision = await checkEntrySignal(symbol);
   console.log("decision", decision);
 
-  const lastSide = lastTradeSide[symbol] || null;
-  if (lastSide) {
-    console.log(`[${symbol}] Last trade was: ${lastSide}`);
+  // const lastSide = lastTradeSide[symbol] || null;
+  // if (lastSide) {
+  //   console.log(`[${symbol}] Last trade was: ${lastSide}`);
 
-    if (lastSide === "LONG" && decision === "LONG") {
-      console.log(`[${symbol}] Last trade was LONG, skipping LONG signal`);
-      return;
-    }
+  //   if (lastSide === "LONG" && decision === "LONG") {
+  //     console.log(`[${symbol}] Last trade was LONG, skipping LONG signal`);
+  //     return;
+  //   }
 
-    if (lastSide === "SHORT" && decision === "SHORT") {
-      console.log(`[${symbol}] Last trade was SHORT, skipping SHORT signal`);
-      return;
-    }
-  } else {
-    console.log(`[${symbol}] No previous trades, allowing any trade`);
-  }
+  //   if (lastSide === "SHORT" && decision === "SHORT") {
+  //     console.log(`[${symbol}] Last trade was SHORT, skipping SHORT signal`);
+  //     return;
+  //   }
+  // } else {
+  //   console.log(`[${symbol}] No previous trades, allowing any trade`);
+  // }
 
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
