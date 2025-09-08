@@ -97,7 +97,7 @@ async function checkEntrySignal(symbol) {
     );
     console.log(
       `  RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi} => ${
-        currentRsi < PINE_INPUTS.rsiOversold
+        currentRsi > PINE_INPUTS.rsiOversold
       }`
     );
     console.log(
@@ -131,7 +131,7 @@ async function checkEntrySignal(symbol) {
     );
     console.log(
       `  RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi} => ${
-        currentRsi > PINE_INPUTS.rsiOverbought
+        currentRsi < PINE_INPUTS.rsiOverbought
       }`
     );
     console.log(
@@ -155,6 +155,7 @@ async function checkEntrySignal(symbol) {
       console.log(`[${symbol}] ✅ LONG signal detected.`);
       return "LONG";
     } else if (shortCondition) {
+
       console.log(`[${symbol}] ✅ SHORT signal detected.`);
       return "SHORT";
     }
