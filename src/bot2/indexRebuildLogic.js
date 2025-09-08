@@ -241,7 +241,7 @@ async function cancelAllOpenOrders(symbol) {
 
     for (const order of openOrders) {
       try {
-        await binance.futuresCancel(symbol, order.orderId);
+        await binance.futuresCancel(symbol, { orderId: order.orderId });
         console.log(`[${symbol}] Canceled open order: ${order.orderId}`);
       } catch (err) {
         console.warn(

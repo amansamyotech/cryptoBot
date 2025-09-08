@@ -739,7 +739,7 @@ setInterval(async () => {
 
           if (found) {
             try {
-              const res = await binance.futuresCancelAllOpenOrders(sym);
+              const res = await binance.futuresCancelAll(sym);
               console.log(`✅ All open orders cancelled for ${sym}`, res);
             } catch (e) {
               console.log(

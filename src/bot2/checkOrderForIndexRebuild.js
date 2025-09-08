@@ -64,7 +64,7 @@ async function checkOrderForIndexRebuild(symbol) {
         for (const order of orders) {
           if (order.status === "NEW") {
             try {
-              await binance.futuresCancel(symbol, parseInt(order.id));
+              await binance.futuresCancel(symbol, { orderId: parseInt(order.id) });
             } catch (err) {}
           }
         }
