@@ -11,7 +11,7 @@ const PINE_INPUTS = {
   macdSlow: 25,
   macdSignal: 14,
   adxLength: 13,
-  adxThreshold: 14,
+  adxThreshold: 15,
 };
 
 async function checkEntrySignal(symbol) {
