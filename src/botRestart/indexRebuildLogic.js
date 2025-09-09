@@ -423,15 +423,19 @@ async function placeBuyOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    // --- Fixed Percentage Stop Loss and Take Profit ---
-    const takeProfitPerc = 1.0 / 100; // 1.0%
-    const stopLossPerc = 1.0 / 100; // 1.0%
+    // Current fixed percentage code replace karo
+    const targetROI = 2; // 2% ROI target
+    const stopLossROI = -2; // -2% ROI stop loss
 
-    const stopLossPrice = parseFloat(
-      (entryPrice * (1 - stopLossPerc)).toFixed(pricePrecision)
-    );
+    // ROI to price conversion
+    const takeProfitPnL = (targetROI / 100) * marginAmount;
+    const stopLossPnL = (stopLossROI / 100) * marginAmount;
+
     const takeProfitPrice = parseFloat(
-      (entryPrice * (1 + takeProfitPerc)).toFixed(pricePrecision)
+      (entryPrice + takeProfitPnL / quantity).toFixed(pricePrecision)
+    );
+    const stopLossPrice = parseFloat(
+      (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
     );
 
     console.log(
@@ -533,17 +537,19 @@ async function placeShortOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    // --- Fixed Percentage Stop Loss and Take Profit ---
-    const takeProfitPerc = 1.0 / 100; // 1.0%
-    const stopLossPerc = 1.0 / 100; // 1.0%
+    const targetROI = 2; // 2% ROI target
+    const stopLossROI = -2; // -2% ROI stop loss
 
-    const stopLossPrice = parseFloat(
-      (entryPrice * (1 + stopLossPerc)).toFixed(pricePrecision)
-    );
+    // ROI to price conversion for SHORT
+    const takeProfitPnL = (targetROI / 100) * marginAmount;
+    const stopLossPnL = (stopLossROI / 100) * marginAmount;
+
     const takeProfitPrice = parseFloat(
-      (entryPrice * (1 - takeProfitPerc)).toFixed(pricePrecision)
+      (entryPrice - takeProfitPnL / quantity).toFixed(pricePrecision)
     );
-
+    const stopLossPrice = parseFloat(
+      (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
+    );
     console.log(
       `SL/TP prices for SHORT: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
@@ -557,9 +563,9 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
 
-    const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed,{
-  reduceOnly: false  // Explicitly set for opening position
-});
+    const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed, {
+      reduceOnly: false, // Explicitly set for opening position
+    });
     console.log(`Shorted ${symbol} at ${entryPrice}`);
 
     const shortOrderDetails = {
