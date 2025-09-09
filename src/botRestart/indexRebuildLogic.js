@@ -549,13 +549,6 @@ async function placeShortOrder(symbol, marginAmount) {
     );
 
     console.log(`entryPrice`, entryPrice);
-    console.log(`atr`, atr);
-    console.log(`atrMultiplierSL`, atrMultiplierSL);
-
-    console.log(
-      `entryPrice - atr * atrMultiplierSL`,
-      entryPrice - atr * atrMultiplierSL
-    );
     console.log(`stopLossPrice`, stopLossPrice);
 
     console.log(`SHORT Order Details for ${symbol}:`);
@@ -564,7 +557,9 @@ async function placeShortOrder(symbol, marginAmount) {
     console.log(`Margin Used: ${marginAmount}`);
     console.log(`Position Value: ${positionValue} (${LEVERAGE}x leverage)`);
 
-    const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed);
+    const shortOrder = await binance.futuresMarketSell(symbol, qtyFixed,{
+  reduceOnly: false  // Explicitly set for opening position
+});
     console.log(`Shorted ${symbol} at ${entryPrice}`);
 
     const shortOrderDetails = {
