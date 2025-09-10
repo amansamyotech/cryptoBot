@@ -5,13 +5,13 @@ const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust p
 const PINE_INPUTS = {
   emaLength: 9,
   rsiLength: 14,
-  rsiOverbought: 70,
-  rsiOversold: 30,
+  rsiOverbought: 40,
+  rsiOversold: 60,
   macdFast: 12,
-  macdSlow: 25,
+  macdSlow: 26,
   macdSignal: 14,
   adxLength: 13,
-  adxThreshold: 15,
+  adxThreshold: 17,
 };
 
 async function checkEntrySignal(symbol) {
@@ -19,10 +19,10 @@ async function checkEntrySignal(symbol) {
     console.log(`\n[${symbol}] Checking entry signal...`);
 
     // Fetch enough candles for the longest indicator (EMA 50) + ADX requirements
-    const candles = await getCandles(symbol, "5m", 150);
+    const candles = await getCandles(symbol, "5m", 200);
     console.log(`[${symbol}] Fetched ${candles.length} candles.`);
 
-    if (candles.length < PINE_INPUTS.emaLength) {
+    if (candles.length < 50) {
       console.log(
         `[${symbol}] Not enough candle data to calculate indicators.`
       );
@@ -96,8 +96,8 @@ async function checkEntrySignal(symbol) {
       }`
     );
     console.log(
-      `  RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi} => ${
-        currentRsi > PINE_INPUTS.rsiOversold
+      `RSI < Oversold (${PINE_INPUTS.rsiOversold}): ${currentRsi} => ${
+        currentRsi < PINE_INPUTS.rsiOversold
       }`
     );
     console.log(
@@ -130,8 +130,8 @@ async function checkEntrySignal(symbol) {
       }`
     );
     console.log(
-      `  RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi} => ${
-        currentRsi < PINE_INPUTS.rsiOverbought
+      `RSI > Overbought (${PINE_INPUTS.rsiOverbought}): ${currentRsi} => ${
+        currentRsi > PINE_INPUTS.rsiOverbought
       }`
     );
     console.log(
@@ -155,7 +155,6 @@ async function checkEntrySignal(symbol) {
       console.log(`[${symbol}] ✅ LONG signal detected.`);
       return "LONG";
     } else if (shortCondition) {
-
       console.log(`[${symbol}] ✅ SHORT signal detected.`);
       return "SHORT";
     }
