@@ -422,21 +422,32 @@ async function placeBuyOrder(symbol, marginAmount) {
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
+    //3 percent roi 
+    // --- Fixed Percentage Stop Loss and Take Profit ---
+    const takeProfitPerc = 1.0 / 100; // 1.0%
+    const stopLossPerc = 1.0 / 100; // 1.0%
 
-    // Current fixed percentage code replace karo
-    const targetROI = 2; // 2% ROI target
-    const stopLossROI = -2; // -2% ROI stop loss
-
-    // ROI to price conversion
-    const takeProfitPnL = (targetROI / 100) * marginAmount;
-    const stopLossPnL = (stopLossROI / 100) * marginAmount;
-
-    const takeProfitPrice = parseFloat(
-      (entryPrice + takeProfitPnL / quantity).toFixed(pricePrecision)
-    );
     const stopLossPrice = parseFloat(
-      (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
+      (entryPrice * (1 - stopLossPerc)).toFixed(pricePrecision)
     );
+    const takeProfitPrice = parseFloat(
+      (entryPrice * (1 + takeProfitPerc)).toFixed(pricePrecision)
+    );
+    //2 percent roi 
+    // Current fixed percentage code replace karo
+    // const targetROI = 2; // 2% ROI target
+    // const stopLossROI = -2; // -2% ROI stop loss
+
+    // // ROI to price conversion
+    // const takeProfitPnL = (targetROI / 100) * marginAmount;
+    // const stopLossPnL = (stopLossROI / 100) * marginAmount;
+
+    // const takeProfitPrice = parseFloat(
+    //   (entryPrice + takeProfitPnL / quantity).toFixed(pricePrecision)
+    // );
+    // const stopLossPrice = parseFloat(
+    //   (entryPrice + stopLossPnL / quantity).toFixed(pricePrecision)
+    // );
 
     console.log(
       `SL/TP prices for LONG: SL=${stopLossPrice}, TP=${takeProfitPrice}`
@@ -537,19 +548,32 @@ async function placeShortOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    const targetROI = 2; // 2% ROI target
-    const stopLossROI = -2; // -2% ROI stop loss
+    //new 3 prcent
+    // --- Fixed Percentage Stop Loss and Take Profit ---
+    const takeProfitPerc = 1.0 / 100; // 1.0%
+    const stopLossPerc = 1.0 / 100; // 1.0%
 
-    // ROI to price conversion for SHORT
-    const takeProfitPnL = (targetROI / 100) * marginAmount;
-    const stopLossPnL = (stopLossROI / 100) * marginAmount;
-
-    const takeProfitPrice = parseFloat(
-      (entryPrice - takeProfitPnL / quantity).toFixed(pricePrecision)
-    );
     const stopLossPrice = parseFloat(
-      (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
+      (entryPrice * (1 + stopLossPerc)).toFixed(pricePrecision)
     );
+    const takeProfitPrice = parseFloat(
+      (entryPrice * (1 - takeProfitPerc)).toFixed(pricePrecision)
+    );
+
+    //new 2 percent 
+    // const targetROI = 2; // 2% ROI target
+    // const stopLossROI = -2; // -2% ROI stop loss
+
+    // // ROI to price conversion for SHORT
+    // const takeProfitPnL = (targetROI / 100) * marginAmount;
+    // const stopLossPnL = (stopLossROI / 100) * marginAmount;
+
+    // const takeProfitPrice = parseFloat(
+    //   (entryPrice - takeProfitPnL / quantity).toFixed(pricePrecision)
+    // );
+    // const stopLossPrice = parseFloat(
+    //   (entryPrice - stopLossPnL / quantity).toFixed(pricePrecision)
+    // );
     console.log(
       `SL/TP prices for SHORT: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
