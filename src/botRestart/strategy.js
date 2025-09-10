@@ -5,8 +5,8 @@ const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust p
 const PINE_INPUTS = {
   emaLength: 9,
   rsiLength: 14,
-  rsiOverbought: 40,
-  rsiOversold: 56,
+  rsiOverbought: 70,
+  rsiOversold: 30,
   macdFast: 12,
   macdSlow: 25,
   macdSignal: 14,
@@ -84,7 +84,7 @@ async function checkEntrySignal(symbol) {
     // --- 3. Check Entry Conditions from Pine Script ---
     const longCondition =
       currentPrice > currentEma &&
-      currentRsi > PINE_INPUTS.rsiOversold &&
+      currentRsi < PINE_INPUTS.rsiOversold &&
       currentMacd.MACD > currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.pdi > currentAdx.mdi;
@@ -118,7 +118,7 @@ async function checkEntrySignal(symbol) {
 
     const shortCondition =
       currentPrice < currentEma &&
-      currentRsi < PINE_INPUTS.rsiOverbought &&
+      currentRsi > PINE_INPUTS.rsiOverbought &&
       currentMacd.MACD < currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.mdi > currentAdx.pdi;
