@@ -1,6 +1,8 @@
 const BotConfig = require("../backend/models/botConfig.model.js");
 
 async function setBotStopped(userId, error_message = "") {
+  console.log(`userId, error_message`, userId, error_message);
+
   try {
     await BotConfig.findOneAndUpdate(
       { userId },
