@@ -1,7 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 const { getCandles } = require("./websocketsCode/getCandles");
-const { checkOrders } = require("../botRestart/orderCheckFunForFix");
+const { checkOrders } = require("../bot2/checkOrderForIndexRebuild");
 const { checkEntrySignal } = require("../botRestart/strategy");
 const isProcessing = {};
 
