@@ -327,7 +327,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
   );
 
   // const decision = await checkEntrySignal(symbol);
-  const decision = "LONG";
+  const decision = "SHORT";
   console.log("decision", decision);
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
