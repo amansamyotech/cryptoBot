@@ -329,7 +329,7 @@ setInterval(async () => {
     await setBotStopped(ENVUSERID, errorMessage);
     process.exit(0);
   }
-  const usableBalance = totalBalance - 5;
+  const usableBalance = totalBalance - 1;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
