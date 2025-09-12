@@ -1,7 +1,7 @@
 const Binance = require("node-binance-api");
 const axios = require("axios");
 
-const API_ENDPOINT = "http://localhost:3000/api/buySell/";
+const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
 const binance = new Binance().options({
   APIKEY: "tPCOyhkpaVUj6it6BiKQje0WxcJjUOV30EQ7dY2FMcqXunm9DwC8xmuiCkgsyfdG",
