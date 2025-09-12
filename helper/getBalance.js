@@ -2,12 +2,8 @@ require("dotenv").config({ path: "../../.env" });
 const Binance = require("node-binance-api");
 
 const binance = new Binance().options({
-  APIKEY:
-    process.env.BINANCE_APIKEY ||
-    "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
-  APISECRET:
-    process.env.BINANCE_SECRETKEY ||
-    "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
+  APIKEY: process.env.BINANCE_APIKEY,
+  APISECRET: process.env.BINANCE_SECRETKEY,
   useServerTime: true,
   test: false,
 });

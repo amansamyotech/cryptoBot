@@ -1,19 +1,31 @@
 require("dotenv").config({ path: "../.env" });
 const Binance = require("node-binance-api");
 const TradeDetails = require("../backend/models/tradeDetails.js");
+const { setBotStopped } = require("../helper/is_running.js");
 
 const binance = new Binance().options({
-  APIKEY:
-    process.env.BINANCE_APIKEY ||
-    "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
-  APISECRET:
-    process.env.BINANCE_SECRETKEY ||
-    "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
+  APIKEY: process.env.BINANCE_APIKEY,
+  APISECRET: process.env.BINANCE_SECRETKEY,
   useServerTime: true,
   test: false,
 });
 
-const ENVUSERID = process.env.USER_ID || "68abfbaefba13b46a8c12f99";
+const ENVUSERID = process.env.USER_ID;
+
+async function initialize() {
+  if (!APIKEY || !APISECRET) {
+    const errorMessage = `Binance API keys are missing or Incorrect`;
+    console.log(`🛑 ${errorMessage}`);
+    await setBotStopped(ENVUSERID, errorMessage);
+    process.exit(0);
+  }
+}
+
+// Call the async function
+initialize();
+
+
+
 
 async function checkOrderForIndexRebuild(symbol) {
   try {
