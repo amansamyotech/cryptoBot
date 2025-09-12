@@ -48,8 +48,8 @@ async function cancelAllOpenOrders(symbol) {
 }
 
 async function placeBuyOrder(symbol, marginAmount) {
-  console.log(`symbol, marginAmount`,symbol, marginAmount);
-  
+  console.log(`symbol, marginAmount`, symbol, marginAmount);
+
   try {
     try {
       await binance.futuresMarginType(symbol, "ISOLATED");
@@ -71,8 +71,8 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
 
     const price = (await binance.futuresPrices())[symbol];
-    console.log('pricepricepricepriceprice',price);
-    
+    console.log("pricepricepricepriceprice", price);
+
     const entryPrice = parseFloat(price);
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
@@ -317,6 +317,12 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
+  console.log(
+    `symbol, processSymbol maxSpendPerTrade`,
+    symbol,
+    maxSpendPerTrade
+  );
+
   // const decision = await checkEntrySignal(symbol);
   const decision = "LONG";
   console.log("decision", decision);
