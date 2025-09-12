@@ -112,6 +112,9 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(
       `SL/TP prices for LONG: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
+    console.log(`qtyFixed`, qtyFixed);
+    console.log(`symbol`, symbol);
+
     const buyOrder = await binance.futuresMarketBuy(symbol, qtyFixed);
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
