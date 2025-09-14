@@ -336,14 +336,10 @@ async function checkEntrySignal(symbol) {
     let tradeDetails = null;
     
     if (longCondition) {
-      const longTakeProfit = currentPrice * (1 + PINE_INPUTS.takeProfitPerc / 100);
-      const longStopLoss = currentPrice * (1 - PINE_INPUTS.stopLossPerc / 100);
       
       tradeDetails = {
         signal: "LONG",
         entryPrice: currentPrice,
-        takeProfit: longTakeProfit,
-        stopLoss: longStopLoss,
         indicators: {
           tema: currentTema,
           macd: currentMacd,
@@ -353,17 +349,13 @@ async function checkEntrySignal(symbol) {
       };
       
       console.log(`[${symbol}] ✅ LONG signal detected.`);
-      console.log(`[${symbol}] Entry: ${currentPrice}, TP: ${longTakeProfit}, SL: ${longStopLoss}`);
+    
       
     } else if (shortCondition) {
-      const shortTakeProfit = currentPrice * (1 - PINE_INPUTS.takeProfitPerc / 100);
-      const shortStopLoss = currentPrice * (1 + PINE_INPUTS.stopLossPerc / 100);
       
       tradeDetails = {
         signal: "SHORT",
         entryPrice: currentPrice,
-        takeProfit: shortTakeProfit,
-        stopLoss: shortStopLoss,
         indicators: {
           tema: currentTema,
           macd: currentMacd,
@@ -373,7 +365,7 @@ async function checkEntrySignal(symbol) {
       };
       
       console.log(`[${symbol}] ✅ SHORT signal detected.`);
-      console.log(`[${symbol}] Entry: ${currentPrice}, TP: ${shortTakeProfit}, SL: ${shortStopLoss}`);
+    
       
     } else {
       console.log(`[${symbol}] ❌ No valid entry condition met. HOLD.`);
@@ -389,7 +381,7 @@ async function checkEntrySignal(symbol) {
       };
     }
 
-    return tradeDetails;
+    return tradeDetails.signal;
     
   } catch (err) {
     console.error(`[${symbol}] ❗ Error in entry signal check:`, err.message);
