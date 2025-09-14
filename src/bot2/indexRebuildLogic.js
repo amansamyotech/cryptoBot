@@ -65,7 +65,7 @@ function calculateATR(candles, length = ATR_LENGTH) {
 
 async function getATR(symbol, length = ATR_LENGTH) {
   try {
-    const candles = await getCandles(symbol, "5m", length + 20);
+    const candles = await getCandles(symbol, "3m", length + 20);
     return calculateATR(candles, length);
   } catch (err) {
     console.error(`Error calculating ATR for ${symbol}:`, err.message);
