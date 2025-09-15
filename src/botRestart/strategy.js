@@ -248,7 +248,7 @@ async function checkEntrySignal(symbol) {
     console.log(`\n[${symbol}] Checking entry signal...`);
 
     // Fetch enough candles for the longest indicator + buffer
-    const candles = await getCandles(symbol, "3m", 200);
+    const candles = await getCandles(symbol, "5m", 200);
     console.log(`[${symbol}] Fetched ${candles.length} candles.`);
 
     if (candles.length < 100) {
