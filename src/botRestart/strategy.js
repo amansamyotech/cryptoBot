@@ -190,8 +190,9 @@ async function checkEntrySignal(symbol) {
     console.log(`\n[${symbol}] Checking entry signal...`);
 
     const candles = await getCandles(symbol, "5m", 200);
+    console.log(`[${symbol}] Retrieved ${candles.length} candles.`);
     if (candles.length < 50) {
-      console.log(`[${symbol}] Not enough candles.`);
+      console.log(`[${symbol}] Not enough candles. Need at least 50.`);
       return "HOLD";
     }
 
@@ -199,17 +200,23 @@ async function checkEntrySignal(symbol) {
     const highPrices = candles.map((c) => c.high);
     const lowPrices = candles.map((c) => c.low);
 
-    // --- Indicators ---
+    console.log(`[${symbol}] Calculating EMA with period ${PINE_INPUTS.emaLength}...`);
     const ema = EMA.calculate({
       period: PINE_INPUTS.emaLength,
       values: closePrices,
     });
+    console.log(`[${symbol}] EMA calculated. Last EMA: ${ema.at(-1)}`);
 
+    console.log(`[${symbol}] Calculating RSI with period ${PINE_INPUTS.rsiLength}...`);
     const rsi = RSI.calculate({
       period: PINE_INPUTS.rsiLength,
       values: closePrices,
     });
+    console.log(`[${symbol}] RSI calculated. Last RSI: ${rsi.at(-1)}`);
 
+    console.log(
+      `[${symbol}] Calculating MACD (fast: ${PINE_INPUTS.macdFast}, slow: ${PINE_INPUTS.macdSlow}, signal: ${PINE_INPUTS.macdSignal})...`
+    );
     const macd = MACD.calculate({
       values: closePrices,
       fastPeriod: PINE_INPUTS.macdFast,
@@ -218,13 +225,20 @@ async function checkEntrySignal(symbol) {
       SimpleMAOscillator: false,
       SimpleMASignal: false,
     });
+    console.log(
+      `[${symbol}] MACD calculated. Last MACD: ${JSON.stringify(macd.at(-1))}`
+    );
 
+    console.log(`[${symbol}] Calculating ADX with period ${PINE_INPUTS.adxLength}...`);
     const adx = ADX.calculate({
       close: closePrices,
       high: highPrices,
       low: lowPrices,
       period: PINE_INPUTS.adxLength,
     });
+    console.log(
+      `[${symbol}] ADX calculated. Last ADX: ${JSON.stringify(adx.at(-1))}`
+    );
 
     // --- Latest values ---
     const currentPrice = closePrices.at(-1);
@@ -233,13 +247,23 @@ async function checkEntrySignal(symbol) {
     const currentMacd = macd.at(-1);
     const currentAdx = adx.at(-1);
 
+    console.log(`[${symbol}] Current Price: ${currentPrice}`);
+    console.log(`[${symbol}] Current EMA: ${currentEma}`);
+    console.log(`[${symbol}] Current RSI: ${currentRsi}`);
+    console.log(`[${symbol}] Current MACD: MACD=${currentMacd.MACD}, Signal=${currentMacd.signal}`);
+    console.log(
+      `[${symbol}] Current ADX: adx=${currentAdx.adx}, pdi=${currentAdx.pdi}, mdi=${currentAdx.mdi}`
+    );
+
     if (!currentEma || !currentRsi || !currentMacd || !currentAdx) {
-      console.log(`[${symbol}] Missing indicator values.`);
+      console.log(`[${symbol}] Missing indicator values. Holding.`);
       return "HOLD";
     }
 
     // --- RSI Bounce Logic ---
     const rsiValues = rsi.slice(-5); // last 5 RSI values
+    console.log(`[${symbol}] Last 5 RSI values for bounce check: ${rsiValues}`);
+
     const [r1, r2, r3] = rsiValues;
 
     let rsiBounceLong = false;
@@ -252,6 +276,9 @@ async function checkEntrySignal(symbol) {
       r1 > r2 // RSI continued rising
     ) {
       rsiBounceLong = true;
+      console.log(`[${symbol}] RSI Bounce LONG detected.`);
+    } else {
+      console.log(`[${symbol}] No RSI Bounce LONG.`);
     }
 
     // SHORT: RSI touched any high (e.g., 65 or above), then started falling
@@ -261,6 +288,9 @@ async function checkEntrySignal(symbol) {
       r1 < r2 // RSI continued falling
     ) {
       rsiBounceShort = true;
+      console.log(`[${symbol}] RSI Bounce SHORT detected.`);
+    } else {
+      console.log(`[${symbol}] No RSI Bounce SHORT.`);
     }
 
     // --- Long Condition ---
@@ -271,6 +301,8 @@ async function checkEntrySignal(symbol) {
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.pdi > currentAdx.mdi;
 
+    console.log(`[${symbol}] Long Condition: ${longCondition}`);
+
     // --- Short Condition ---
     const shortCondition =
       currentPrice < currentEma &&
@@ -278,6 +310,8 @@ async function checkEntrySignal(symbol) {
       currentMacd.MACD < currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.mdi > currentAdx.pdi;
+
+    console.log(`[${symbol}] Short Condition: ${shortCondition}`);
 
     if (longCondition) {
       console.log(`[${symbol}] ✅ LONG signal (RSI bounce confirmed).`);
