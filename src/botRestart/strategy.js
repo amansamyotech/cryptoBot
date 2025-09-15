@@ -169,106 +169,47 @@
 
 // module.exports = { checkEntrySignal };
 
-
-
-const { EMA, RSI, MACD, ADX,  SMA } = require("technicalindicators");
+const { EMA, RSI, MACD, ADX } = require("technicalindicators");
 const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust path if needed
 
-// --- Strategy Inputs (matching Pine Script) ---
+// --- Strategy Inputs ---
 const PINE_INPUTS = {
-  temaLength: 21,
+  emaLength: 21, // Trend filter
+  rsiLength: 14, // RSI period
+  rsiOverbought: 65, // Bounce zone top
+  rsiOversold: 35, // Bounce zone bottom
   macdFast: 12,
-  macdSlow: 26,
-  macdSignal: 9,
-  bbLength: 20,
-  bbMult: 2.0,
+  macdSlow: 26, 
+  macdSignal: 14,
   adxLength: 13,
-  adxThreshold: 20,
+  adxThreshold: 17,
 };
-
-// Helper function to calculate TEMA (Triple Exponential Moving Average)
-function calculateTEMA(closePrices, period) {
-  const ema1 = EMA.calculate({ period, values: closePrices });
-  const ema2 = EMA.calculate({ period, values: ema1 });
-  const ema3 = EMA.calculate({ period, values: ema2 });
-  
-  // TEMA = 3*EMA1 - 3*EMA2 + EMA3
-  const tema = [];
-  const minLength = Math.min(ema1.length, ema2.length, ema3.length);
-  
-  for (let i = 0; i < minLength; i++) {
-    const tema_value = 3 * ema1[ema1.length - minLength + i] - 
-                      3 * ema2[ema2.length - minLength + i] + 
-                      ema3[ema3.length - minLength + i];
-    tema.push(tema_value);
-  }
-  
-  return tema;
-}
-
-// Helper function to calculate Standard Deviation
-function calculateStandardDeviation(values, period) {
-  const result = [];
-  
-  for (let i = period - 1; i < values.length; i++) {
-    const slice = values.slice(i - period + 1, i + 1);
-    const mean = slice.reduce((sum, val) => sum + val, 0) / period;
-    const variance = slice.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / period;
-    const stdDev = Math.sqrt(variance);
-    result.push(stdDev);
-  }
-  
-  return result;
-}
-
-// Helper function to calculate Bollinger Bands
-function calculateBollingerBands(closePrices, period, multiplier) {
-  const sma = SMA.calculate({ period, values: closePrices });
-  const stdDev = calculateStandardDeviation(closePrices, period);
-  
-  const bollingerBands = [];
-  const minLength = Math.min(sma.length, stdDev.length);
-  
-  for (let i = 0; i < minLength; i++) {
-    const basis = sma[sma.length - minLength + i];
-    const deviation = multiplier * stdDev[stdDev.length - minLength + i];
-    
-    bollingerBands.push({
-      upper: basis + deviation,
-      middle: basis,
-      lower: basis - deviation
-    });
-  }
-  
-  return bollingerBands;
-}
 
 async function checkEntrySignal(symbol) {
   try {
     console.log(`\n[${symbol}] Checking entry signal...`);
 
-    // Fetch enough candles for the longest indicator + buffer
     const candles = await getCandles(symbol, "5m", 200);
-    console.log(`[${symbol}] Fetched ${candles.length} candles.`);
-
-    if (candles.length < 100) {
-      console.log(`[${symbol}] Not enough candle data to calculate indicators.`);
-      return { signal: "HOLD", reason: "Insufficient data" };
+    if (candles.length < 50) {
+      console.log(`[${symbol}] Not enough candles.`);
+      return "HOLD";
     }
 
     const closePrices = candles.map((c) => c.close);
     const highPrices = candles.map((c) => c.high);
     const lowPrices = candles.map((c) => c.low);
 
-    console.log(`[${symbol}] Sample close prices:`, closePrices.slice(-5));
+    // --- Indicators ---
+    const ema = EMA.calculate({
+      period: PINE_INPUTS.emaLength,
+      values: closePrices,
+    });
 
-    // --- 1. Calculate All Indicators ---
-    
-    // TEMA calculation
-    const tema = calculateTEMA(closePrices, PINE_INPUTS.temaLength);
-    console.log(`[${symbol}] TEMA (last):`, tema[tema.length - 1]);
+    const rsi = RSI.calculate({
+      period: PINE_INPUTS.rsiLength,
+      values: closePrices,
+    });
 
-    // MACD calculation
     const macd = MACD.calculate({
       values: closePrices,
       fastPeriod: PINE_INPUTS.macdFast,
@@ -277,118 +218,81 @@ async function checkEntrySignal(symbol) {
       SimpleMAOscillator: false,
       SimpleMASignal: false,
     });
-    console.log(`[${symbol}] MACD (last):`, macd[macd.length - 1]);
 
-    // Bollinger Bands calculation
-    const bb = calculateBollingerBands(closePrices, PINE_INPUTS.bbLength, PINE_INPUTS.bbMult);
-    console.log(`[${symbol}] Bollinger Bands (last):`, bb[bb.length - 1]);
-
-    // ADX calculation
     const adx = ADX.calculate({
       close: closePrices,
       high: highPrices,
       low: lowPrices,
       period: PINE_INPUTS.adxLength,
     });
-    console.log(`[${symbol}] ADX (last):`, adx[adx.length - 1]);
 
-    // --- 2. Get the latest values for each indicator ---
-    const currentPrice = closePrices[closePrices.length - 1];
-    const currentTema = tema[tema.length - 1];
-    const currentMacd = macd[macd.length - 1];
-    const currentBB = bb[bb.length - 1];
-    const currentAdx = adx[adx.length - 1];
+    // --- Latest values ---
+    const currentPrice = closePrices.at(-1);
+    const currentEma = ema.at(-1);
+    const currentRsi = rsi.at(-1);
+    const currentMacd = macd.at(-1);
+    const currentAdx = adx.at(-1);
 
-    console.log(`[${symbol}] Current Price: ${currentPrice}`);
-
-    // Check if all indicators have valid data
-    if (!currentTema || !currentMacd || !currentBB || !currentAdx) {
-      console.log(`[${symbol}] One or more indicators returned null.`);
-      return { signal: "HOLD", reason: "Invalid indicator data" };
+    if (!currentEma || !currentRsi || !currentMacd || !currentAdx) {
+      console.log(`[${symbol}] Missing indicator values.`);
+      return "HOLD";
     }
 
-    // --- 3. Check Entry Conditions (matching Pine Script logic) ---
+    // --- RSI Bounce Logic ---
+    const rsiValues = rsi.slice(-5); // last 5 RSI values
+    const [r1, r2, r3] = rsiValues;
+
+    let rsiBounceLong = false;
+    let rsiBounceShort = false;
+
+    // LONG: RSI touched any low (e.g., 35 or below), then started rising
+    if (
+      r3 <= PINE_INPUTS.rsiOversold && // RSI reached oversold area (can be 35, 30, 25 etc.)
+      r2 > r3 && // RSI started bouncing up
+      r1 > r2 // RSI continued rising
+    ) {
+      rsiBounceLong = true;
+    }
+
+    // SHORT: RSI touched any high (e.g., 65 or above), then started falling
+    if (
+      r3 >= PINE_INPUTS.rsiOverbought && // RSI reached overbought area (can be 70, 80, 90)
+      r2 < r3 && // RSI started falling
+      r1 < r2 // RSI continued falling
+    ) {
+      rsiBounceShort = true;
+    }
+
+    // --- Long Condition ---
     const longCondition =
-      currentPrice > currentTema &&
+      currentPrice > currentEma &&
+      rsiBounceLong &&
       currentMacd.MACD > currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.pdi > currentAdx.mdi;
 
-    console.log(`[${symbol}] Long Condition Details:`);
-    console.log(`  Price > TEMA: ${currentPrice} > ${currentTema} => ${currentPrice > currentTema}`);
-    console.log(`  MACD > Signal: ${currentMacd.MACD} > ${currentMacd.signal} => ${currentMacd.MACD > currentMacd.signal}`);
-    console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx} => ${currentAdx.adx > PINE_INPUTS.adxThreshold}`);
-    console.log(`  PDI > MDI: ${currentAdx.pdi} > ${currentAdx.mdi} => ${currentAdx.pdi > currentAdx.mdi}`);
-
+    // --- Short Condition ---
     const shortCondition =
-      currentPrice < currentTema &&
+      currentPrice < currentEma &&
+      rsiBounceShort &&
       currentMacd.MACD < currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.mdi > currentAdx.pdi;
 
-    console.log(`[${symbol}] Short Condition Details:`);
-    console.log(`  Price < TEMA: ${currentPrice} < ${currentTema} => ${currentPrice < currentTema}`);
-    console.log(`  MACD < Signal: ${currentMacd.MACD} < ${currentMacd.signal} => ${currentMacd.MACD < currentMacd.signal}`);
-    console.log(`  ADX > Threshold (${PINE_INPUTS.adxThreshold}): ${currentAdx.adx} => ${currentAdx.adx > PINE_INPUTS.adxThreshold}`);
-    console.log(`  MDI > PDI: ${currentAdx.mdi} > ${currentAdx.pdi} => ${currentAdx.mdi > currentAdx.pdi}`);
-
-    // --- 4. Calculate Take Profit and Stop Loss levels ---
-    let tradeDetails = null;
-    
     if (longCondition) {
-      
-      tradeDetails = {
-        signal: "LONG",
-        entryPrice: currentPrice,
-        indicators: {
-          tema: currentTema,
-          macd: currentMacd,
-          bb: currentBB,
-          adx: currentAdx
-        }
-      };
-      
-      console.log(`[${symbol}] ✅ LONG signal detected.`);
-    
-      
+      console.log(`[${symbol}] ✅ LONG signal (RSI bounce confirmed).`);
+      return "LONG";
     } else if (shortCondition) {
-      
-      tradeDetails = {
-        signal: "SHORT",
-        entryPrice: currentPrice,
-        indicators: {
-          tema: currentTema,
-          macd: currentMacd,
-          bb: currentBB,
-          adx: currentAdx
-        }
-      };
-      
-      console.log(`[${symbol}] ✅ SHORT signal detected.`);
-    
-      
-    } else {
-      console.log(`[${symbol}] ❌ No valid entry condition met. HOLD.`);
-      return {
-        signal: "HOLD",
-        reason: "No entry conditions met",
-        indicators: {
-          tema: currentTema,
-          macd: currentMacd,
-          bb: currentBB,
-          adx: currentAdx
-        }
-      };
+      console.log(`[${symbol}] ✅ SHORT signal (RSI bounce confirmed).`);
+      return "SHORT";
     }
 
-    return tradeDetails.signal;
-    
+    console.log(`[${symbol}] ❌ HOLD (no valid entry).`);
+    return "HOLD";
   } catch (err) {
     console.error(`[${symbol}] ❗ Error in entry signal check:`, err.message);
-    return { signal: "HOLD", reason: `Error: ${err.message}` };
+    return "HOLD";
   }
 }
 
-module.exports = { 
-  checkEntrySignal
-};
+module.exports = { checkEntrySignal };

@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { getCandles } = require("./websocketsCode/getCandles");
 const { checkOrders } = require("../bot2/checkOrderForIndexRebuild");
-const { checkEntrySignal } = require("../botRestart/strategy");
+const { checkEntrySignal } = require("../bot2/strategy");
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
