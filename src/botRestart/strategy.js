@@ -176,8 +176,8 @@ const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust p
 const PINE_INPUTS = {
   emaLength: 21, // Trend filter
   rsiLength: 14, // RSI period
-  rsiOverbought: 65, // Bounce zone top
-  rsiOversold: 35, // Bounce zone bottom
+  rsiOverbought: 60, // Bounce zone top
+  rsiOversold: 40, // Bounce zone bottom
   macdFast: 12,
   macdSlow: 26, 
   macdSignal: 14,
