@@ -179,7 +179,7 @@ const PINE_INPUTS = {
   rsiOverbought: 60, // Bounce zone top
   rsiOversold: 40, // Bounce zone bottom
   macdFast: 12,
-  macdSlow: 26, 
+  macdSlow: 26,
   macdSignal: 14,
   adxLength: 13,
   adxThreshold: 17,
@@ -200,14 +200,18 @@ async function checkEntrySignal(symbol) {
     const highPrices = candles.map((c) => c.high);
     const lowPrices = candles.map((c) => c.low);
 
-    console.log(`[${symbol}] Calculating EMA with period ${PINE_INPUTS.emaLength}...`);
+    console.log(
+      `[${symbol}] Calculating EMA with period ${PINE_INPUTS.emaLength}...`
+    );
     const ema = EMA.calculate({
       period: PINE_INPUTS.emaLength,
       values: closePrices,
     });
     console.log(`[${symbol}] EMA calculated. Last EMA: ${ema.at(-1)}`);
 
-    console.log(`[${symbol}] Calculating RSI with period ${PINE_INPUTS.rsiLength}...`);
+    console.log(
+      `[${symbol}] Calculating RSI with period ${PINE_INPUTS.rsiLength}...`
+    );
     const rsi = RSI.calculate({
       period: PINE_INPUTS.rsiLength,
       values: closePrices,
@@ -229,7 +233,9 @@ async function checkEntrySignal(symbol) {
       `[${symbol}] MACD calculated. Last MACD: ${JSON.stringify(macd.at(-1))}`
     );
 
-    console.log(`[${symbol}] Calculating ADX with period ${PINE_INPUTS.adxLength}...`);
+    console.log(
+      `[${symbol}] Calculating ADX with period ${PINE_INPUTS.adxLength}...`
+    );
     const adx = ADX.calculate({
       close: closePrices,
       high: highPrices,
@@ -250,7 +256,9 @@ async function checkEntrySignal(symbol) {
     console.log(`[${symbol}] Current Price: ${currentPrice}`);
     console.log(`[${symbol}] Current EMA: ${currentEma}`);
     console.log(`[${symbol}] Current RSI: ${currentRsi}`);
-    console.log(`[${symbol}] Current MACD: MACD=${currentMacd.MACD}, Signal=${currentMacd.signal}`);
+    console.log(
+      `[${symbol}] Current MACD: MACD=${currentMacd.MACD}, Signal=${currentMacd.signal}`
+    );
     console.log(
       `[${symbol}] Current ADX: adx=${currentAdx.adx}, pdi=${currentAdx.pdi}, mdi=${currentAdx.mdi}`
     );
@@ -295,21 +303,21 @@ async function checkEntrySignal(symbol) {
 
     // --- Long Condition ---
     const longCondition =
-      currentPrice > currentEma &&
-      rsiBounceLong &&
-      currentMacd.MACD > currentMacd.signal &&
-      currentAdx.adx > PINE_INPUTS.adxThreshold &&
-      currentAdx.pdi > currentAdx.mdi;
+      // currentPrice > currentEma &&
+      rsiBounceLong;
+    // currentMacd.MACD > currentMacd.signal &&
+    // currentAdx.adx > PINE_INPUTS.adxThreshold &&
+    // currentAdx.pdi > currentAdx.mdi;
 
     console.log(`[${symbol}] Long Condition: ${longCondition}`);
 
     // --- Short Condition ---
     const shortCondition =
-      currentPrice < currentEma &&
-      rsiBounceShort &&
-      currentMacd.MACD < currentMacd.signal &&
-      currentAdx.adx > PINE_INPUTS.adxThreshold &&
-      currentAdx.mdi > currentAdx.pdi;
+      // currentPrice < currentEma &&
+      rsiBounceShort;
+    // currentMacd.MACD < currentMacd.signal &&
+    // currentAdx.adx > PINE_INPUTS.adxThreshold &&
+    // currentAdx.mdi > currentAdx.pdi;
 
     console.log(`[${symbol}] Short Condition: ${shortCondition}`);
 
