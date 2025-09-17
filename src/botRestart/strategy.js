@@ -176,8 +176,8 @@ const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust p
 const PINE_INPUTS = {
   emaLength: 21, // Trend filter
   rsiLength: 14, // RSI period
-  rsiOverbought: 60, // Bounce zone top
-  rsiOversold: 40, // Bounce zone bottom
+  rsiOverbought: 65, // Bounce zone top
+  rsiOversold: 35, // Bounce zone bottom
   macdFast: 12,
   macdSlow: 26,
   macdSignal: 14,
@@ -302,9 +302,7 @@ async function checkEntrySignal(symbol) {
     }
 
     // --- Long Condition ---
-    const longCondition =
-      // currentPrice > currentEma &&
-      rsiBounceLong;
+    const longCondition = currentPrice > currentEma && rsiBounceLong;
     // currentMacd.MACD > currentMacd.signal &&
     // currentAdx.adx > PINE_INPUTS.adxThreshold &&
     // currentAdx.pdi > currentAdx.mdi;
@@ -312,9 +310,7 @@ async function checkEntrySignal(symbol) {
     console.log(`[${symbol}] Long Condition: ${longCondition}`);
 
     // --- Short Condition ---
-    const shortCondition =
-      // currentPrice < currentEma &&
-      rsiBounceShort;
+    const shortCondition = currentPrice < currentEma && rsiBounceShort;
     // currentMacd.MACD < currentMacd.signal &&
     // currentAdx.adx > PINE_INPUTS.adxThreshold &&
     // currentAdx.mdi > currentAdx.pdi;
