@@ -32,7 +32,7 @@ async function getUsdtBalance() {
 const LEVERAGE = 3;
 const ATR_LENGTH = 14;
 const ATR_MULTIPLIER_SL = 3.0;
-const ATR_MULTIPLIER_TP = 6.0;
+const ATR_MULTIPLIER_TP = 5.0;
 
 function calculateATR(candles, length = ATR_LENGTH) {
   if (candles.length < length + 1) return null;
@@ -65,7 +65,7 @@ function calculateATR(candles, length = ATR_LENGTH) {
 
 async function getATR(symbol, length = ATR_LENGTH) {
   try {
-    const candles = await getCandles(symbol, "3m", length + 20);
+    const candles = await getCandles(symbol, "5m", length + 20);
     return calculateATR(candles, length);
   } catch (err) {
     console.error(`Error calculating ATR for ${symbol}:`, err.message);
