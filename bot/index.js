@@ -6,6 +6,7 @@ const TradeDetails = require("../backend/models/tradeDetails.js");
 
 const { setBotStopped } = require("../helper/is_running.js");
 const mongoose = require("../backend/db.js");
+const { getCandles } = require("../helper/getCandles.js");
 mongoose.connection.once("open", () => {
   console.log("MongoDB connection is open!");
 });
@@ -26,6 +27,48 @@ const ENVUSERID = process.env.USER_ID || "68c3b15834798ae881dd8d3e";
 const symbols = ["DOGEUSDT"];
 
 const LEVERAGE = 3;
+const ATR_LENGTH = 14;
+const ATR_MULTIPLIER_SL = 2.5;
+const ATR_MULTIPLIER_TP = 5.0;
+
+function calculateATR(candles, length = ATR_LENGTH) {
+  if (candles.length < length + 1) return null;
+
+  const trueRanges = [];
+
+  for (let i = 1; i < candles.length; i++) {
+    const high = candles[i].high;
+    const low = candles[i].low;
+    const prevClose = candles[i - 1].close;
+
+    const tr1 = high - low;
+    const tr2 = Math.abs(high - prevClose);
+    const tr3 = Math.abs(low - prevClose);
+
+    trueRanges.push(Math.max(tr1, tr2, tr3));
+  }
+
+  if (trueRanges.length < length) return null;
+
+  let atr = trueRanges.slice(0, length).reduce((a, b) => a + b, 0) / length;
+
+  const multiplier = 2 / (length + 1);
+  for (let i = length; i < trueRanges.length; i++) {
+    atr = trueRanges[i] * multiplier + atr * (1 - multiplier);
+  }
+
+  return atr;
+}
+
+async function getATR(symbol, length = ATR_LENGTH) {
+  try {
+    const candles = await getCandles(symbol, "5m", length + 20);
+    return calculateATR(candles, length);
+  } catch (err) {
+    console.error(`Error calculating ATR for ${symbol}:`, err.message);
+    return null;
+  }
+}
 
 async function cancelAllOpenOrders(symbol) {
   try {
@@ -82,17 +125,18 @@ async function placeBuyOrder(symbol, marginAmount) {
     const pricePrecision = symbolInfo.pricePrecision;
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
-    //3 percent roi
-    // --- Fixed Percentage Stop Loss and Take Profit ---
-    const takeProfitPerc = 1.0 / 100; // 1.0%
-    const stopLossPerc = 1.0 / 100; // 1.0%
+    const atr = await getATR(symbol, ATR_LENGTH);
+    if (!atr) {
+      throw new Error(`Could not calculate ATR for ${symbol}`);
+    }
 
     const stopLossPrice = parseFloat(
-      (entryPrice * (1 - stopLossPerc)).toFixed(pricePrecision)
+      (entryPrice - atr * ATR_MULTIPLIER_SL).toFixed(pricePrecision)
     );
     const takeProfitPrice = parseFloat(
-      (entryPrice * (1 + takeProfitPerc)).toFixed(pricePrecision)
+      (entryPrice + atr * ATR_MULTIPLIER_TP).toFixed(pricePrecision)
     );
+
     //2 percent roi
     // Current fixed percentage code replace karo
     // const targetROI = 2; // 2% ROI target
@@ -211,16 +255,19 @@ async function placeShortOrder(symbol, marginAmount) {
     const quantityPrecision = symbolInfo.quantityPrecision;
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
-    //new 3 prcent
-    // --- Fixed Percentage Stop Loss and Take Profit ---
-    const takeProfitPerc = 1.0 / 100; // 1.0%
-    const stopLossPerc = 1.0 / 100; // 1.0%
+    const atr = await getATR(symbol, ATR_LENGTH);
+    if (!atr) {
+      throw new Error(`Could not calculate ATR for ${symbol}`);
+    }
 
     const stopLossPrice = parseFloat(
-      (entryPrice * (1 + stopLossPerc)).toFixed(pricePrecision)
+      (entryPrice + atr * ATR_MULTIPLIER_SL).toFixed(pricePrecision)
     );
     const takeProfitPrice = parseFloat(
-      (entryPrice * (1 - takeProfitPerc)).toFixed(pricePrecision)
+      (entryPrice - atr * ATR_MULTIPLIER_TP).toFixed(pricePrecision)
+    );
+    console.log(
+      `SL/TP prices for SHORT: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
 
     //new 2 percent
@@ -322,14 +369,8 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  console.log(
-    `symbol, processSymbol maxSpendPerTrade`,
-    symbol,
-    maxSpendPerTrade
-  );
+  const decision = await checkEntrySignal(symbol);
 
-  // const decision = await checkEntrySignal(symbol);
-  const decision = "SHORT";
   console.log("decision", decision);
   if (decision === "LONG") {
     await placeBuyOrder(symbol, maxSpendPerTrade);
@@ -343,13 +384,13 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
 
-  if (totalBalance < 6) {
+  if (totalBalance < 10) {
     const errorMessage = `Balance is ${totalBalance} USDT — minimum required is 10 USDT to run the bot.`;
     console.log(`🛑 ${errorMessage}`);
     await setBotStopped(ENVUSERID, errorMessage);
     process.exit(0);
   }
-  const usableBalance = totalBalance - 1;
+  const usableBalance = totalBalance - 4;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
@@ -516,7 +557,7 @@ async function gracefulShutdown(code = 0, reason = "Unknown") {
     console.log(`🛑 Bot shutting down: ${reason}`);
     await setBotStopped(ENVUSERID);
   } catch (err) {
-    console.error("Error during shutdown:", err);
+    console.error("Error during shu tdown:", err);
   } finally {
     process.exit(code);
   }
