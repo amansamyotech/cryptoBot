@@ -384,7 +384,7 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 setInterval(async () => {
   const totalBalance = await getUsdtBalance();
 
-  if (totalBalance < 10) {
+  if (totalBalance < 3) {
     const errorMessage = `Balance is ${totalBalance} USDT — minimum required is 10 USDT to run the bot.`;
     console.log(`🛑 ${errorMessage}`);
     await setBotStopped(ENVUSERID, errorMessage);
