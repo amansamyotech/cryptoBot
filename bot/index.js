@@ -369,7 +369,8 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await checkEntrySignal(symbol);
+  // const decision = await checkEntrySignal(symbol);
+  const decision = "LONG"
 
   console.log("decision", decision);
   if (decision === "LONG") {
