@@ -31,7 +31,7 @@ async function getUsdtBalance() {
 
 const LEVERAGE = 3;
 const ATR_LENGTH = 14;
-const ATR_MULTIPLIER_SL = 3.0;
+const ATR_MULTIPLIER_SL = 2.5;
 const ATR_MULTIPLIER_TP = 5.0;
 
 function calculateATR(candles, length = ATR_LENGTH) {
