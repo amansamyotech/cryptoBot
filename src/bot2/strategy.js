@@ -440,7 +440,7 @@ async function checkEntrySignal(symbol) {
     console.log(`[${symbol}] Engulfing Pattern:`, engulfingPattern);
 
     const longCondition =
-      macdCrossover.bullishCrossover &&
+      // macdCrossover.bullishCrossover &&
       previousPrice > previousTema &&
       currentPrice > currentTema &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
@@ -456,7 +456,7 @@ async function checkEntrySignal(symbol) {
     console.log(`  Price Action: Bullish Engulfing=${engulfingPattern.bullishEngulfing} or Price Up=${currentPrice > previousPrice * 1.001}`);
 
     const shortCondition =
-      macdCrossover.bearishCrossover &&
+      // macdCrossover.bearishCrossover &&
       previousPrice < previousTema &&
       currentPrice < currentTema &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
