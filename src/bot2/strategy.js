@@ -533,13 +533,17 @@ async function checkEntrySignal(symbol) {
 
     // 1. Fetch Candles
     const candles = await getCandles(symbol, "5m", 200);
-    if (candles.length < 50)
+    if (candles.length < 50) {
+      console.log(`[${symbol}] Not enough candle data.`);
       return { signal: "HOLD", reason: "Not enough data" };
+    }
 
     const close = candles.map((c) => c.close);
     const high = candles.map((c) => c.high);
     const low = candles.map((c) => c.low);
     const currentPrice = close[close.length - 1];
+
+    console.log(`[${symbol}] Current Price: ${currentPrice}`);
 
     // 2. Calculate Indicators
     const tema = calculateTEMA(close, INPUTS.temaLength);
@@ -564,6 +568,17 @@ async function checkEntrySignal(symbol) {
     const atr = ATR.calculate({ high, low, close, period: INPUTS.atrLength });
     const currentATR = atr[atr.length - 1];
 
+    // Debug Logs: Indicators
+    console.log(`[${symbol}] TEMA: ${currentTEMA}`);
+    console.log(`[${symbol}] RSI: ${currentRSI}`);
+    console.log(
+      `[${symbol}] MACD: ${currentMACD?.MACD}, Signal: ${currentMACD?.signal}`
+    );
+    console.log(
+      `[${symbol}] ADX: ${currentADX?.adx}, +DI: ${currentADX?.pdi}, -DI: ${currentADX?.mdi}`
+    );
+    console.log(`[${symbol}] ATR: ${currentATR}`);
+
     // 3. Define Trend
     const trend =
       currentPrice > currentTEMA
@@ -571,6 +586,8 @@ async function checkEntrySignal(symbol) {
         : currentPrice < currentTEMA
         ? "BEARISH"
         : "SIDEWAYS";
+
+    console.log(`[${symbol}] Trend: ${trend}`);
 
     // 4. Entry Conditions
     let signal = "HOLD";
@@ -583,6 +600,7 @@ async function checkEntrySignal(symbol) {
       currentADX.pdi > currentADX.mdi
     ) {
       signal = "LONG";
+      console.log(`[${symbol}] Entry Condition Met: LONG`);
     } else if (
       trend === "BEARISH" &&
       currentRSI > INPUTS.rsiOverbought &&
@@ -591,6 +609,9 @@ async function checkEntrySignal(symbol) {
       currentADX.mdi > currentADX.pdi
     ) {
       signal = "SHORT";
+      console.log(`[${symbol}] Entry Condition Met: SHORT`);
+    } else {
+      console.log(`[${symbol}] No entry condition met. Holding.`);
     }
 
     return { signal };
