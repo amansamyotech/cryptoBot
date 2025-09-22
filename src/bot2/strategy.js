@@ -574,7 +574,6 @@ async function checkEntrySignal(symbol) {
 
     // 4. Entry Conditions
     let signal = "HOLD";
-    let tradeDetails = {};
 
     if (
       trend === "BULLISH" &&
@@ -584,11 +583,6 @@ async function checkEntrySignal(symbol) {
       currentADX.pdi > currentADX.mdi
     ) {
       signal = "LONG";
-      tradeDetails = {
-        entryPrice: currentPrice,
-        stopLoss: currentPrice - 1.5 * currentATR,
-        takeProfit: currentPrice + 2 * currentATR,
-      };
     } else if (
       trend === "BEARISH" &&
       currentRSI > INPUTS.rsiOverbought &&
@@ -597,24 +591,9 @@ async function checkEntrySignal(symbol) {
       currentADX.mdi > currentADX.pdi
     ) {
       signal = "SHORT";
-      tradeDetails = {
-        entryPrice: currentPrice,
-        stopLoss: currentPrice + 1.5 * currentATR,
-        takeProfit: currentPrice - 2 * currentATR,
-      };
     }
 
-    return {
-      signal,
-      indicators: {
-        TEMA: currentTEMA,
-        RSI: currentRSI,
-        MACD: currentMACD,
-        ADX: currentADX,
-        ATR: currentATR,
-      },
-      ...tradeDetails,
-    };
+    return { signal };
   } catch (err) {
     console.error(`[${symbol}] Error:`, err.message);
     return { signal: "HOLD", reason: err.message };
