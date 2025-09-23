@@ -664,6 +664,27 @@ async function checkEntrySignal(symbol) {
       console.log(`[${symbol}] Entry Condition Met: SHORT`);
     } else {
       console.log(`[${symbol}] No entry condition met. Holding.`);
+      console.log(
+        `[${symbol}] Condition 1 (RSI > rsiOverbought): ${currentRSI} > ${
+          INPUTS.rsiOverbought
+        } = ${currentRSI > INPUTS.rsiOverbought}`
+      );
+      console.log(
+        `[${symbol}] Condition 2 (MACD < Signal): ${currentMACD.MACD} < ${
+          currentMACD.signal
+        } = ${currentMACD.MACD < currentMACD.signal}`
+      );
+      console.log(
+        `[${symbol}] Condition 3 (ADX > Threshold): ${currentADX.adx} > ${
+          INPUTS.adxThreshold
+        } = ${currentADX.adx > INPUTS.adxThreshold}`
+      );
+      console.log(
+        `[${symbol}] Condition 4 (DI -DI > +DI): ${currentADX.mdi} > ${
+          currentADX.pdi
+        } = ${currentADX.mdi > currentADX.pdi}`
+      );
+      console.log(`[${symbol}] No entry condition met. Holding.`);
     }
 
     return { signal };
