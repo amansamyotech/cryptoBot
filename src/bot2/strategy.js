@@ -599,6 +599,32 @@ async function checkEntrySignal(symbol) {
       currentADX.adx > INPUTS.adxThreshold &&
       currentADX.pdi > currentADX.mdi
     ) {
+      console.log(`[${symbol}] Entry Condition Met: LONG`);
+
+      // Log each condition with its value and result (true/false)
+      console.log(
+        `[${symbol}] Condition 1 (trend === "BULLISH"): ${trend === "BULLISH"}`
+      );
+      console.log(
+        `[${symbol}] Condition 2 (currentRSI < INPUTS.rsiOversold): ${
+          currentRSI < INPUTS.rsiOversold
+        }`
+      );
+      console.log(
+        `[${symbol}] Condition 3 (currentMACD.MACD > currentMACD.signal): ${
+          currentMACD.MACD > currentMACD.signal
+        }`
+      );
+      console.log(
+        `[${symbol}] Condition 4 (currentADX.adx > INPUTS.adxThreshold): ${
+          currentADX.adx > INPUTS.adxThreshold
+        }`
+      );
+      console.log(
+        `[${symbol}] Condition 5 (currentADX.pdi > currentADX.mdi): ${
+          currentADX.pdi > currentADX.mdi
+        }`
+      );
       signal = "LONG";
       console.log(`[${symbol}] Entry Condition Met: LONG`);
     } else if (
@@ -608,6 +634,32 @@ async function checkEntrySignal(symbol) {
       currentADX.adx > INPUTS.adxThreshold &&
       currentADX.mdi > currentADX.pdi
     ) {
+      console.log(`[${symbol}] Entry Condition Met: SHORT`);
+
+      // Log each condition with its value and result (true/false)
+      console.log(
+        `[${symbol}] Condition 1 (trend === "BEARISH"): ${trend === "BEARISH"}`
+      );
+      console.log(
+        `[${symbol}] Condition 2 (currentRSI > INPUTS.rsiOverbought): ${
+          currentRSI > INPUTS.rsiOverbought
+        }`
+      );
+      console.log(
+        `[${symbol}] Condition 3 (currentMACD.MACD < currentMACD.signal): ${
+          currentMACD.MACD < currentMACD.signal
+        }`
+      );
+      console.log(
+        `[${symbol}] Condition 4 (currentADX.adx > INPUTS.adxThreshold): ${
+          currentADX.adx > INPUTS.adxThreshold
+        }`
+      );
+      console.log(
+        `[${symbol}] Condition 5 (currentADX.mdi > currentADX.pdi): ${
+          currentADX.mdi > currentADX.pdi
+        }`
+      );
       signal = "SHORT";
       console.log(`[${symbol}] Entry Condition Met: SHORT`);
     } else {
