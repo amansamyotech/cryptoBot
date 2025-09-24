@@ -596,8 +596,7 @@ async function checkEntrySignal(symbol) {
       trend === "BULLISH" &&
       currentRSI < INPUTS.rsiOversold &&
       currentMACD.MACD > currentMACD.signal &&
-      currentADX.adx > INPUTS.adxThreshold &&
-      currentADX.pdi > currentADX.mdi
+      currentADX.adx > INPUTS.adxThreshold
     ) {
       console.log(`[${symbol}] Entry Condition Met: LONG`);
 
@@ -620,19 +619,14 @@ async function checkEntrySignal(symbol) {
           currentADX.adx > INPUTS.adxThreshold
         }`
       );
-      console.log(
-        `[${symbol}] Condition 5 (currentADX.pdi > currentADX.mdi): ${
-          currentADX.pdi > currentADX.mdi
-        }`
-      );
+
       signal = "LONG";
       console.log(`[${symbol}] Entry Condition Met: LONG`);
     } else if (
       trend === "BEARISH" &&
       currentRSI > INPUTS.rsiOverbought &&
       currentMACD.MACD < currentMACD.signal &&
-      currentADX.adx > INPUTS.adxThreshold &&
-      currentADX.mdi > currentADX.pdi
+      currentADX.adx > INPUTS.adxThreshold
     ) {
       console.log(`[${symbol}] Entry Condition Met: SHORT`);
 
@@ -653,11 +647,6 @@ async function checkEntrySignal(symbol) {
       console.log(
         `[${symbol}] Condition 4 (currentADX.adx > INPUTS.adxThreshold): ${
           currentADX.adx > INPUTS.adxThreshold
-        }`
-      );
-      console.log(
-        `[${symbol}] Condition 5 (currentADX.mdi > currentADX.pdi): ${
-          currentADX.mdi > currentADX.pdi
         }`
       );
       signal = "SHORT";
