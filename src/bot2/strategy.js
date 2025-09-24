@@ -498,8 +498,8 @@ const { getCandles } = require("../bot2/websocketsCode/getCandles");
 const INPUTS = {
   temaLength: 21,
   rsiLength: 14,
-  rsiOverbought: 60,
-  rsiOversold: 40,
+  rsiOverbought: 50,
+  rsiOversold: 45,
   macdFast: 12,
   macdSlow: 26,
   macdSignal: 9,
