@@ -277,9 +277,9 @@
 // //     let rsiBounceLong = false;
 // //     let rsiBounceShort = false;
 
-// //     //32.80 r1
-// //     //27.77 r2
-// //     //26.60 r3
+// //     //32.80 r1 
+// //     //27.77 r2 
+// //     //26.60 r3 
 
 // //     // LONG: RSI touched any low (e.g., 35 or below), then started rising
 // //     if (
@@ -339,17 +339,39 @@
 
 // // module.exports = { checkEntrySignal };
 
-const { RSI, MACD, TEMA } = require("technicalindicators");
-const { getCandles } = require("../bot2/websocketsCode/getCandles");
 
+
+
+const { EMA, RSI, MACD, ADX } = require("technicalindicators");
+const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust path if needed
+
+// TEMA calculation function (Triple Exponential Moving Average)
+function calculateTEMA(values, period) {
+  const ema1 = EMA.calculate({ period: period, values: values });
+  const ema2 = EMA.calculate({ period: period, values: ema1 });
+  const ema3 = EMA.calculate({ period: period, values: ema2 });
+  
+  const tema = [];
+  for (let i = 0; i < ema3.length; i++) {
+    const tema_value = 3 * ema1[i + (ema1.length - ema3.length)] - 
+                      3 * ema2[i + (ema2.length - ema3.length)] + 
+                      ema3[i];
+    tema.push(tema_value);
+  }
+  return tema;
+}
+
+// --- Strategy Inputs ---
 const PINE_INPUTS = {
-  temaLength: 21,
-  rsiLength: 14,
-  rsiOverbought: 65,
-  rsiOversold: 35,
+  temaLength: 21, // TEMA trend filter (replaced EMA)
+  rsiLength: 14, // RSI period
+  rsiOverbought: 65, // Bounce zone top
+  rsiOversold: 35, // Bounce zone bottom
   macdFast: 12,
   macdSlow: 26,
-  macdSignal: 9,
+  macdSignal: 14,
+  adxLength: 13,
+  adxThreshold: 17,
 };
 
 async function checkEntrySignal(symbol) {
@@ -357,23 +379,34 @@ async function checkEntrySignal(symbol) {
     console.log(`\n[${symbol}] Checking entry signal...`);
 
     const candles = await getCandles(symbol, "5m", 200);
+    console.log(`[${symbol}] Retrieved ${candles.length} candles.`);
     if (candles.length < 50) {
       console.log(`[${symbol}] Not enough candles. Need at least 50.`);
       return "HOLD";
     }
 
     const closePrices = candles.map((c) => c.close);
+    const highPrices = candles.map((c) => c.high);
+    const lowPrices = candles.map((c) => c.low);
 
-    const tema = TEMA.calculate({
-      period: PINE_INPUTS.temaLength,
-      values: closePrices,
-    });
+    console.log(
+      `[${symbol}] Calculating TEMA with period ${PINE_INPUTS.temaLength}...`
+    );
+    const tema = calculateTEMA(closePrices, PINE_INPUTS.temaLength);
+    console.log(`[${symbol}] TEMA calculated. Last TEMA: ${tema.at(-1)}`);
 
+    console.log(
+      `[${symbol}] Calculating RSI with period ${PINE_INPUTS.rsiLength}...`
+    );
     const rsi = RSI.calculate({
       period: PINE_INPUTS.rsiLength,
       values: closePrices,
     });
+    console.log(`[${symbol}] RSI calculated. Last RSI: ${rsi.at(-1)}`);
 
+    console.log(
+      `[${symbol}] Calculating MACD (fast: ${PINE_INPUTS.macdFast}, slow: ${PINE_INPUTS.macdSlow}, signal: ${PINE_INPUTS.macdSignal})...`
+    );
     const macd = MACD.calculate({
       values: closePrices,
       fastPeriod: PINE_INPUTS.macdFast,
@@ -382,51 +415,119 @@ async function checkEntrySignal(symbol) {
       SimpleMAOscillator: false,
       SimpleMASignal: false,
     });
+    console.log(
+      `[${symbol}] MACD calculated. Last MACD: ${JSON.stringify(macd.at(-1))}`
+    );
 
-    // RSI Bounce Logic
+    console.log(
+      `[${symbol}] Calculating ADX with period ${PINE_INPUTS.adxLength}...`
+    );
+    const adx = ADX.calculate({
+      close: closePrices,
+      high: highPrices,
+      low: lowPrices,
+      period: PINE_INPUTS.adxLength,
+    });
+    console.log(
+      `[${symbol}] ADX calculated. Last ADX: ${JSON.stringify(adx.at(-1))}`
+    );
+
+    // --- Latest values ---
+    const currentPrice = closePrices.at(-1);
+    const currentTema = tema.at(-1);
+    const currentRsi = rsi.at(-1);
+    const currentMacd = macd.at(-1);
+    const currentAdx = adx.at(-1);
+
+    console.log(`[${symbol}] Current Price: ${currentPrice}`);
+    console.log(`[${symbol}] Current TEMA: ${currentTema}`);
+    console.log(`[${symbol}] Current RSI: ${currentRsi}`);
+    console.log(
+      `[${symbol}] Current MACD: MACD=${currentMacd.MACD}, Signal=${currentMacd.signal}`
+    );
+    console.log(
+      `[${symbol}] Current ADX: adx=${currentAdx.adx}, pdi=${currentAdx.pdi}, mdi=${currentAdx.mdi}`
+    );
+
+    if (!currentTema || !currentRsi || !currentMacd || !currentAdx) {
+      console.log(`[${symbol}] Missing indicator values. Holding.`);
+      return "HOLD";
+    }
+
+    // --- RSI Bounce Logic ---
     const rsiValues = rsi.slice(-5); // last 5 RSI values
-    const [r1, r2, r3] = rsiValues;
+    console.log(`[${symbol}] Last 5 RSI values for bounce check: ${rsiValues}`);
+
+    const [r1, r2, r3] = rsiValues.slice(-3); // Last 3 values
 
     let rsiBounceLong = false;
     let rsiBounceShort = false;
 
-    if (r3 <= PINE_INPUTS.rsiOversold && r2 > r3 && r1 > r2) {
+    // LONG: RSI touched any low (e.g., 35 or below), then started rising
+    if (
+      r3 <= PINE_INPUTS.rsiOversold && // RSI reached oversold area
+      r2 > r3 && // RSI started bouncing up
+      r1 > r2 // RSI continued rising
+    ) {
       rsiBounceLong = true;
+      console.log(`[${symbol}] RSI Bounce LONG detected.`);
+    } else {
+      console.log(`[${symbol}] No RSI Bounce LONG.`);
     }
 
-    if (r3 >= PINE_INPUTS.rsiOverbought && r2 < r3 && r1 < r2) {
+    // SHORT: RSI touched any high (e.g., 65 or above), then started falling
+    if (
+      r3 >= PINE_INPUTS.rsiOverbought && // RSI reached overbought area
+      r2 < r3 && // RSI started falling
+      r1 < r2 // RSI continued falling
+    ) {
       rsiBounceShort = true;
+      console.log(`[${symbol}] RSI Bounce SHORT detected.`);
+    } else {
+      console.log(`[${symbol}] No RSI Bounce SHORT.`);
     }
 
-    const currentPrice = closePrices.at(-1);
-    const currentTema = tema.at(-1);
-    const currentMacd = macd.at(-1);
+    // --- Enhanced Long Condition with TEMA + MACD ---
+    const longCondition = 
+      currentPrice > currentTema && // Price above TEMA (uptrend)
+      rsiBounceLong && // RSI bounced from oversold
+      currentMacd.MACD > currentMacd.signal && // MACD bullish crossover
+      currentAdx.adx > PINE_INPUTS.adxThreshold && // Strong trend
+      currentAdx.pdi > currentAdx.mdi; // Bullish directional movement
 
-    if (!currentTema || !currentMacd || !r1) {
-      console.log(`[${symbol}] Missing indicator values. HOLD.`);
-      return "HOLD";
-    }
+    console.log(`[${symbol}] Long Condition Components:`);
+    console.log(`  - Price > TEMA: ${currentPrice > currentTema}`);
+    console.log(`  - RSI Bounce Long: ${rsiBounceLong}`);
+    console.log(`  - MACD > Signal: ${currentMacd.MACD > currentMacd.signal}`);
+    console.log(`  - ADX > Threshold: ${currentAdx.adx > PINE_INPUTS.adxThreshold}`);
+    console.log(`  - PDI > MDI: ${currentAdx.pdi > currentAdx.mdi}`);
+    console.log(`[${symbol}] Long Condition: ${longCondition}`);
 
-    // --- Final Conditions ---
-    const longCondition =
-      rsiBounceLong &&
-      currentPrice > currentTema &&
-      currentMacd.MACD > currentMacd.signal;
+    // --- Enhanced Short Condition with TEMA + MACD ---
+    const shortCondition = 
+      currentPrice < currentTema && // Price below TEMA (downtrend)
+      rsiBounceShort && // RSI bounced from overbought
+      currentMacd.MACD < currentMacd.signal && // MACD bearish crossover
+      currentAdx.adx > PINE_INPUTS.adxThreshold && // Strong trend
+      currentAdx.mdi > currentAdx.pdi; // Bearish directional movement
 
-    const shortCondition =
-      rsiBounceShort &&
-      currentPrice < currentTema &&
-      currentMacd.MACD < currentMacd.signal;
+    console.log(`[${symbol}] Short Condition Components:`);
+    console.log(`  - Price < TEMA: ${currentPrice < currentTema}`);
+    console.log(`  - RSI Bounce Short: ${rsiBounceShort}`);
+    console.log(`  - MACD < Signal: ${currentMacd.MACD < currentMacd.signal}`);
+    console.log(`  - ADX > Threshold: ${currentAdx.adx > PINE_INPUTS.adxThreshold}`);
+    console.log(`  - MDI > PDI: ${currentAdx.mdi > currentAdx.pdi}`);
+    console.log(`[${symbol}] Short Condition: ${shortCondition}`);
 
     if (longCondition) {
-      console.log(`[${symbol}] ✅ LONG signal confirmed.`);
+      console.log(`[${symbol}] ✅ LONG signal (All conditions met).`);
       return "LONG";
     } else if (shortCondition) {
-      console.log(`[${symbol}] ✅ SHORT signal confirmed.`);
+      console.log(`[${symbol}] ✅ SHORT signal (All conditions met).`);
       return "SHORT";
     }
 
-    console.log(`[${symbol}] ❌ HOLD (no valid entry).`);
+    console.log(`[${symbol}] ❌ HOLD (conditions not met).`);
     return "HOLD";
   } catch (err) {
     console.error(`[${symbol}] ❗ Error in entry signal check:`, err.message);
