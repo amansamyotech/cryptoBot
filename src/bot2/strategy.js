@@ -594,7 +594,7 @@ async function checkEntrySignal(symbol) {
 
     if (
       trend === "BULLISH" &&
-      currentRSI < INPUTS.rsiOversold &&
+      // currentRSI < INPUTS.rsiOversold &&
       currentMACD.MACD > currentMACD.signal &&
       currentADX.adx > INPUTS.adxThreshold
     ) {
@@ -624,7 +624,7 @@ async function checkEntrySignal(symbol) {
       console.log(`[${symbol}] Entry Condition Met: LONG`);
     } else if (
       trend === "BEARISH" &&
-      currentRSI > INPUTS.rsiOverbought &&
+      // currentRSI > INPUTS.rsiOverbought &&
       currentMACD.MACD < currentMACD.signal &&
       currentADX.adx > INPUTS.adxThreshold
     ) {
