@@ -504,7 +504,7 @@ const INPUTS = {
   macdSlow: 26,
   macdSignal: 9,
   adxLength: 14,
-  adxThreshold: 20,
+  adxThreshold: 14,
   atrLength: 14,
 };
 
