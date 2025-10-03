@@ -2,7 +2,8 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { getCandles } = require("./websocketsCode/getCandles");
 const { checkOrders } = require("../bot2/checkOrderForIndexRebuild");
-const { checkEntrySignal } = require("../bot2/strategy");
+const { getRSIStrategySignal } = require("./dualRSI");
+
 const isProcessing = {};
 
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
@@ -307,7 +308,7 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await checkEntrySignal(symbol);
+  const decision = await getRSIStrategySignal(symbol);
   console.log("decision", decision);
 
   if (decision === "LONG") {
