@@ -4,7 +4,7 @@ const { getCandles } = require("./websocketsCode/getCandles");
 async function getRSIStrategySignal(symbol) {
   try {
     // Fetch candles for both timeframes
-    const candles3m = await getCandles(symbol, "3m", 150);
+    const candles3m = await getCandles(symbol, "1m", 150);
     const candles1h = await getCandles(symbol, "1h", 150);
 
     // Validate candle data
