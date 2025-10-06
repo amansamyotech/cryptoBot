@@ -72,7 +72,7 @@ async function getATR(symbol, length = ATR_LENGTH) {
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     try {
-      //   await binance.futuresMarginType(symbol, "ISOLATED");
+        await binance.futuresMarginType(symbol, "ISOLATED");
       console.log(`[${symbol}] Margin type set to ISOLATED.`);
     } catch (err) {
       const msg = err?.body || err?.message || "";
@@ -87,7 +87,7 @@ async function placeBuyOrder(symbol, marginAmount) {
         console.warn(`[${symbol}] Error setting margin type:`, msg);
       }
     }
-    // await binance.futuresLeverage(symbol, LEVERAGE);
+    await binance.futuresLeverage(symbol, LEVERAGE);
     console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
 
     const price = await getPrice(symbol);
@@ -95,10 +95,10 @@ async function placeBuyOrder(symbol, marginAmount) {
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-    await exchange.loadMarkets();
-    const market = exchange.markets[symbol];
-    const pricePrecision = market.precision.price;
-    const quantityPrecision = market.precision.amount;
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
 
     const qtyFixed = quantity.toFixed(quantityPrecision);
     const atr = await getATR(symbol, ATR_LENGTH);
@@ -204,10 +204,10 @@ async function placeShortOrder(symbol, marginAmount) {
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-    await exchange.loadMarkets();
-    const market = exchange.markets[symbol];
-    const pricePrecision = market.precision.price;
-    const quantityPrecision = market.precision.amount;
+    const exchangeInfo = await binance.futuresExchangeInfo();
+    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
+    const pricePrecision = symbolInfo.pricePrecision;
+    const quantityPrecision = symbolInfo.quantityPrecision;
 
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
