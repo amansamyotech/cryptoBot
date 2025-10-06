@@ -34,6 +34,8 @@ const exchange = new exchangeClass({
 async function getBalance() {
   try {
     const balances = await exchange.fetchBalance();
+    console.log(`balances`,balances);
+    
     const usdtBalance = balances.total.USDT || 0;
     return usdtBalance;
   } catch (err) {
