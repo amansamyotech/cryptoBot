@@ -109,7 +109,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       symbol,
       quantity: qtyFixed,
       LongTimeCoinPrice: entryPrice,
-      placeOrderId: buyOrder.orderId,
+      placeOrderId: buyOrder.info.orderId,
       marginUsed: marginAmount,
       leverage: LEVERAGE,
       positionValue: positionValue,
@@ -132,17 +132,17 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`stopLossOrder.orderId`, stopLossOrder);
     const takeProfitOrder = await placeTakeProfit(
       symbol,
-      "buy",
+      "sell",
       qtyFixed,
       takeProfitPrice
     );
-    console.log(`takeProfitOrder`,takeProfitOrder);
-    
+    console.log(`takeProfitOrder`, takeProfitOrder);
+
     const details = {
       stopLossPrice: stopLossPrice,
-      stopLossOrderId: stopLossOrder.orderId,
+      stopLossOrderId: stopLossOrder.info.orderId,
       takeProfitPrice: takeProfitPrice,
-      takeProfitOrderId: takeProfitOrder.orderId,
+      takeProfitOrderId: takeProfitOrder.info.orderId,
     };
     console.log(`details`, details);
     await axios.put(`${API_ENDPOINT}${tradeId}`, {
