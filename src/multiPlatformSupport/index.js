@@ -100,6 +100,8 @@ async function placeBuyOrder(symbol, marginAmount) {
       `SL/TP prices for LONG: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
     const buyOrder = await placeOrder("LONG", symbol, qtyFixed, LEVERAGE);
+    console.log(`buyOrder`, buyOrder);
+
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
     const buyOrderDetails = {
@@ -127,20 +129,15 @@ async function placeBuyOrder(symbol, marginAmount) {
       qtyFixed,
       stopLossPrice
     );
-    console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
-    const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT_MARKET",
-      "SELL",
+    console.log(`stopLossOrder.orderId`, stopLossOrder);
+    const takeProfitOrder = await placeTakeProfit(
       symbol,
+      "buy",
       qtyFixed,
-      null,
-      {
-        stopPrice: takeProfitPrice,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
+      takeProfitPrice
     );
-
+    console.log(`takeProfitOrder`,takeProfitOrder);
+    
     const details = {
       stopLossPrice: stopLossPrice,
       stopLossOrderId: stopLossOrder.orderId,
