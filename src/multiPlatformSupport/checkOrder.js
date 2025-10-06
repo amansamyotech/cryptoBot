@@ -1,6 +1,4 @@
 const axios = require("axios");
-const { exchange } = require("./exchanges/ccxtClient");
-
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
 async function checkOrders(symbol) {
@@ -30,15 +28,15 @@ async function checkOrders(symbol) {
     // Check stop-loss order status if it exists
     let stopLossStatus = null;
     if (stopLossOrderId) {
-      const order = await exchange.fetchOrder(stopLossOrderId, symbol);
-      stopLossStatus = order.status;
+      stopLossStatus = await exchange.fetchOrder(stopLossOrderId, symbol);
+      console.log(`stopLossStatus`, stopLossStatus);
     }
 
     // Check take-profit order status if it exists
     let takeProfitStatus = null;
     if (takeProfitOrderId) {
-      const order = await exchange.fetchOrder(takeProfitOrderId, symbol);
-      takeProfitStatus = order.status;
+      takeProfitStatus = await exchange.fetchOrder(takeProfitOrderId, symbol);
+      console.log(`takeProfitStatus`, takeProfitStatus);
     }
 
     const stopLossOrderStatus = stopLossStatus?.status;
@@ -53,31 +51,20 @@ async function checkOrders(symbol) {
       takeProfitOrderStatus || "N/A"
     );
 
-    const isStopLossFilled = stopLossOrderStatus === "FILLED";
-    const isTakeProfitFilled = takeProfitOrderStatus === "FILLED";
-
+    const isStopLossFilled =
+      stopLossOrderStatus === "closed" || stopLossOrderStatus === "FILLED";
+    const isTakeProfitFilled =
+      takeProfitOrderStatus === "closed" || takeProfitOrderStatus === "FILLED";
     if (isStopLossFilled || isTakeProfitFilled) {
       console.log(`One of the orders is filled for ${symbol}`);
 
       // Cancel all remaining orders for this symbol
       try {
-        const openOrders = await exchange.fetchOpenOrders(symbol);
-        console.log(`Found ${openOrders.length} open orders for ${symbol}`);
-
-        for (const order of openOrders) {
-          try {
-            await exchange.cancelOrder(order.id, symbol);
-            console.log(`Canceled order ${order.orderId} for ${symbol}`);
-          } catch (err) {
-            console.warn(
-              `Failed to cancel order ${order.orderId} for ${symbol}:`,
-              err.message
-            );
-          }
-        }
+        const result = await cancelAllOrders(symbol);
+        console.log(`Cancelled all open orders for ${symbol}`, result);
       } catch (err) {
         console.error(
-          `Error fetching/canceling open orders for ${symbol}:`,
+          `Error canceling open orders for ${symbol}:`,
           err.message
         );
       }
