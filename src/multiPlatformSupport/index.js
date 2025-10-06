@@ -70,11 +70,24 @@ async function placeBuyOrder(symbol, marginAmount) {
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-    const market = await exchange.market(symbol);
-    const pricePrecision = market.precision.price;
-    const quantityPrecision = market.precision.amount;
+    let pricePrecision = 8;
+    let quantityPrecision = 6;
 
-    const qtyFixed = quantity.toFixed(quantityPrecision);
+    try {
+      if (!exchange.markets) {
+        await exchange.loadMarkets();
+      }
+      const market = exchange.market(symbol);
+      pricePrecision = market.precision.price || 8;
+      quantityPrecision = market.precision.amount || 6;
+    } catch (err) {
+      console.warn(
+        `Could not fetch market precision for ${symbol}, using defaults`
+      );
+    }
+
+    const qtyFixed = parseFloat(quantity.toFixed(quantityPrecision));
+
     const atr = await getATR(symbol, ATR_LENGTH);
     if (!atr) {
       throw new Error(`Could not calculate ATR for ${symbol}`);
@@ -150,12 +163,23 @@ async function placeShortOrder(symbol, marginAmount) {
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-    const market = await exchange.market(symbol);
-    const pricePrecision = market.precision.price;
-    const quantityPrecision = market.precision.amount;
+    let pricePrecision = 8;
+    let quantityPrecision = 6;
 
-    const qtyFixed = quantity.toFixed(quantityPrecision);
+    try {
+      if (!exchange.markets) {
+        await exchange.loadMarkets();
+      }
+      const market = exchange.market(symbol);
+      pricePrecision = market.precision.price || 8;
+      quantityPrecision = market.precision.amount || 6;
+    } catch (err) {
+      console.warn(
+        `Could not fetch market precision for ${symbol}, using defaults`
+      );
+    }
 
+    const qtyFixed = parseFloat(quantity.toFixed(quantityPrecision));
     const atr = await getATR(symbol, ATR_LENGTH);
     if (!atr) {
       throw new Error(`Could not calculate ATR for ${symbol}`);
