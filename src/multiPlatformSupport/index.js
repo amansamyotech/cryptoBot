@@ -72,7 +72,7 @@ async function getATR(symbol, length = ATR_LENGTH) {
 async function placeBuyOrder(symbol, marginAmount) {
   try {
     try {
-        await binance.futuresMarginType(symbol, "ISOLATED");
+      await binance.futuresMarginType(symbol, "ISOLATED");
       console.log(`[${symbol}] Margin type set to ISOLATED.`);
     } catch (err) {
       const msg = err?.body || err?.message || "";
@@ -383,7 +383,7 @@ setInterval(async () => {
 
           if (found) {
             try {
-              const res = await cancelAllOrders(sym);
+              //   const res = await cancelAllOrders(sym);
               console.log(`✅ All open orders cancelled for ${sym}`, res);
             } catch (e) {
               console.log(
