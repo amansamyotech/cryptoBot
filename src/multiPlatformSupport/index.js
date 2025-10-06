@@ -1,5 +1,5 @@
 const axios = require("axios");
-const { checkOrders } = require("../bot2/checkOrderForIndexRebuild");
+const { checkOrders } = require("./checkOrder");
 // const { getRSIStrategySignal } = require("./dualRSI");
 const {
   getBalance,
