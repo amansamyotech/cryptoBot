@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { exchange } = require("./exchanges/ccxtClient");
 const API_ENDPOINT = "http://localhost:3001/api/buySell/";
 
 async function checkOrders(symbol) {
