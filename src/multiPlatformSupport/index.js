@@ -1,6 +1,6 @@
 const axios = require("axios");
 const { checkOrders } = require("./checkOrder");
-// const { getRSIStrategySignal } = require("./dualRSI");
+const { checkEntrySignal } = require("../bot2/strategy");
 const {
   getBalance,
   getPrice,
@@ -266,8 +266,7 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  //   const decision = await getRSIStrategySignal(symbol);
-  const decision = "SHORT";
+  const decision = await checkEntrySignal(symbol);
   console.log("decision", decision);
 
   if (decision === "LONG") {
