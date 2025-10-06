@@ -122,11 +122,6 @@ async function getPrice(symbol) {
   }
 }
 
-setTimeout(async () => {
-  const balance = await getBalance();
-  console.log(`balance`, balance);
-});
-
 module.exports = {
   exchange,
   getBalance,
