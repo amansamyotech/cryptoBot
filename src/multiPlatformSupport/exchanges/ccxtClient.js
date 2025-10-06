@@ -6,8 +6,8 @@ const API_KEYS = {
     secret: "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
   },
   bybit: {
-    apiKey: "YOUR_BYBIT_API_KEY",
-    secret: "YOUR_BYBIT_SECRET",
+    apiKey: "wsmXpRhglTReUWdO3a",
+    secret: "DCmhXUXmpwyLigFK5t7qJWci9SOXsMRoBzut",
   },
   okx: {
     apiKey: "YOUR_OKX_API_KEY",
@@ -19,7 +19,7 @@ const API_KEYS = {
   },
 };
 
-const CURRENT_EXCHANGE = "binance";
+const CURRENT_EXCHANGE = "bybit";
 
 const exchangeClass = ccxt[CURRENT_EXCHANGE];
 const exchange = new exchangeClass({
@@ -196,6 +196,11 @@ async function placeTakeProfit(symbol, side, amount, takeProfitPrice) {
     throw err;
   }
 }
+
+setTimeout(async () => {
+  const balance = await getBalance();
+  console.log(`balance`, balance);
+}, 2000);
 
 module.exports = {
   exchange,
