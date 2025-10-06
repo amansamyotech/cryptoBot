@@ -264,7 +264,7 @@ async function placeShortOrder(symbol, marginAmount) {
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
   //   const decision = await getRSIStrategySignal(symbol);
-  const decision = "LONG";
+  const decision = "SHORT";
   console.log("decision", decision);
 
   if (decision === "LONG") {
