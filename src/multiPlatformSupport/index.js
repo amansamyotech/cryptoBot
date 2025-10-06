@@ -75,9 +75,12 @@ async function placeBuyOrder(symbol, marginAmount) {
 
     try {
       if (!exchange.markets) {
-        await exchange.loadMarkets();
+        const data = await exchange.loadMarkets();
+        console.log(`data`, data);
       }
       const market = exchange.market(symbol);
+      console.log(`market`, market);
+
       pricePrecision = market.precision.price || 8;
       quantityPrecision = market.precision.amount || 6;
     } catch (err) {
@@ -104,8 +107,6 @@ async function placeBuyOrder(symbol, marginAmount) {
       `SL/TP prices for LONG: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
     const buyOrder = await placeOrder("LONG", symbol, qtyFixed, LEVERAGE);
-    console.log(`buyOrder`, buyOrder);
-
     console.log(`Bought ${symbol} at ${entryPrice}`);
 
     const buyOrderDetails = {
@@ -133,14 +134,13 @@ async function placeBuyOrder(symbol, marginAmount) {
       qtyFixed,
       stopLossPrice
     );
-    console.log(`stopLossOrder.orderId`, stopLossOrder);
+
     const takeProfitOrder = await placeTakeProfit(
       symbol,
       "sell",
       qtyFixed,
       takeProfitPrice
     );
-    console.log(`takeProfitOrder`, takeProfitOrder);
 
     const details = {
       stopLossPrice: stopLossPrice,
