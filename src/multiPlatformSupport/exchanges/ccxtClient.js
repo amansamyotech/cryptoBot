@@ -123,7 +123,7 @@ async function getPrice(symbol) {
 }
 
 setTimeout(async () => {
-  const balance = getBalance();
+  const balance = await getBalance();
   console.log(`balance`, balance);
 });
 
