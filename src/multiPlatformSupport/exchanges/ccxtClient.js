@@ -127,19 +127,19 @@ async function placeStopLoss(symbol, side, amount, stopPrice) {
     let orderType;
     let params = { reduceOnly: true };
 
-    if (CURRENT_EXCHANGE === 'binance') {
-      orderType = 'STOP_MARKET';
+    if (CURRENT_EXCHANGE === "binance") {
+      orderType = "STOP_MARKET";
       params.stopPrice = stopPrice;
-    } else if (CURRENT_EXCHANGE === 'bybit') {
-      orderType = 'Market';
+    } else if (CURRENT_EXCHANGE === "bybit") {
+      orderType = "Market";
       params.stopLoss = stopPrice;
       params.reduceOnly = true;
-    } else if (CURRENT_EXCHANGE === 'okx') {
-      orderType = 'trigger';
+    } else if (CURRENT_EXCHANGE === "okx") {
+      orderType = "trigger";
       params.triggerPrice = stopPrice;
       params.reduceOnly = true;
     } else {
-      orderType = 'stop_market';
+      orderType = "stop_market";
       params.stopPrice = stopPrice;
     }
 
@@ -164,19 +164,19 @@ async function placeTakeProfit(symbol, side, amount, takeProfitPrice) {
   try {
     let orderType;
     let params = { reduceOnly: true };
-    if (CURRENT_EXCHANGE === 'binance') {
-      orderType = 'TAKE_PROFIT_MARKET';
+    if (CURRENT_EXCHANGE === "binance") {
+      orderType = "TAKE_PROFIT_MARKET";
       params.stopPrice = takeProfitPrice;
-    } else if (CURRENT_EXCHANGE === 'bybit') {
-      orderType = 'Market';
+    } else if (CURRENT_EXCHANGE === "bybit") {
+      orderType = "Market";
       params.takeProfit = takeProfitPrice;
       params.reduceOnly = true;
-    } else if (CURRENT_EXCHANGE === 'okx') {
-      orderType = 'trigger';
+    } else if (CURRENT_EXCHANGE === "okx") {
+      orderType = "trigger";
       params.triggerPrice = takeProfitPrice;
       params.reduceOnly = true;
     } else {
-      orderType = 'take_profit_market';
+      orderType = "take_profit_market";
       params.stopPrice = takeProfitPrice;
     }
 

@@ -1,4 +1,3 @@
-const Binance = require("node-binance-api");
 const axios = require("axios");
 const { checkOrders } = require("../bot2/checkOrderForIndexRebuild");
 // const { getRSIStrategySignal } = require("./dualRSI");
@@ -13,13 +12,6 @@ const {
   placeStopLoss,
   placeTakeProfit,
 } = require("./exchanges/ccxtClient");
-
-const binance = new Binance().options({
-  APIKEY: "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
-  APISECRET: "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
-  useServerTime: true,
-  test: false,
-});
 
 const isProcessing = {};
 
@@ -78,10 +70,9 @@ async function placeBuyOrder(symbol, marginAmount) {
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-    const exchangeInfo = await binance.futuresExchangeInfo();
-    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    const pricePrecision = symbolInfo.pricePrecision;
-    const quantityPrecision = symbolInfo.quantityPrecision;
+    const market = await exchange.market(symbol);
+    const pricePrecision = market.precision.price;
+    const quantityPrecision = market.precision.amount;
 
     const qtyFixed = quantity.toFixed(quantityPrecision);
     const atr = await getATR(symbol, ATR_LENGTH);
@@ -154,34 +145,14 @@ async function placeBuyOrder(symbol, marginAmount) {
 }
 async function placeShortOrder(symbol, marginAmount) {
   try {
-    try {
-      await binance.futuresMarginType(symbol, "ISOLATED");
-      console.log(`[${symbol}] Margin type set to ISOLATED.`);
-    } catch (err) {
-      const msg = err?.body || err?.message || "";
-      if (
-        msg.includes("No need to change") ||
-        msg.includes("margin type cannot be changed")
-      ) {
-        console.log(
-          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
-        );
-      } else {
-        console.warn(`[${symbol}] Error setting margin type:`, msg);
-      }
-    }
-    await binance.futuresLeverage(symbol, LEVERAGE);
-    console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
-
     const price = await getPrice(symbol);
     const entryPrice = parseFloat(price);
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-    const exchangeInfo = await binance.futuresExchangeInfo();
-    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    const pricePrecision = symbolInfo.pricePrecision;
-    const quantityPrecision = symbolInfo.quantityPrecision;
+    const market = await exchange.market(symbol);
+    const pricePrecision = market.precision.price;
+    const quantityPrecision = market.precision.amount;
 
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
