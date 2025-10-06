@@ -122,12 +122,89 @@ async function getPrice(symbol) {
   }
 }
 
+async function placeStopLoss(symbol, side, amount, stopPrice) {
+  try {
+    let orderType;
+    let params = { reduceOnly: true };
+
+    if (CURRENT_EXCHANGE === 'binance') {
+      orderType = 'STOP_MARKET';
+      params.stopPrice = stopPrice;
+    } else if (CURRENT_EXCHANGE === 'bybit') {
+      orderType = 'Market';
+      params.stopLoss = stopPrice;
+      params.reduceOnly = true;
+    } else if (CURRENT_EXCHANGE === 'okx') {
+      orderType = 'trigger';
+      params.triggerPrice = stopPrice;
+      params.reduceOnly = true;
+    } else {
+      orderType = 'stop_market';
+      params.stopPrice = stopPrice;
+    }
+
+    const order = await exchange.createOrder(
+      symbol,
+      orderType,
+      side,
+      amount,
+      null,
+      params
+    );
+
+    console.log(`Stop Loss order placed for ${symbol} at ${stopPrice}`);
+    return order;
+  } catch (err) {
+    console.error(`Error placing Stop Loss for ${symbol}:`, err.message);
+    throw err;
+  }
+}
+
+async function placeTakeProfit(symbol, side, amount, takeProfitPrice) {
+  try {
+    let orderType;
+    let params = { reduceOnly: true };
+    if (CURRENT_EXCHANGE === 'binance') {
+      orderType = 'TAKE_PROFIT_MARKET';
+      params.stopPrice = takeProfitPrice;
+    } else if (CURRENT_EXCHANGE === 'bybit') {
+      orderType = 'Market';
+      params.takeProfit = takeProfitPrice;
+      params.reduceOnly = true;
+    } else if (CURRENT_EXCHANGE === 'okx') {
+      orderType = 'trigger';
+      params.triggerPrice = takeProfitPrice;
+      params.reduceOnly = true;
+    } else {
+      orderType = 'take_profit_market';
+      params.stopPrice = takeProfitPrice;
+    }
+
+    const order = await exchange.createOrder(
+      symbol,
+      orderType,
+      side,
+      amount,
+      null,
+      params
+    );
+
+    console.log(`Take Profit order placed for ${symbol} at ${takeProfitPrice}`);
+    return order;
+  } catch (err) {
+    console.error(`Error placing Take Profit for ${symbol}:`, err.message);
+    throw err;
+  }
+}
+
 module.exports = {
   exchange,
   getBalance,
   getCandles,
+  placeStopLoss,
   placeOrder,
   cancelAllOrders,
   getPositions,
+  placeTakeProfit,
   getPrice,
 };

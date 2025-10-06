@@ -10,6 +10,8 @@ const {
   cancelAllOrders,
   getCandles,
   exchange,
+  placeStopLoss,
+  placeTakeProfit,
 } = require("./exchanges/ccxtClient");
 
 const binance = new Binance().options({
@@ -71,25 +73,6 @@ async function getATR(symbol, length = ATR_LENGTH) {
 
 async function placeBuyOrder(symbol, marginAmount) {
   try {
-    try {
-      await binance.futuresMarginType(symbol, "ISOLATED");
-      console.log(`[${symbol}] Margin type set to ISOLATED.`);
-    } catch (err) {
-      const msg = err?.body || err?.message || "";
-      if (
-        msg.includes("No need to change") ||
-        msg.includes("margin type cannot be changed")
-      ) {
-        console.log(
-          `[${symbol}] Margin type already ISOLATED or cannot be changed right now.`
-        );
-      } else {
-        console.warn(`[${symbol}] Error setting margin type:`, msg);
-      }
-    }
-    await binance.futuresLeverage(symbol, LEVERAGE);
-    console.log(`[${symbol}] Leverage set to ${LEVERAGE}x`);
-
     const price = await getPrice(symbol);
     const entryPrice = parseFloat(price);
     const positionValue = marginAmount * LEVERAGE;
@@ -138,17 +121,11 @@ async function placeBuyOrder(symbol, marginAmount) {
     console.log(`Trade Response:`, tradeResponse?.data);
 
     const tradeId = tradeResponse.data._id;
-    const stopLossOrder = await binance.futuresOrder(
-      "STOP_MARKET",
-      "SELL",
+    const stopLossOrder = await placeStopLoss(
       symbol,
+      "sell",
       qtyFixed,
-      null,
-      {
-        stopPrice: stopLossPrice,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
+      stopLossPrice
     );
     console.log(`stopLossOrder.orderId`, stopLossOrder.orderId);
     const takeProfitOrder = await binance.futuresOrder(
@@ -258,29 +235,17 @@ async function placeShortOrder(symbol, marginAmount) {
 
     const tradeId = tradeResponse.data._id;
 
-    const stopLossOrder = await binance.futuresOrder(
-      "STOP_MARKET",
-      "BUY",
+    const stopLossOrder = await placeStopLoss(
       symbol,
+      "buy",
       qtyFixed,
-      null,
-      {
-        stopPrice: stopLossPrice,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
+      stopLossPrice
     );
-    const takeProfitOrder = await binance.futuresOrder(
-      "TAKE_PROFIT_MARKET",
-      "BUY",
+    const takeProfitOrder = await placeTakeProfit(
       symbol,
+      "buy",
       qtyFixed,
-      null,
-      {
-        stopPrice: takeProfitPrice,
-        reduceOnly: true,
-        timeInForce: "GTC",
-      }
+      takeProfitPrice
     );
     console.log(
       `Take Profit set at ${takeProfitPrice} for ${symbol} (ATR-based)`
@@ -405,8 +370,7 @@ setInterval(async () => {
         const { found, tradeDetails } = tradeResponse.data?.data;
 
         if (found) {
-          const priceMap = await binance.futuresPrices();
-          const currentPrice = parseFloat(priceMap[sym]);
+          const currentPrice = await getPrice(sym);
           let roi = 0;
 
           if (tradeDetails.side === "LONG") {
