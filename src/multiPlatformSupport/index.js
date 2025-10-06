@@ -96,11 +96,14 @@ async function placeBuyOrder(symbol, marginAmount) {
       throw new Error(`Could not calculate ATR for ${symbol}`);
     }
 
+    const rawStopLoss = entryPrice - atr * ATR_MULTIPLIER_SL;
     const stopLossPrice = parseFloat(
-      (entryPrice - atr * ATR_MULTIPLIER_SL).toFixed(pricePrecision)
+      exchange.priceToPrecision(symbol, rawStopLoss)
     );
+
+    const rawTakeProfit = entryPrice + atr * ATR_MULTIPLIER_TP;
     const takeProfitPrice = parseFloat(
-      (entryPrice + atr * ATR_MULTIPLIER_TP).toFixed(pricePrecision)
+      exchange.priceToPrecision(symbol, rawTakeProfit)
     );
 
     console.log(
