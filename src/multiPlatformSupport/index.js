@@ -1,3 +1,4 @@
+const Binance = require("node-binance-api");
 const axios = require("axios");
 const { checkOrders } = require("../bot2/checkOrderForIndexRebuild");
 // const { getRSIStrategySignal } = require("./dualRSI");
@@ -8,7 +9,15 @@ const {
   getPositions,
   cancelAllOrders,
   getCandles,
+  exchange,
 } = require("./exchanges/ccxtClient");
+
+const binance = new Binance().options({
+  APIKEY: "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
+  APISECRET: "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
+  useServerTime: true,
+  test: false,
+});
 
 const isProcessing = {};
 
@@ -86,10 +95,11 @@ async function placeBuyOrder(symbol, marginAmount) {
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-    const exchangeInfo = await binance.futuresExchangeInfo();
-    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    const pricePrecision = symbolInfo.pricePrecision;
-    const quantityPrecision = symbolInfo.quantityPrecision;
+    await exchange.loadMarkets();
+    const market = exchange.markets[symbol];
+    const pricePrecision = market.precision.price;
+    const quantityPrecision = market.precision.amount;
+
     const qtyFixed = quantity.toFixed(quantityPrecision);
     const atr = await getATR(symbol, ATR_LENGTH);
     if (!atr) {
@@ -194,10 +204,11 @@ async function placeShortOrder(symbol, marginAmount) {
     const positionValue = marginAmount * LEVERAGE;
     const quantity = parseFloat((positionValue / entryPrice).toFixed(6));
 
-    const exchangeInfo = await binance.futuresExchangeInfo();
-    const symbolInfo = exchangeInfo.symbols.find((s) => s.symbol === symbol);
-    const pricePrecision = symbolInfo.pricePrecision;
-    const quantityPrecision = symbolInfo.quantityPrecision;
+    await exchange.loadMarkets();
+    const market = exchange.markets[symbol];
+    const pricePrecision = market.precision.price;
+    const quantityPrecision = market.precision.amount;
+
     const qtyFixed = quantity.toFixed(quantityPrecision);
 
     const atr = await getATR(symbol, ATR_LENGTH);
