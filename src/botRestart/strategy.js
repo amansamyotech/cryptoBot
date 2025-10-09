@@ -19,7 +19,7 @@ async function checkEntrySignal(symbol) {
     console.log(`\n[${symbol}] Checking entry signal...`);
 
     // Fetch enough candles for the longest indicator (EMA 50) + ADX requirements
-    const candles = await getCandles(symbol, "5m", 200);
+    const candles = await getCandles(symbol, "1h", 200);
     console.log(`[${symbol}] Fetched ${candles.length} candles.`);
 
     if (candles.length < 50) {
