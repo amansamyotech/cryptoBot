@@ -16,7 +16,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["DOGEUSDT"];
+const symbols = ["DOGEUSDT", "1000FLOKIUSDT"];
 
 async function getUsdtBalance() {
   try {
@@ -34,7 +34,7 @@ async function getUsdtBalance() {
 const LEVERAGE = 3;
 const ATR_LENGTH = 14;
 const ATR_MULTIPLIER_SL = 2;
-const ATR_MULTIPLIER_TP = 2.5;
+const ATR_MULTIPLIER_TP = 3;
 
 function calculateATR(candles, length = ATR_LENGTH) {
   if (candles.length < length + 1) return null;

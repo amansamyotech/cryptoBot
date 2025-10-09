@@ -34,8 +34,6 @@ const exchange = new exchangeClass({
 async function getBalance() {
   try {
     const balances = await exchange.fetchBalance();
-    console.log(`balances`,balances);
-    
     const usdtBalance = balances.total.USDT || 0;
     return usdtBalance;
   } catch (err) {
@@ -199,10 +197,6 @@ async function placeTakeProfit(symbol, side, amount, takeProfitPrice) {
   }
 }
 
-setTimeout(async () => {
-  const balance = await getBalance();
-  console.log(`balance`, balance);
-}, 2000);
 
 module.exports = {
   exchange,

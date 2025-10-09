@@ -363,13 +363,13 @@ function calculateTEMA(values, period) {
 const PINE_INPUTS = {
   temaLength: 21, // TEMA trend filter (replaced EMA)
   rsiLength: 14, // RSI period
-  rsiOverbought: 65, // Bounce zone top
-  rsiOversold: 35, // Bounce zone bottom
+  rsiOverbought: 40, // Bounce zone top
+  rsiOversold: 56, // Bounce zone bottom
   macdFast: 12,
   macdSlow: 26,
-  macdSignal: 9,
-  adxLength: 14,
-  adxThreshold: 17,
+  macdSignal: 14,
+  adxLength: 12,
+  adxThreshold: 18,
 };
 
 async function checkEntrySignal(symbol) {
@@ -488,7 +488,7 @@ async function checkEntrySignal(symbol) {
     // --- Enhanced Long Condition with TEMA + MACD ---
     const longCondition =
       currentPrice > currentTema && // Price above TEMA (uptrend)
-      // rsiBounceLong && // RSI bounced from oversold
+      rsiBounceLong && // RSI bounced from oversold
       currentMacd.MACD > currentMacd.signal && // MACD bullish crossover
       currentAdx.adx > PINE_INPUTS.adxThreshold && // Strong trend
       currentAdx.pdi > currentAdx.mdi; // Bullish directional movement
@@ -506,7 +506,7 @@ async function checkEntrySignal(symbol) {
     // --- Enhanced Short Condition with TEMA + MACD ---
     const shortCondition =
       currentPrice < currentTema && // Price below TEMA (downtrend)
-      // rsiBounceShort && // RSI bounced from overbought
+      rsiBounceShort && // RSI bounced from overbought
       currentMacd.MACD < currentMacd.signal && // MACD bearish crossover
       currentAdx.adx > PINE_INPUTS.adxThreshold && // Strong trend
       currentAdx.mdi > currentAdx.pdi; // Bearish directional movement
