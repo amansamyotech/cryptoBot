@@ -84,7 +84,7 @@ async function checkEntrySignal(symbol) {
     // --- 3. Check Entry Conditions from Pine Script ---
     const longCondition =
       currentPrice > currentEma &&
-      currentRsi < PINE_INPUTS.rsiOversold &&
+      currentRsi > PINE_INPUTS.rsiOversold &&
       currentMacd.MACD > currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.pdi > currentAdx.mdi;
@@ -118,7 +118,7 @@ async function checkEntrySignal(symbol) {
 
     const shortCondition =
       currentPrice < currentEma &&
-      currentRsi > PINE_INPUTS.rsiOverbought &&
+      currentRsi < PINE_INPUTS.rsiOverbought &&
       currentMacd.MACD < currentMacd.signal &&
       currentAdx.adx > PINE_INPUTS.adxThreshold &&
       currentAdx.mdi > currentAdx.pdi;
