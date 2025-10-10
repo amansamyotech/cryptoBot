@@ -5,8 +5,8 @@ const { getCandles } = require("../bot2/websocketsCode/getCandles"); // Adjust p
 const PINE_INPUTS = {
   emaLength: 9,
   rsiLength: 14,
-  rsiOverbought: 58,
-  rsiOversold: 40,
+  rsiOverbought: 40,
+  rsiOversold: 58,
   macdFast: 12,
   macdSlow: 26,
   macdSignal: 14,
