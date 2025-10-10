@@ -18,6 +18,10 @@ const binance = new Binance().options({
 
 const symbols = ["DOGEUSDT"];
 
+let dailyStartBalance = 0;
+let lastResetDate = new Date().toDateString();
+const DAILY_LOSS_LIMIT_PERCENT = 10;
+
 async function getUsdtBalance() {
   try {
     const account = await binance.futuresBalance();
@@ -72,6 +76,43 @@ async function getATR(symbol, length = ATR_LENGTH) {
   } catch (err) {
     console.error(`Error calculating ATR for ${symbol}:`, err.message);
     return null;
+  }
+}
+
+async function checkAndResetDailyBalance() {
+  const today = new Date().toDateString();
+
+  if (today !== lastResetDate) {
+    dailyStartBalance = await getUsdtBalance();
+    lastResetDate = today;
+    console.log(
+      `📅 New day started. Initial balance: ${dailyStartBalance} USDT`
+    );
+  }
+
+  if (dailyStartBalance === 0) {
+    dailyStartBalance = await getUsdtBalance();
+    console.log(`🚀 Bot started. Initial balance: ${dailyStartBalance} USDT`);
+  }
+}
+
+async function checkDailyLossLimit() {
+  const currentBalance = await getUsdtBalance();
+  const loss = dailyStartBalance - currentBalance;
+  const lossPercent = (loss / dailyStartBalance) * 100;
+
+  console.log(
+    `💰 Daily P&L: ${loss.toFixed(2)} USDT (${lossPercent.toFixed(2)}%)`
+  );
+
+  if (lossPercent >= DAILY_LOSS_LIMIT_PERCENT) {
+    console.error(`🛑 DAILY LOSS LIMIT REACHED: ${lossPercent.toFixed(2)}%`);
+    console.error(`Starting balance: ${dailyStartBalance} USDT`);
+    console.error(`Current balance: ${currentBalance} USDT`);
+    console.error(`Total loss: ${loss.toFixed(2)} USDT`);
+    console.error(`Bot stopping...`);
+
+    process.exit(1);
   }
 }
 
@@ -322,6 +363,8 @@ async function processSymbol(symbol, maxSpendPerTrade) {
 }
 
 setInterval(async () => {
+  await checkAndResetDailyBalance();
+  await checkDailyLossLimit();
   const totalBalance = await getUsdtBalance();
   const usableBalance = totalBalance - 3;
   const maxSpendPerTrade = usableBalance / symbols.length;
