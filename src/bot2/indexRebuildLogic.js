@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { getCandles } = require("./websocketsCode/getCandles");
 const { checkOrders } = require("../bot2/checkOrderForIndexRebuild");
-const { getRSIStrategySignal } = require("./dualRSI");
+const { getRSI_ADX_StrategySignal } = require("./dualRSI");
 
 const isProcessing = {};
 
@@ -117,6 +117,18 @@ async function placeBuyOrder(symbol, marginAmount) {
       (entryPrice + atr * ATR_MULTIPLIER_TP).toFixed(pricePrecision)
     );
 
+    // Max 10% margin ROI loss allowed
+    const maxAllowedSL = entryPrice * (1 - 0.1 / LEVERAGE);
+    const finalStopLoss = parseFloat(
+      Math.max(stopLossPrice, maxAllowedSL).toFixed(pricePrecision)
+    );
+
+    // Max 20% margin ROI profit allowed
+    const maxAllowedTP = entryPrice * (1 + 0.2 / LEVERAGE);
+    const finalTakeProfit = parseFloat(
+      Math.min(takeProfitPrice, maxAllowedTP).toFixed(pricePrecision)
+    );
+
     console.log(
       `SL/TP prices for LONG: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
@@ -149,7 +161,7 @@ async function placeBuyOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: stopLossPrice,
+        stopPrice: finalStopLoss,
         reduceOnly: true,
         timeInForce: "GTC",
       }
@@ -162,16 +174,16 @@ async function placeBuyOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: takeProfitPrice,
+        stopPrice: finalTakeProfit,
         reduceOnly: true,
         timeInForce: "GTC",
       }
     );
 
     const details = {
-      stopLossPrice: stopLossPrice,
+      stopLossPrice: finalStopLoss,
       stopLossOrderId: stopLossOrder.orderId,
-      takeProfitPrice: takeProfitPrice,
+      takeProfitPrice: finalTakeProfit,
       takeProfitOrderId: takeProfitOrder.orderId,
     };
     console.log(`details`, details);
@@ -225,6 +237,18 @@ async function placeShortOrder(symbol, marginAmount) {
     const takeProfitPrice = parseFloat(
       (entryPrice - atr * ATR_MULTIPLIER_TP).toFixed(pricePrecision)
     );
+
+    // Max 10% margin ROI loss allowed (SHORT ke liye upar)
+    const maxAllowedSL = entryPrice * (1 + 0.1 / LEVERAGE);
+    const finalStopLoss = parseFloat(
+      Math.min(stopLossPrice, maxAllowedSL).toFixed(pricePrecision)
+    );
+
+    // Max 20% margin ROI profit allowed (SHORT ke liye neeche)
+    const maxAllowedTP = entryPrice * (1 - 0.2 / LEVERAGE);
+    const finalTakeProfit = parseFloat(
+      Math.max(takeProfitPrice, maxAllowedTP).toFixed(pricePrecision)
+    );
     console.log(
       `SL/TP prices for SHORT: SL=${stopLossPrice}, TP=${takeProfitPrice}`
     );
@@ -270,7 +294,7 @@ async function placeShortOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: stopLossPrice,
+        stopPrice: finalStopLoss,
         reduceOnly: true,
         timeInForce: "GTC",
       }
@@ -282,7 +306,7 @@ async function placeShortOrder(symbol, marginAmount) {
       qtyFixed,
       null,
       {
-        stopPrice: takeProfitPrice,
+        stopPrice: finalTakeProfit,
         reduceOnly: true,
         timeInForce: "GTC",
       }
@@ -292,9 +316,9 @@ async function placeShortOrder(symbol, marginAmount) {
     );
 
     const details = {
-      stopLossPrice: stopLossPrice,
+      stopLossPrice: finalStopLoss,
       stopLossOrderId: stopLossOrder.orderId,
-      takeProfitPrice: takeProfitPrice,
+      takeProfitPrice: finalTakeProfit,
       takeProfitOrderId: takeProfitOrder.orderId,
     };
 
@@ -308,7 +332,7 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await getRSIStrategySignal(symbol);
+  const decision = await getRSI_ADX_StrategySignal(symbol);
   console.log("decision", decision);
 
   if (decision === "LONG") {

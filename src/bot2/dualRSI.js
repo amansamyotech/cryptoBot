@@ -1,79 +1,95 @@
-const { RSI } = require("technicalindicators");
+const { RSI, ADX } = require("technicalindicators");
 const { getCandles } = require("./websocketsCode/getCandles");
 
-async function getRSIStrategySignal(symbol) {
+/**
+ * Get RSI + ADX based trading signal
+ * @param {string} symbol - e.g. "BTCUSDT"
+ * @returns {Promise<"LONG" | "SHORT" | "HOLD">}
+ */
+async function getRSI_ADX_StrategySignal(symbol) {
   try {
-    // Fetch candles for both timeframes
-    const candles3m = await getCandles(symbol, "1m", 150);
-    const candles1h = await getCandles(symbol, "1h", 150);
+    // Fetch candles
+    const candles5m = await getCandles(symbol, "5m", 150);
+    const candles4h = await getCandles(symbol, "4h", 150);
 
-    // Validate candle data
-    if (!candles3m || candles3m.length < 21) {
-      console.log("❌ Not enough 3m candle data");
+    if (
+      !candles5m ||
+      candles5m.length < 30 ||
+      !candles4h ||
+      candles4h.length < 30
+    ) {
+      console.log("❌ Not enough candle data");
       return "HOLD";
     }
-    if (!candles1h || candles1h.length < 14) {
-      console.log("❌ Not enough 1h candle data");
-      return "HOLD";
-    }
 
-    // Extract close prices
-    const closes3m = candles3m.map((c) => c.close);
-    const closes1h = candles1h.map((c) => c.close);
+    // Extract close, high, low prices
+    const closes5m = candles5m.map((c) => c.close);
+    const closes4h = candles4h.map((c) => c.close);
+    const highs5m = candles5m.map((c) => c.high);
+    const lows5m = candles5m.map((c) => c.low);
 
-    // Calculate RSI #1 (3m, period 21)
-    const rsi3m = RSI.calculate({
-      values: closes3m,
-      period: 21,
-    });
+    // RSI(5m) for entry
+    const rsi5m = RSI.calculate({ values: closes5m, period: 7 });
+    const currentRSI5m = rsi5m[rsi5m.length - 1];
+    const prevRSI5m = rsi5m[rsi5m.length - 2]; // for candle close crossover check
 
-    // Calculate RSI #2 (1h, period 14)
-    const rsi1h = RSI.calculate({
-      values: closes1h,
+    // RSI(4h) for trend
+    const rsi4h = RSI.calculate({ values: closes4h, period: 7 });
+    const currentRSI4h = rsi4h[rsi4h.length - 1];
+
+    // ADX(14) for trend strength
+    const adxValues = ADX.calculate({
+      close: closes5m,
+      high: highs5m,
+      low: lows5m,
       period: 14,
     });
+    const currentADX = adxValues[adxValues.length - 1]?.adx || 0;
 
-    // Get latest RSI values
-    const currentRSI3m = rsi3m[rsi3m.length - 1];
-    const currentRSI1h = rsi1h[rsi1h.length - 1];
+    console.log(
+      `$📊 RSI(4h): ${currentRSI4h.toFixed(
+        2
+      )} | RSI(5m): ${currentRSI5m.toFixed(2)} | ADX: ${currentADX.toFixed(2)}`
+    );
 
-    console.log(`🔍 RSI#1 (3m): ${currentRSI3m.toFixed(2)}`);
-    console.log(`📊 RSI#2 (1h): ${currentRSI1h.toFixed(2)}`);
+    // Step 1: Check overall trend using RSI(4h)
+    let trend = "HOLD";
+    if (currentRSI4h > 60) trend = "UP";
+    else if (currentRSI4h < 40) trend = "DOWN";
+    else return "HOLD"; // sideways market
 
-    // Step 1: Check RSI #2 (1h) for initial signal
-    let signal1h = "HOLD";
-    if (currentRSI1h < 40) {
-      signal1h = "SHORT";
-    } else if (currentRSI1h > 60) {
-      signal1h = "LONG";
-    } else {
-      console.log("✅ Final Signal: HOLD");
+    // Step 2: Ensure trend is strong enough using ADX
+    if (currentADX <= 25) {
+      console.log("⚠️ Weak trend (ADX <= 25) → HOLD");
       return "HOLD";
     }
 
-    // Step 2: Check RSI #1 (3m) for confirmation
-    let signal3m = "HOLD";
-    if (currentRSI3m > 60) {
-      signal3m = "SHORT";
-    } else if (currentRSI3m < 40) {
-      signal3m = "LONG";
-    } else {
-      console.log("✅ Final Signal: HOLD");
-      return "HOLD";
+    // Step 3: Entry signal using RSI(5m) + candle close confirmation
+    if (trend === "UP") {
+      // Pullback LONG setup
+      if (prevRSI5m < 40 && currentRSI5m > 40) {
+        console.log(
+          "✅ LONG Signal (RSI(5m) recovered from oversold in uptrend)"
+        );
+        return "LONG";
+      }
+    } else if (trend === "DOWN") {
+      // Pullback SHORT setup
+      if (prevRSI5m > 60 && currentRSI5m < 60) {
+        console.log(
+          "✅ SHORT Signal (RSI(5m) dropped from overbought in downtrend)"
+        );
+        return "SHORT";
+      }
     }
 
-    // Step 3: Match both signals
-    if (signal1h === signal3m) {
-      console.log(`✅ Final Signal: ${signal1h}`);
-      return signal1h;
-    } else {
-      console.log("✅ Final Signal: HOLD");
-      return "HOLD";
-    }
+    // Default case
+    console.log("⚪ No valid setup → HOLD");
+    return "HOLD";
   } catch (error) {
-    console.error("❌ Error in getRSIStrategySignal:", error.message);
+    console.error("❌ Error in getRSI_ADX_StrategySignal:", error.message);
     return "HOLD";
   }
 }
 
-module.exports = { getRSIStrategySignal };
+module.exports = { getRSI_ADX_StrategySignal };
