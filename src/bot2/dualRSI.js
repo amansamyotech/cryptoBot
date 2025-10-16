@@ -9,6 +9,7 @@ const { getCandles } = require("./websocketsCode/getCandles");
 async function getRSI_ADX_StrategySignal(symbol) {
   try {
     // Fetch candles
+    
     const candles5m = await getCandles(symbol, "5m", 150);
     const candles4h = await getCandles(symbol, "4h", 150);
 
