@@ -66,39 +66,24 @@ async function getRSI_ADX_StrategySignal(symbol) {
     }
 
     // // Step 3: Entry signal using RSI(5m) + candle close confirmation
-    // if (trend === "UP") {
-    //   // Pullback LONG setup
-    //   if (prevRSI5m < 40 && currentRSI5m > 40) {
-    //     console.log(
-    //       "✅ LONG Signal (RSI(5m) recovered from oversold in uptrend)"
-    //     );
-    //     return "LONG";
-    //   }
-    // } else if (trend === "DOWN") {
-    //   // Pullback SHORT setup
-    //   if (prevRSI5m > 60 && currentRSI5m < 60) {
-    //     console.log(
-    //       "✅ SHORT Signal (RSI(5m) dropped from overbought in downtrend)"
-    //     );
-    //     return "SHORT";
-    //   }
-    // }
-
-    // Step 3: Entry signal using RSI(5m) + multi-candle pullback confirmation
-    const prev2RSI5m = rsi5m[rsi5m.length - 3]; // 2nd previous candle
     if (trend === "UP") {
-      // Pullback LONG setup: RSI was oversold for 2 candles and now recovers strongly
-      if (prev2RSI5m < 40 && prevRSI5m < 40 && currentRSI5m > 45) {
-        console.log("✅ LONG Signal (Confirmed pullback recovery in uptrend)");
+      // Pullback LONG setup
+      if (prevRSI5m < 35 && currentRSI5m > 35) {
+        console.log(
+          "✅ LONG Signal (RSI(5m) recovered from oversold in uptrend)"
+        );
         return "LONG";
       }
     } else if (trend === "DOWN") {
-      // Pullback SHORT setup: RSI was overbought for 2 candles and now drops strongly
-      if (prev2RSI5m > 60 && prevRSI5m > 60 && currentRSI5m < 55) {
-        console.log("✅ SHORT Signal (Confirmed pullback drop in downtrend)");
+      // Pullback SHORT setup
+      if (prevRSI5m > 65 && currentRSI5m < 65) {
+        console.log(
+          "✅ SHORT Signal (RSI(5m) dropped from overbought in downtrend)"
+        );
         return "SHORT";
       }
     }
+
     // Default case
     console.log("⚪ No valid setup → HOLD");
     return "HOLD";
