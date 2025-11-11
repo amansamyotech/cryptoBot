@@ -2,8 +2,8 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { getCandles } = require("./getCandle");
 const { checkOrders } = require("./checkOrder");
-const TradeDecision = require("./Strategy");
-const decisionMaker = new TradeDecision();
+const decisionMaker = require("./Strategy");
+
 
 const isProcessing = {};
 const lastTradeSide = {};
@@ -17,7 +17,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["DOGEUSDT"];
+const symbols = ["XRPUSDT"];
 
 let dailyStartBalance = 0;
 let lastResetDate = new Date().toDateString();
