@@ -17,7 +17,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["XRPUSDT","DOGEUSDT"];
+const symbols = ["XRPUSDT","DOGEUSDT","SOLUSDT","BNBUSDT","ADAUSDT"];
 
 let dailyStartBalance = 0;
 let lastResetDate = new Date().toDateString();
@@ -38,8 +38,8 @@ async function getUsdtBalance() {
 
 const LEVERAGE = 3;
 const ATR_LENGTH = 14;
-const ATR_MULTIPLIER_SL = 2;
-const ATR_MULTIPLIER_TP = 4;
+const ATR_MULTIPLIER_SL = 1;
+const ATR_MULTIPLIER_TP = 2;
 
 function calculateATR(candles, length = ATR_LENGTH) {
   if (candles.length < length + 1) return null;
