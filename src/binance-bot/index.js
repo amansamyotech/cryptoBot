@@ -17,7 +17,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["XRPUSDT"];
+const symbols = ["XRPUSDT","DOGEUSDT"];
 
 let dailyStartBalance = 0;
 let lastResetDate = new Date().toDateString();
