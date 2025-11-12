@@ -4,8 +4,8 @@ const axios = require("axios");
 const API_ENDPOINT = "http://localhost:3000/api/buySell/";
 
 const binance = new Binance().options({
-  APIKEY: "kKygBQ6HTqxhNscBEUbvoCmhy7kqNchUQZXkz4cvWRC7jahxxueUu6UYpWkQkVlE",
-  APISECRET: "ZvfoTcMpX0yqvc4E4NyH0psQkviJF5LROthqgihXPydAENl55L5MHnDQEYJiwRpX",
+  APIKEY: "inuWRLKXHn7fCiY0E563212IoSLGnwYIEd5PQz9nQ3dtwbx9tePHMMMr2r2XruIC",
+  APISECRET: "am5WxVL5TqJjB3Li5AwnlDqA0okLsPM5UsMtEzXGmO7PhO8JkCpe9pytbP1sMlOr",
   useServerTime: true,
   test: false,
 });

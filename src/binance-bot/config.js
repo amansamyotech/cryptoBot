@@ -3,8 +3,8 @@ require("dotenv").config();
 
 const config = {
   // ========== API CREDENTIALS ==========
-  apiKey: "kKygBQ6HTqxhNscBEUbvoCmhy7kqNchUQZXkz4cvWRC7jahxxueUu6UYpWkQkVlE",
-  secret: "ZvfoTcMpX0yqvc4E4NyH0psQkviJF5LROthqgihXPydAENl55L5MHnDQEYJiwRpX",
+  apiKey: "inuWRLKXHn7fCiY0E563212IoSLGnwYIEd5PQz9nQ3dtwbx9tePHMMMr2r2XruIC",
+  secret: "am5WxVL5TqJjB3Li5AwnlDqA0okLsPM5UsMtEzXGmO7PhO8JkCpe9pytbP1sMlOr",
 
   // ========== TRADING PAIRS ==========
   symbols: ["DOGE/USDT", "SOL/USDT", "BNB/USDT", "XRP/USDT", "ADA/USDT"],
