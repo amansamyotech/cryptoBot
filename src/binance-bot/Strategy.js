@@ -168,11 +168,6 @@ async function getTradeSignal(symbol) {
     // ========== GENERATE SIGNAL ==========
 
     console.log(`\n📊 ${symbol} Analysis:`);
-    console.log(
-      `   Price: ${currentPrice.toFixed(2)} | TEMA200: ${temaSlowCurr.toFixed(
-        2
-      )}`
-    );
     console.log(`   Market Side: ${marketSide}`);
     console.log(`   TEMA Cross: ${temaCrossover}`);
     console.log(
@@ -181,15 +176,15 @@ async function getTradeSignal(symbol) {
     console.log(
       `   MACD: ${
         macdBullish ? "BULLISH" : "BEARISH"
-      } | Histogram: ${macdHistogram.toFixed(4)}`
+      } | Histogram: ${macdHistogram}`
     );
     console.log(
       `   DMI: ${dmiSignal} | ADX: ${
-        dmiCurr ? dmiCurr.adx.toFixed(1) : "N/A"
+        dmiCurr ? dmiCurr?.adx : "N/A"
       } (${adxStrength})`
     );
     console.log(
-      `   Volume: ${volumeRatio.toFixed(2)}x avg (${
+      `   Volume: ${volumeRatio}x avg (${
         volumeBullish ? "HIGH" : "LOW"
       })`
     );
