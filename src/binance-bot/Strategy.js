@@ -1,327 +1,310 @@
-// tradeDecision.js - SIMPLE TRADE DECISION MAKER
-const { RSI, ADX, EMA, MACD } = require("technicalindicators");
+const { RSI, ADX, EMA, MACD, ATR } = require("technicalindicators");
 const { getCandles } = require("./getCandle");
 const config = require("./config");
 
-class TradeDecision {
-  constructor() {
-    this.indicators = { RSI, ADX, EMA, MACD };
-  }
+/**
+ * Main trading function - pass symbol, get trade signal
+ * @param {string} symbol - Trading pair (e.g., 'BTCUSDT')
+ * @returns {Promise<string>} - Returns 'LONG', 'SHORT', or 'HOLD'
+ */
+async function getTradeSignal(symbol) {
+  try {
+    console.log(`\n🔍 Analyzing ${symbol}...`);
 
-  async getTradeSignal(symbol) {
-    try {
-      console.log(`\n🔍 ANALYZING ${symbol} FOR TRADE SIGNAL...`);
+    // Fetch candles for different timeframes
+    const candles5m = await getCandles(symbol, "5m", 500);
 
-      // Fetch candles
-      const candles = await getCandles(
-        symbol,
-        config.timeframe,
-        config.candleFetchLimit
-      );
-
-      if (!candles || candles.length < config.minCandlesRequired) {
-        console.log(`⏳ Not enough data for ${symbol}`);
-        return "HOLD";
-      }
-
-      // Extract price data
-      const closes = candles.map((c) => c.close);
-      const highs = candles.map((c) => c.high);
-      const lows = candles.map((c) => c.low);
-      const currentPrice = closes[closes.length - 1];
-
-      // Calculate indicators
-      const temaFast = this.calculateEMA(closes, config.tema.fast);
-      const temaMedium = this.calculateEMA(closes, config.tema.medium);
-      const temaSlow = this.calculateEMA(closes, config.tema.slow);
-
-      const temaFastCurr = temaFast[temaFast.length - 1];
-      const temaMediumCurr = temaMedium[temaMedium.length - 1];
-      const temaSlowCurr = temaSlow[temaSlow.length - 1];
-
-      // TEMA Crossover Analysis
-      const temaCrossover = this.analyzeTEMACrossover(temaFast, temaMedium);
-
-      // Market Side Analysis
-      const marketSide = this.getMarketSide(
-        temaFastCurr,
-        temaMediumCurr,
-        temaSlowCurr,
-        currentPrice
-      );
-      const trendFilter =
-        currentPrice > temaSlowCurr ? "LONG_ONLY" : "SHORT_ONLY";
-
-      // MACD Analysis
-      const macd = this.calculateMACD(closes);
-      const macdHistogram = macd ? macd.MACD - macd.signal : 0;
-
-      // ADX Analysis
-      const adx = this.calculateADX(highs, lows, closes);
-      const trendStrength =
-        adx && adx.adx > config.adxThreshold ? "STRONG" : "WEAK";
-
-      // Volume Analysis
-      const volumeProfile = this.calculateVolumeProfile(candles);
-      const volumeBullish = volumeProfile.volumeRatio > config.volumeMultiplier;
-
-      // Support Resistance
-      const supportResistance = this.calculateSupportResistance(candles);
-      const nearResistance =
-        supportResistance.resistance &&
-        currentPrice >= supportResistance.resistance * 0.995;
-      const nearSupport =
-        supportResistance.support &&
-        currentPrice <= supportResistance.support * 1.005;
-
-      // ✅ SAME LOGIC AS YOUR MAIN BOT
-      const longConditions = [
-        temaCrossover === "BULLISH_CROSS" || temaCrossover === "BULLISH_STRONG",
-        this.getTrendDirection(
-          temaFastCurr,
-          temaMediumCurr,
-          temaSlowCurr,
-          currentPrice
-        ) === "BULLISH",
-        this.getTrendAlignment(temaFastCurr, temaMediumCurr, temaSlowCurr) ===
-          "BULLISH",
-        macdHistogram > 0,
-        trendStrength === "STRONG",
-        volumeBullish,
-        !nearResistance,
-      ];
-
-      const shortConditions = [
-        temaCrossover === "BEARISH_CROSS" || temaCrossover === "BEARISH_STRONG",
-        this.getTrendDirection(
-          temaFastCurr,
-          temaMediumCurr,
-          temaSlowCurr,
-          currentPrice
-        ) === "BEARISH",
-        this.getTrendAlignment(temaFastCurr, temaMediumCurr, temaSlowCurr) ===
-          "BEARISH",
-        macdHistogram < 0,
-        trendStrength === "STRONG",
-        volumeBullish,
-        !nearSupport,
-      ];
-
-      const longScore = longConditions.filter(Boolean).length;
-      const shortScore = shortConditions.filter(Boolean).length;
-
-      console.log(`📊 ${symbol} ANALYSIS RESULTS:`);
-      console.log(`   Market: ${marketSide} | Trend Filter: ${trendFilter}`);
-      console.log(
-        `   TEMA Cross: ${temaCrossover} | MACD: ${
-          macdHistogram > 0 ? "BULLISH" : "BEARISH"
-        }`
-      );
-      console.log(
-        `   ADX: ${adx ? adx.adx.toFixed(1) : "N/A"} | Volume: ${
-          volumeBullish ? "GOOD" : "LOW"
-        }`
-      );
-      console.log(
-        `   LONG Score: ${longScore}/${config.minSignalScore} | SHORT Score: ${shortScore}/${config.minSignalScore}`
-      );
-
-      // Final Decision
-      if (trendFilter === "LONG_ONLY" && longScore >= config.minSignalScore) {
-        console.log(`🎯 SIGNAL: LONG ✅`);
-        return "LONG";
-      } else if (
-        trendFilter === "SHORT_ONLY" &&
-        shortScore >= config.minSignalScore
-      ) {
-        console.log(`🎯 SIGNAL: SHORT ✅`);
-        return "SHORT";
-      } else {
-        console.log(`🎯 SIGNAL: HOLD ⏸️`);
-        return "HOLD";
-      }
-    } catch (error) {
-      console.error(`❌ Error analyzing ${symbol}:, error.message`);
+    if (!candles5m || candles5m.length < 200) {
+      console.log("❌ Insufficient candle data");
       return "HOLD";
     }
-  }
 
-  // ✅ SAME LOGIC AS YOUR STRATEGY.JS
-  calculateEMA(values, period) {
-    try {
-      if (values.length < period) return [values[values.length - 1]];
-      return this.indicators.EMA.calculate({ period, values });
-    } catch (error) {
-      // Fallback calculation
-      const result = [];
-      const multiplier = 2 / (period + 1);
-      let ema = values.slice(0, period).reduce((a, b) => a + b, 0) / period;
+    const closes = candles5m.map((c) => c.close);
+    const highs = candles5m.map((c) => c.high);
+    const lows = candles5m.map((c) => c.low);
+    const volumes = candles5m.map((c) => c.volume);
+    const currentPrice = closes[closes.length - 1];
 
-      for (let i = period; i < values.length; i++) {
-        ema = (values[i] - ema) * multiplier + ema;
-        result.push(ema);
-      }
-      return result.length > 0 ? result : [values[values.length - 1]];
-    }
-  }
+    // ========== CALCULATE ALL INDICATORS ==========
 
-  calculateMACD(closes) {
-    try {
-      const macd = this.indicators.MACD.calculate({
-        values: closes,
-        fastPeriod: config.macd.fast,
-        slowPeriod: config.macd.slow,
-        signalPeriod: config.macd.signal,
-        SimpleMAOscillator: false,
-        SimpleMASignal: false,
-      });
-      return macd[macd.length - 1];
-    } catch (error) {
-      return { MACD: 0, signal: 0, histogram: 0 };
-    }
-  }
+    // 1. TEMA (Triple EMA) - Fast, Medium, Slow
+    const temaFastPeriod = config.temaFast || 9;
+    const temaMediumPeriod = config.temaMedium || 21;
+    const temaSlowPeriod = config.temaSlow || 200;
 
-  calculateADX(highs, lows, closes) {
-    try {
-      const adx = this.indicators.ADX.calculate({
-        period: config.adx,
-        high: highs,
-        low: lows,
-        close: closes,
-      });
-      return adx[adx.length - 1];
-    } catch (error) {
-      return { adx: 15, pdi: 20, mdi: 15 };
-    }
-  }
-
-  calculateVolumeProfile(candles, period = 20) {
-    try {
-      const volumes = candles.map((c) => c.volume);
-      const currentVolume = volumes[volumes.length - 1];
-      const recentVolumes = volumes.slice(-period);
-      const averageVolume =
-        recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length;
-
-      return {
-        currentVolume,
-        averageVolume,
-        volumeRatio: currentVolume / averageVolume,
-        isVolumeSpike: currentVolume > averageVolume * config.volumeMultiplier,
-      };
-    } catch (error) {
-      return {
-        currentVolume: 1000000,
-        averageVolume: 1000000,
-        volumeRatio: 1.0,
-        isVolumeSpike: false,
-      };
-    }
-  }
-
-  calculateSupportResistance(candles, period = config.supportResistancePeriod) {
-    try {
-      const highs = candles.map((c) => c.high);
-      const lows = candles.map((c) => c.low);
-
-      const recentHighs = highs.slice(-period);
-      const recentLows = lows.slice(-period);
-
-      return {
-        resistance: Math.max(...recentHighs),
-        support: Math.min(...recentLows),
-      };
-    } catch (error) {
-      const lastPrice = candles[candles.length - 1].close;
-      return {
-        resistance: lastPrice * 1.02,
-        support: lastPrice * 0.98,
-      };
-    }
-  }
-
-  analyzeTEMACrossover(temaFast, temaMedium) {
-    if (temaFast.length < 2 || temaMedium.length < 2) {
-      return temaFast[temaFast.length - 1] > temaMedium[temaMedium.length - 1]
-        ? "BULLISH_ABOVE"
-        : "BEARISH_BELOW";
-    }
+    const temaFast = calculateTEMA(closes, temaFastPeriod);
+    const temaMedium = calculateTEMA(closes, temaMediumPeriod);
+    const temaSlow = calculateTEMA(closes, temaSlowPeriod);
 
     const temaFastCurr = temaFast[temaFast.length - 1];
     const temaMediumCurr = temaMedium[temaMedium.length - 1];
+    const temaSlowCurr = temaSlow[temaSlow.length - 1];
     const temaFastPrev = temaFast[temaFast.length - 2];
     const temaMediumPrev = temaMedium[temaMedium.length - 2];
 
-    if (temaFastCurr > temaMediumCurr && temaFastPrev <= temaMediumPrev) {
-      return "BULLISH_CROSS";
-    }
+    // 2. MACD
+    const macdResult = MACD.calculate({
+      values: closes,
+      fastPeriod: config.macdFast || 12,
+      slowPeriod: config.macdSlow || 26,
+      signalPeriod: config.macdSignal || 9,
+      SimpleMAOscillator: false,
+      SimpleMASignal: false,
+    });
+    const macdCurr = macdResult[macdResult.length - 1];
 
-    if (temaFastCurr < temaMediumCurr && temaFastPrev >= temaMediumPrev) {
-      return "BEARISH_CROSS";
-    }
+    // 3. ATR (Average True Range)
+    const atrResult = ATR.calculate({
+      high: highs,
+      low: lows,
+      close: closes,
+      period: config.atrPeriod || 14,
+    });
+    const atrCurr = atrResult[atrResult.length - 1];
 
-    const spread = ((temaFastCurr - temaMediumCurr) / temaMediumCurr) * 100;
-    if (temaFastCurr > temaMediumCurr && spread > 0.05) {
-      return "BULLISH_STRONG";
-    }
+    // 4. DMI/ADX (Directional Movement Index)
+    const adxResult = ADX.calculate({
+      high: highs,
+      low: lows,
+      close: closes,
+      period: config.adxPeriod || 14,
+    });
+    const dmiCurr = adxResult[adxResult.length - 1];
 
-    if (temaFastCurr < temaMediumCurr && spread < -0.05) {
-      return "BEARISH_STRONG";
-    }
+    // 5. Volume Analysis
+    const recentVolumes = volumes.slice(-20);
+    const averageVolume =
+      recentVolumes.reduce((a, b) => a + b, 0) / recentVolumes.length;
+    const currentVolume = volumes[volumes.length - 1];
+    const volumeRatio = currentVolume / averageVolume;
+    const volumeBullish = volumeRatio > (config.volumeMultiplier || 1.5);
 
-    return temaFastCurr > temaMediumCurr ? "BULLISH_ABOVE" : "BEARISH_BELOW";
-  }
+    // 6. Support/Resistance (simplified - using recent highs/lows)
+    const recentCandles = candles5m.slice(-50);
+    const resistance = Math.max(...recentCandles.map((c) => c.high));
+    const support = Math.min(...recentCandles.map((c) => c.low));
 
-  getMarketSide(temaFast, temaMedium, temaSlow, currentPrice) {
-    const aboveTema200 = currentPrice > temaSlow;
-    const temaAlignment = this.getTrendAlignment(
-      temaFast,
-      temaMedium,
-      temaSlow
+    // ========== STRATEGY ANALYSIS ==========
+
+    // Market Side Analysis
+    const marketSide = getMarketSide(
+      temaFastCurr,
+      temaMediumCurr,
+      temaSlowCurr,
+      currentPrice
     );
-    const spreadFromTema200 = ((currentPrice - temaSlow) / temaSlow) * 100;
 
-    if (
-      aboveTema200 &&
-      temaAlignment === "BULLISH" &&
-      spreadFromTema200 > 0.5
-    ) {
-      return "STRONG_BULLISH";
-    } else if (aboveTema200 && spreadFromTema200 > 0.1) {
-      return "BULLISH";
-    } else if (
-      !aboveTema200 &&
-      temaAlignment === "BEARISH" &&
-      spreadFromTema200 < -0.5
-    ) {
-      return "STRONG_BEARISH";
-    } else if (!aboveTema200 && spreadFromTema200 < -0.1) {
-      return "BEARISH";
+    // TEMA Crossover Analysis
+    const temaCrossover = analyzeTEMACrossover(
+      temaFastCurr,
+      temaMediumCurr,
+      temaFastPrev,
+      temaMediumPrev
+    );
+
+    // Trend Direction & Alignment
+    const isAboveTEMA200 = currentPrice > temaSlowCurr;
+    const trendDirection = getTrendDirection(
+      temaFastCurr,
+      temaMediumCurr,
+      temaSlowCurr,
+      currentPrice
+    );
+    const trendAlignment = getTrendAlignment(
+      temaFastCurr,
+      temaMediumCurr,
+      temaSlowCurr
+    );
+
+    // MACD Analysis
+    const macdBullish = macdCurr && macdCurr.MACD > macdCurr.signal;
+    const macdHistogram = macdCurr ? macdCurr.MACD - macdCurr.signal : 0;
+
+    // DMI Analysis
+    const dmiSignal = getDMISignal(dmiCurr);
+    const adxStrength = getADXStrength(dmiCurr);
+    const dmiBullish = dmiSignal === "BULLISH";
+    const dmiBearish = dmiSignal === "BEARISH";
+    const strongADX = dmiCurr && dmiCurr.adx > 20;
+
+    // Trend Strength
+    const trendStrength = adxStrength === "STRONG" ? "STRONG" : "WEAK";
+
+    // Key Level Analysis
+    const nearResistance = resistance && currentPrice >= resistance * 0.995;
+    const nearSupport = support && currentPrice <= support * 1.005;
+
+    // ========== ENTRY CONDITIONS ==========
+
+    // LONG CONDITIONS (8 conditions)
+    const longConditions = [
+      temaCrossover === "BULLISH_CROSS" || temaCrossover === "BULLISH_STRONG",
+      trendDirection === "BULLISH",
+      trendAlignment === "BULLISH",
+      macdBullish,
+      trendStrength === "STRONG",
+      volumeBullish,
+      !nearResistance,
+      dmiBullish && strongADX,
+    ];
+
+    // SHORT CONDITIONS (8 conditions)
+    const shortConditions = [
+      temaCrossover === "BEARISH_CROSS" || temaCrossover === "BEARISH_STRONG",
+      trendDirection === "BEARISH",
+      trendAlignment === "BEARISH",
+      !macdBullish,
+      trendStrength === "STRONG",
+      volumeBullish,
+      !nearSupport,
+      dmiBearish && strongADX,
+    ];
+
+    const longScore = longConditions.filter(Boolean).length;
+    const shortScore = shortConditions.filter(Boolean).length;
+
+    const minScore = Math.max(config.minSignalScore || 5, 5); // At least 5/8
+
+    // ========== GENERATE SIGNAL ==========
+
+    console.log(`\n📊 ${symbol} Analysis:`);
+    console.log(
+      `   Price: ${currentPrice.toFixed(2)} | TEMA200: ${temaSlowCurr.toFixed(
+        2
+      )}`
+    );
+    console.log(`   Market Side: ${marketSide}`);
+    console.log(`   TEMA Cross: ${temaCrossover}`);
+    console.log(
+      `   Trend: ${trendDirection} | Alignment: ${trendAlignment} | Strength: ${trendStrength}`
+    );
+    console.log(
+      `   MACD: ${
+        macdBullish ? "BULLISH" : "BEARISH"
+      } | Histogram: ${macdHistogram.toFixed(4)}`
+    );
+    console.log(
+      `   DMI: ${dmiSignal} | ADX: ${
+        dmiCurr ? dmiCurr.adx.toFixed(1) : "N/A"
+      } (${adxStrength})`
+    );
+    console.log(
+      `   Volume: ${volumeRatio.toFixed(2)}x avg (${
+        volumeBullish ? "HIGH" : "LOW"
+      })`
+    );
+    console.log(
+      `   📈 LONG Score: ${longScore}/8 | 📉 SHORT Score: ${shortScore}/8`
+    );
+
+    // Decision Logic
+    if (longScore >= minScore && isAboveTEMA200) {
+      console.log(`✅ SIGNAL: LONG (Score: ${longScore}/8)`);
+      return "LONG";
+    } else if (shortScore >= minScore && !isAboveTEMA200) {
+      console.log(`✅ SIGNAL: SHORT (Score: ${shortScore}/8)`);
+      return "SHORT";
     } else {
-      return "NEUTRAL";
+      console.log(`⏸️  SIGNAL: HOLD (Insufficient conditions)`);
+      return "HOLD";
     }
-  }
-
-  getTrendDirection(temaFast, temaMedium, temaSlow, currentPrice) {
-    const aboveTema200 = currentPrice > temaSlow ? 1 : 0;
-    const aboveTemaMedium = currentPrice > temaMedium ? 1 : 0;
-    const aboveTemaFast = currentPrice > temaFast ? 1 : 0;
-
-    const bullishScore = aboveTema200 + aboveTemaMedium + aboveTemaFast;
-
-    if (bullishScore >= 2) return "BULLISH";
-    return "BEARISH";
-  }
-
-  getTrendAlignment(temaFast, temaMedium, temaSlow) {
-    const fastAboveMedium = temaFast > temaMedium;
-    const mediumAboveSlow = temaMedium > temaSlow;
-
-    if (fastAboveMedium && mediumAboveSlow) return "BULLISH";
-    if (!fastAboveMedium && !mediumAboveSlow) return "BEARISH";
-    return "MIXED";
+  } catch (error) {
+    console.error(`❌ Error analyzing ${symbol}:`, error.message);
+    return "HOLD";
   }
 }
 
-// Export singleton instance
-module.exports = new TradeDecision();
+// ========== HELPER FUNCTIONS ==========
+
+function calculateTEMA(values, period) {
+  const ema1 = EMA.calculate({ values, period });
+  const ema2 = EMA.calculate({ values: ema1, period });
+  const ema3 = EMA.calculate({ values: ema2, period });
+
+  const tema = [];
+  for (let i = 0; i < ema3.length; i++) {
+    tema.push(
+      3 * ema1[ema1.length - ema3.length + i] -
+        3 * ema2[ema2.length - ema3.length + i] +
+        ema3[i]
+    );
+  }
+  return tema;
+}
+
+function analyzeTEMACrossover(fastCurr, mediumCurr, fastPrev, mediumPrev) {
+  const bullishCross = fastPrev <= mediumPrev && fastCurr > mediumCurr;
+  const bearishCross = fastPrev >= mediumPrev && fastCurr < mediumCurr;
+  const strongBullish =
+    fastCurr > mediumCurr && fastCurr - mediumCurr > fastPrev - mediumPrev;
+  const strongBearish =
+    fastCurr < mediumCurr && mediumCurr - fastCurr > mediumPrev - fastPrev;
+
+  if (bullishCross) return "BULLISH_CROSS";
+  if (bearishCross) return "BEARISH_CROSS";
+  if (strongBullish) return "BULLISH_STRONG";
+  if (strongBearish) return "BEARISH_STRONG";
+  return "NEUTRAL";
+}
+
+function getTrendDirection(temaFast, temaMedium, temaSlow, currentPrice) {
+  const aboveTema200 = currentPrice > temaSlow ? 1 : 0;
+  const aboveTemaMedium = currentPrice > temaMedium ? 1 : 0;
+  const aboveTemaFast = currentPrice > temaFast ? 1 : 0;
+
+  const bullishScore = aboveTema200 + aboveTemaMedium + aboveTemaFast;
+
+  return bullishScore >= 2 ? "BULLISH" : "BEARISH";
+}
+
+function getTrendAlignment(temaFast, temaMedium, temaSlow) {
+  const fastAboveMedium = temaFast > temaMedium;
+  const mediumAboveSlow = temaMedium > temaSlow;
+
+  if (fastAboveMedium && mediumAboveSlow) return "BULLISH";
+  if (!fastAboveMedium && !mediumAboveSlow) return "BEARISH";
+  return "MIXED";
+}
+
+function getMarketSide(temaFast, temaMedium, temaSlow, currentPrice) {
+  const aboveTema200 = currentPrice > temaSlow;
+  const temaAlignment = getTrendAlignment(temaFast, temaMedium, temaSlow);
+  const spreadFromTema200 = ((currentPrice - temaSlow) / temaSlow) * 100;
+
+  if (aboveTema200 && temaAlignment === "BULLISH" && spreadFromTema200 > 0.5) {
+    return "STRONG_BULLISH";
+  } else if (aboveTema200 && spreadFromTema200 > 0.1) {
+    return "BULLISH";
+  } else if (
+    !aboveTema200 &&
+    temaAlignment === "BEARISH" &&
+    spreadFromTema200 < -0.5
+  ) {
+    return "STRONG_BEARISH";
+  } else if (!aboveTema200 && spreadFromTema200 < -0.1) {
+    return "BEARISH";
+  }
+  return "NEUTRAL";
+}
+
+function getDMISignal(dmi) {
+  if (!dmi) return "NEUTRAL";
+
+  if (dmi.pdi > dmi.mdi && dmi.adx > 20) return "BULLISH";
+  if (dmi.mdi > dmi.pdi && dmi.adx > 20) return "BEARISH";
+  return "NEUTRAL";
+}
+
+function getADXStrength(dmi) {
+  if (!dmi) return "WEAK";
+
+  if (dmi.adx > 25) return "STRONG";
+  if (dmi.adx > 20) return "MODERATE";
+  return "WEAK";
+}
+
+// ========== EXPORT ==========
+
+module.exports = {
+  getTradeSignal,
+};

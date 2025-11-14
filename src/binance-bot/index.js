@@ -2,7 +2,7 @@ const Binance = require("node-binance-api");
 const axios = require("axios");
 const { getCandles } = require("./getCandle");
 const { checkOrders } = require("./checkOrder");
-const decisionMaker = require("./Strategy");
+const { getTradeSignal } = require("./Strategy");
 
 const isProcessing = {};
 const lastTradeSide = {};
@@ -16,7 +16,7 @@ const binance = new Binance().options({
   test: false,
 });
 
-const symbols = ["XRPUSDT", "DOGEUSDT"];
+const symbols = ["SOLUSDT", "XRPUSDT"];
 
 let dailyStartBalance = 0;
 let lastResetDate = new Date().toDateString();
@@ -350,7 +350,7 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  const decision = await decisionMaker.getTradeSignal(symbol);
+  const decision = await getTradeSignal(symbol);
   console.log("decision", decision);
 
   if (decision === "LONG") {
