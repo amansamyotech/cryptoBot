@@ -43,7 +43,7 @@ const config = {
   supportResistancePeriod: 20,
 
   // ========== SIGNAL THRESHOLDS ==========
-  minSignalScore: 5,
+  minSignalScore: 6,
   adxThreshold: 20,
   volumeMultiplier: 1.2,
 
