@@ -20,7 +20,7 @@ const config = {
   scanInterval: 60000,          // 60 seconds
   
   // ========== POSITION SIZING ==========
-  leverage: 10,
+  leverage: 3,
   positionSizeUSDT: 20,
   
   // ========== POSITION LIMITS (ONE POSITION PER TOKEN) ==========
