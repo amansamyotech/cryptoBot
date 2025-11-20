@@ -273,6 +273,8 @@ class PositionManager {
 
     // Use your ccxt client directly for positions
     const positions = await this.exchange.client.fetchPositions();
+    console.log(`positions`,positions);
+    
     
     // Filter for actual open positions
     const openPositions = positions.filter(p => {
