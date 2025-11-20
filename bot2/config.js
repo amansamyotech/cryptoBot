@@ -3,8 +3,9 @@ require('dotenv').config();
 
 const config = {
   // ========== API CREDENTIALS ==========
-  apiKey: process.env.BINANCE_APIKEY,
-  secret: process.env.BINANCE_SECRETKEY,
+  // apiKey: process.env.BINANCE_APIKEY,
+  apiKey: "9JZjlcfPqSnQIk4rq6Fm1VSxKIl66g0MYoklFOaVeAWwlPZFrGpG21JuhVzu4KtK",
+  secret: "qCrYHNPjRb8ZE6SL11R4AQNQswfoDET3Qwnv6lLXLffFd5wjd6vrgitoKiMRNOid",
   
   // ========== TRADING PAIRS ==========
   symbols: [
