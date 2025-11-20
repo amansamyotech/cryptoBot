@@ -53,7 +53,7 @@ class PositionManager {
   startPositionMonitoring() {
     setInterval(async () => {
       try {
-          await this.monitorPositions();
+        await this.monitorPositions();
       } catch (error) {
         console.error("❌ Position monitoring error:", error.message);
       }
@@ -260,24 +260,33 @@ class PositionManager {
   // ✅ NEW: Monitor positions and handle OCO cleanup
   async monitorPositions() {
     try {
+      // ✅ Get all open positions from exchange
       const positions = await this.exchange.client.fetchPositions();
+
+      // ✅ Filter only positions that are actually open (positionAmt != 0)
       const openPositions = positions.filter((p) => {
         const amt = parseFloat(p.info?.positionAmt || 0);
         return Math.abs(amt) > 0;
       });
+
       console.log(`\n🔍 Monitoring ${config.symbols.length} symbols...`);
 
       for (const sym of config.symbols) {
+        // ✅ Find open trade from DB for this symbol
         const trade = await TradeDetails.findOne({
           symbol: sym,
           status: "0",
           createdBy: ENVUSERID,
         });
+
+        // ✅ Check if position exists on exchange for this symbol
         let livePos = null;
         if (openPositions.length > 0) {
           livePos = openPositions.find((p) => {
-            const exchangeSymbol = p.symbol;
-            const dbSymbol = sym;
+            const exchangeSymbol = p.symbol; // 'XRP/USDT:USDT'
+            const dbSymbol = sym; // 'XRP/USDT'
+
+            // Match symbols (handle both formats)
             return (
               exchangeSymbol === dbSymbol ||
               exchangeSymbol.replace(":USDT", "") === dbSymbol ||
@@ -285,64 +294,99 @@ class PositionManager {
             );
           });
         }
+
+        // ✅ CASE 1: Both DB trade AND exchange position exist → Skip (all good)
         if (trade && livePos) {
           console.log(
             `   🔒 [${sym}] Position active on exchange & DB — skipping`
           );
           continue;
         }
+
+        // ✅ CASE 2: DB trade exists BUT no exchange position → Clean up
         if (trade && !livePos) {
           console.log(
             `   🔔 [${sym}] DB has open trade but NO exchange position — cleaning up`
           );
+
+          // Cancel all SL/TP orders for this symbol
           const openOrders = await this.exchange.fetchOpenOrders(sym);
-          console.log(`openOrders`,openOrders);
-          
+          console.log(
+            `   📋 Found ${openOrders.length} open orders for ${sym}`
+          );
+
           let canceledCount = 0;
 
           for (const order of openOrders) {
-            if (
-              (order.type === "STOP_MARKET" ||
-                order.type === "TAKE_PROFIT_MARKET") &&
-              order.info?.reduceOnly === true
-            ) {
+            // ✅ FIXED: Check both normalized type and original type
+            const orderType = order.type?.toLowerCase(); // 'take_profit_market', 'stop_market'
+            const isReduceOnly =
+              order.reduceOnly === true || order.info?.reduceOnly === true;
+
+            const isSLTPOrder =
+              (orderType === "stop_market" ||
+                orderType === "take_profit_market" ||
+                order.info?.type === "STOP_MARKET" ||
+                order.info?.type === "TAKE_PROFIT_MARKET") &&
+              isReduceOnly;
+
+            if (isSLTPOrder) {
               try {
+                console.log(
+                  `      🗑️ Canceling ${order.type} order: ${order.id}`
+                );
                 await this.exchange.cancelOrder(order.id, sym);
                 console.log(
                   `      ✅ Canceled ${order.type} order: ${order.id}`
                 );
                 canceledCount++;
+                await this.exchange.sleep(500); // Small delay between cancellations
               } catch (err) {
                 console.error(
                   `      ⚠️ Failed to cancel order ${order.id}:`,
                   err.message
                 );
               }
+            } else {
+              console.log(
+                `      ⏭️ Skipping order ${order.id} (type: ${order.type}, reduceOnly: ${order.reduceOnly})`
+              );
             }
           }
 
           if (canceledCount === 0) {
-            console.log(`      ℹ️ No SL/TP orders found for ${sym}`);
+            console.log(`      ℹ️ No SL/TP orders to cancel for ${sym}`);
+          } else {
+            console.log(`      ✅ Canceled ${canceledCount} orders for ${sym}`);
           }
 
+          // Update DB status to closed (1)
           await TradeDetails.findOneAndUpdate(
             { _id: trade._id, createdBy: ENVUSERID },
             { status: "1" }
           );
 
           console.log(`   🔄 [${sym}] Status updated to CLOSED in DB`);
+
+          // Remove from tracked positions
           if (this.trackedPositions[sym]) {
             delete this.trackedPositions[sym];
             console.log(`   🗑️ [${sym}] Removed from tracked positions`);
           }
         }
+
+        // ✅ CASE 3: No DB trade, no position → Nothing to do
         if (!trade && !livePos) {
+          // Silent - this is normal
           continue;
         }
+
+        // ✅ CASE 4: Exchange position exists but no DB trade → Warning (shouldn't happen)
         if (!trade && livePos) {
           console.log(
             `   ⚠️ [${sym}] Exchange position exists but NO DB record!`
           );
+          // You might want to handle this case differently
         }
       }
 
