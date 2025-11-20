@@ -261,115 +261,78 @@ class PositionManager {
   }
 
   // ✅ NEW: Monitor positions and handle OCO cleanup
-  // ✅ UPDATED: Monitor positions and handle OCO cleanup (with safe futures API fallbacks)
-async monitorPositions() {
-  try {
-    if (!this.exchange) {
-      console.error("❌ Exchange not initialized");
-      return;
-    }
+  // async monitorPositions() {
+  //   try {
+  //     if (!this.exchange || !this.exchange.fapiPrivateV2GetAccount) {
+  //       console.error("❌ Exchange not properly initialized");
+  //       return;
+  //     }
 
-    // Try multiple possible futures/account endpoints (safe fallbacks)
-    let accountInfo = null;
-    try {
-      if (typeof this.exchange.fapiPrivateV2GetAccount === "function") {
-        accountInfo = await this.exchange.fapiPrivateV2GetAccount();
-      } else if (typeof this.exchange.fapiPrivateGetAccount === "function") {
-        accountInfo = await this.exchange.fapiPrivateGetAccount();
-      } else if (typeof this.exchange.fetchPositions === "function") {
-        // fetchPositions usually returns an array of positions
-        const pos = await this.exchange.fetchPositions();
-        accountInfo = { positions: Array.isArray(pos) ? pos : [] };
-      } else {
-        // No suitable method found — log and exit gracefully
-        console.warn(
-          "⚠️ Futures account API not found on exchange object. Skipping position monitor. " +
-            "Expected one of: fapiPrivateV2GetAccount, fapiPrivateGetAccount, fetchPositions."
-        );
-        return;
-      }
-    } catch (err) {
-      console.warn("⚠️ Error calling futures/account endpoint:", err.message);
-      // If the API call fails, don't throw — just exit this monitoring run
-      return;
-    }
+  //     const accountInfo = await this.exchange.fapiPrivateV2GetAccount();
+  //     const positions = accountInfo.positions || [];
 
-    const positions = accountInfo.positions || [];
+  //     for (const sym of config.symbols) {
+  //       const trade = await TradeDetails.findOne({
+  //         symbol: sym,
+  //         status: "0",
+  //         createdBy: ENVUSERID,
+  //       });
 
-    for (const sym of config.symbols) {
-      const trade = await TradeDetails.findOne({
-        symbol: sym,
-        status: "0",
-        createdBy: ENVUSERID,
-      });
-      console.log(`[${sym}] DB open trade:`, trade);
+  //       console.log(`[${sym}] DB open trade:`, trade);
 
-      let livePos = null;
-      if (trade) {
-        // Normalize comparison: some fetchPositions entries may have different shapes
-        livePos = positions.find((p) => {
-          try {
-            // common fields: symbol, positionAmt / amount / size
-            const pSymbol = p.symbol || p.contract || p.info?.symbol;
-            const posAmt =
-              p.positionAmt ??
-              p.amount ??
-              p.contractSize ??
-              p.info?.positionAmt ??
-              0;
-            return pSymbol === sym && parseFloat(posAmt) !== 0;
-          } catch (e) {
-            return false;
-          }
-        });
-      }
+  //       let livePos = null;
+  //       if (trade) {
+  //         livePos = positions.find(
+  //           (p) => p.symbol === sym && parseFloat(p.positionAmt) !== 0
+  //         );
+  //       }
 
-      if (trade && livePos) {
-        console.log(
-          ` 🔒 [${sym}] Trade is open on DB & exchange — skipping cleanup.`
-        );
-        continue;
-      }
+  //       if (trade && livePos) {
+  //         console.log(
+  //           `   🔒 [${sym}] Trade is open on DB & exchange — skipping cleanup.`
+  //         );
+  //         continue;
+  //       }
+  //       console.log(
+  //         `   🔔 [${sym}] No active position or trade closed — cleaning orders & updating DB`
+  //       );
+  //       const openOrders = await this.exchange.fetchOpenOrders(sym);
+  //       let canceledCount = 0;
 
-      console.log(
-        ` 🔔 [${sym}] No active position or trade closed — cleaning orders & updating DB`
-      );
+  //       for (const order of openOrders) {
+  //         if (
+  //           (order.type === "STOP_MARKET" ||
+  //             order.type === "TAKE_PROFIT_MARKET") &&
+  //           order.info.reduceOnly === true
+  //         ) {
+  //           try {
+  //             await this.exchange.cancelOrder(order.id, sym);
+  //             console.log(`      ✅ Canceled ${order.type} order: ${order.id}`);
+  //             canceledCount++;
+  //           } catch (err) {
+  //             console.error(
+  //               `      ⚠️ Failed to cancel order ${order.id}:`,
+  //               err.message
+  //             );
+  //           }
+  //         }
+  //       }
 
-      const openOrders = await this.exchange.fetchOpenOrders(sym);
-      let canceledCount = 0;
-      for (const order of openOrders) {
-        if (
-          (order.type === "STOP_MARKET" || order.type === "TAKE_PROFIT_MARKET") &&
-          order.info &&
-          order.info.reduceOnly === true
-        ) {
-          try {
-            await this.exchange.cancelOrder(order.id, sym);
-            console.log(` ✅ Canceled ${order.type} order: ${order.id}`);
-            canceledCount++;
-          } catch (err) {
-            console.error(` ⚠️ Failed to cancel order ${order.id}:`, err.message);
-          }
-        }
-      }
-
-      if (canceledCount === 0) {
-        console.log(` ℹ️ No SL/TP orders to cancel for ${sym}`);
-      }
-
-      if (trade) {
-        await TradeDetails.findOneAndUpdate(
-          { _id: trade._id, createdBy: ENVUSERID },
-          { status: "1" }
-        );
-        console.log(` 🔄 [${sym}] DB updated: Trade marked as closed.`);
-      }
-    }
-  } catch (error) {
-    console.error("❌ Position monitoring error:", error);
-  }
-}
-
+  //       if (canceledCount === 0) {
+  //         console.log(`      ℹ️ No SL/TP orders to cancel for ${sym}`);
+  //       }
+  //       if (trade) {
+  //         await TradeDetails.findOneAndUpdate(
+  //           { _id: trade._id, createdBy: ENVUSERID },
+  //           { status: "1" }
+  //         );
+  //         console.log(`   🔄 [${sym}] DB updated: Trade marked as closed.`);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Position monitoring error:", error);
+  //   }
+  // }
 
   async placeOrderWithSTTP(symbol, side, currentPrice, analysis, marketSide) {
     try {
@@ -461,11 +424,11 @@ async monitorPositions() {
 
       // ✅ PROTECTION 3: Check signals
       const minScore = analysis.minScoreRequired || config.minSignalScore;
-      const hasLongSignal = true;
-      // const hasLongSignal =
-      //   analysis.longEntry && analysis.longScore >= minScore;
-      const hasShortSignal =
-        analysis.shortEntry && analysis.shortScore >= minScore;
+      const hasLongSignal =
+        analysis.longEntry && analysis.longScore >= minScore;
+      // const hasShortSignal =
+      //   analysis.shortEntry && analysis.shortScore >= minScore;
+      const hasShortSignal = true;
 
       if (!hasLongSignal && !hasShortSignal) {
         console.log(

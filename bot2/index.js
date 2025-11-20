@@ -7,14 +7,12 @@ const PositionManager = require("./positionManager");
 const config = require("./config");
 const TradeDetails = require("../backend/models/tradeDetails.js");
 
-
-
 const mongoose = require("../backend/db.js");
+const { checkOrderForIndexRebuild } = require("./orderUpdate.js");
 
 mongoose.connection.once("open", () => {
   console.log("MongoDB connection is open!");
 });
-
 
 const ENVUSERID = process.env.USER_ID || "689c48ecdbd3da869cb3e0c5";
 
@@ -295,6 +293,17 @@ class TradingBot {
       console.log(`   ✅✅✅✅✅✅ ALL 6 CHECKS PASSED`);
       console.log(`   🟢 ENTRY ALLOWED\n`);
 
+      const trades = await TradeDetails.findOne({
+        symbol: symbol,
+        status: "0",
+        createdBy: ENVUSERID,
+      });
+      if (trades) {
+        console.log(
+          `   🚫 [${symbol}] Skipping entry — trade already open in DB.`
+        );
+        return;
+      }
       // Execute entry (with internal validation)
       await this.positionManager.executeProfessionalEntry(
         symbol,
@@ -446,17 +455,6 @@ class TradingBot {
 
           for (const symbol of config.symbols) {
             try {
-              const trades = await TradeDetails.findOne({
-                symbol: symbol,
-                status: "0",
-                createdBy: ENVUSERID,
-              });
-              if (trades) {
-                console.log(
-                  `   🚫 [${symbol}] Skipping entry — trade already open in DB.`
-                );
-                return;
-              }
               await this.processSymbolWithDetails(symbol);
             } catch (err) {
               console.error(`❌ [${symbol}]:`, err.message);
@@ -482,6 +480,12 @@ class TradingBot {
     }
   }
 }
+
+setInterval(async () => {
+  for (const symbol of config.symbols) {
+    await checkOrderForIndexRebuild(symbol);
+  }
+}, 10000);
 
 const bot = new TradingBot();
 bot.run().catch((err) => {
