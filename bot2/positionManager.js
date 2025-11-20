@@ -14,8 +14,8 @@ class PositionManager {
 
     // ✅ IMPROVED SL/TP SETTINGS
     this.ATR_LENGTH = config.ATR_LENGTH || 14;
-    this.ATR_MULTIPLIER_SL = 1; //  ATR for SL (improved)
-    this.ATR_MULTIPLIER_TP = 1; //  ATR for TP (improved)
+    this.ATR_MULTIPLIER_SL = 0.5; //  ATR for SL (improved)
+    this.ATR_MULTIPLIER_TP = 0.5; //  ATR for TP (improved)
 
     this.performanceStats = {
       bullish: { trades: 0, wins: 0, losses: 0, pnl: 0 },
