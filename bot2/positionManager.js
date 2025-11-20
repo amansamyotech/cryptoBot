@@ -1,5 +1,6 @@
 // positionManager.js - ULTIMATE DUPLICATE PREVENTION + OCO FIX
 const config = require("./config");
+const TradeDetails = require("../backend/models/tradeDetails.js");
 const ENVUSERID = process.env.USER_ID || "689c48ecdbd3da869cb3e0c5";
 
 class PositionManager {
@@ -270,7 +271,7 @@ class PositionManager {
       const positions = accountInfo.positions || [];
 
       for (const sym of config.symbols) {
-        const trade = await TradeDetail.findOne({
+        const trade = await TradeDetails.findOne({
           symbol: sym,
           status: "0",
           createdBy: ENVUSERID,
@@ -320,7 +321,7 @@ class PositionManager {
           console.log(`      ℹ️ No SL/TP orders to cancel for ${sym}`);
         }
         if (trade) {
-          await TradeDetail.findOneAndUpdate(
+          await TradeDetails.findOneAndUpdate(
             { _id: trade._id, createdBy: ENVUSERID },
             { status: "1" }
           );
@@ -533,7 +534,7 @@ class PositionManager {
         leverage: config.leverage.toString(),
       };
 
-      const createdTrade = await TradeDetail.create(tradeData);
+      const createdTrade = await TradeDetails.create(tradeData);
       console.log(`   ✅ Trade saved in DB: ${createdTrade._id}`);
       console.log(`   === ENTRY EXECUTION END ===\n`);
     } catch (error) {
