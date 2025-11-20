@@ -296,6 +296,8 @@ class PositionManager {
             `   🔔 [${sym}] DB has open trade but NO exchange position — cleaning up`
           );
           const openOrders = await this.exchange.fetchOpenOrders(sym);
+          console.log(`openOrders`,openOrders);
+          
           let canceledCount = 0;
 
           for (const order of openOrders) {
