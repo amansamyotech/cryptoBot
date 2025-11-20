@@ -263,14 +263,17 @@ class PositionManager {
   // ✅ NEW: Monitor positions and handle OCO cleanup
   async monitorPositions() {
     try {
-      if (!this.exchange || !this.exchange.fapiPrivateV2GetAccount) {
+      if (!this.exchange || !this.exchange.fetchBalance) {
         console.error("❌ Exchange not properly initialized");
-        // return;
+        return;
       }
 
-      const accountInfo = await this.exchange.fapiPrivateV2GetAccount();
-      const positions = accountInfo.positions || [];
+      const accountInfo = await this.exchange.fetchBalance({ type: "future" });
 
+      const positions =
+        accountInfo.info?.positions && Array.isArray(accountInfo.info.positions)
+          ? accountInfo.info.positions
+          : [];
       for (const sym of config.symbols) {
         const trade = await TradeDetails.findOne({
           symbol: sym,
