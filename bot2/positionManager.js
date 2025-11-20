@@ -262,76 +262,90 @@ class PositionManager {
 
   // ✅ NEW: Monitor positions and handle OCO cleanup
   async monitorPositions() {
-    try {
-      const accountInfo = await this.exchange.fetchBalance();
-      console.log(`accountInfo`, accountInfo);
+  try {
+    // ✅ FIXED: Check for the correct method name
+    if (!this.exchange || typeof this.exchange.getBalance !== "function") {
+      console.error(
+        "❌ Exchange not properly initialized (getBalance missing)"
+      );
+      return;
+    }
 
-      const positions =
-        accountInfo.info?.positions && Array.isArray(accountInfo.info.positions)
-          ? accountInfo.info.positions
-          : [];
-      for (const sym of config.symbols) {
-        const trade = await TradeDetails.findOne({
-          symbol: sym,
-          status: "0",
-          createdBy: ENVUSERID,
-        });
+    // Use your ccxt client directly for positions
+    const positions = await this.exchange.client.fetchPositions();
+    
+    // Filter for actual open positions
+    const openPositions = positions.filter(p => {
+      const amt = parseFloat(p.contracts || p.info?.positionAmt || 0);
+      return Math.abs(amt) > 0;
+    });
 
-        console.log(`[${sym}] DB open trade:`, trade);
+    for (const sym of config.symbols) {
+      const trade = await TradeDetails.findOne({
+        symbol: sym,
+        status: "0",
+        createdBy: ENVUSERID,
+      });
 
-        let livePos = null;
-        if (trade) {
-          livePos = positions.find(
-            (p) => p.symbol === sym && parseFloat(p.positionAmt) !== 0
-          );
-        }
+      console.log([${sym}] DB open trade:, trade);
 
-        if (trade && livePos) {
-          console.log(
-            `   🔒 [${sym}] Trade is open on DB & exchange — skipping cleanup.`
-          );
-          continue;
-        }
-        console.log(
-          `   🔔 [${sym}] No active position or trade closed — cleaning orders & updating DB`
+      let livePos = null;
+      if (trade) {
+        livePos = openPositions.find(
+          (p) => (p.symbol === sym || p.info?.symbol === sym) && 
+          Math.abs(parseFloat(p.contracts || p.info?.positionAmt || 0)) > 0
         );
-        const openOrders = await this.exchange.fetchOpenOrders(sym);
-        let canceledCount = 0;
+      }
 
-        for (const order of openOrders) {
-          if (
-            (order.type === "STOP_MARKET" ||
-              order.type === "TAKE_PROFIT_MARKET") &&
-            order.info.reduceOnly === true
-          ) {
-            try {
-              await this.exchange.cancelOrder(order.id, sym);
-              console.log(`      ✅ Canceled ${order.type} order: ${order.id}`);
-              canceledCount++;
-            } catch (err) {
-              console.error(
-                `      ⚠️ Failed to cancel order ${order.id}:`,
-                err.message
-              );
-            }
+      if (trade && livePos) {
+        console.log(
+          `   🔒 [${sym}] Trade is open on DB & exchange — skipping cleanup.`
+        );
+        continue;
+      }
+
+      console.log(
+        `   🔔 [${sym}] No active position or trade closed — cleaning orders & updating DB`
+      );
+
+      const openOrders = await this.exchange.fetchOpenOrders(sym);
+      let canceledCount = 0;
+
+      for (const order of openOrders) {
+        if (
+          (order.type === "STOP_MARKET" ||
+            order.type === "TAKE_PROFIT_MARKET") &&
+          order.info?.reduceOnly === true
+        ) {
+          try {
+            await this.exchange.cancelOrder(order.id, sym);
+            console.log(`      ✅ Canceled ${order.type} order: ${order.id}`);
+            canceledCount++;
+          } catch (err) {
+            console.error(
+              `      ⚠️ Failed to cancel order ${order.id}:`,
+              err.message
+            );
           }
         }
-
-        if (canceledCount === 0) {
-          console.log(`      ℹ️ No SL/TP orders to cancel for ${sym}`);
-        }
-        if (trade) {
-          await TradeDetails.findOneAndUpdate(
-            { _id: trade._id, createdBy: ENVUSERID },
-            { status: "1" }
-          );
-          console.log(`   🔄 [${sym}] DB updated: Trade marked as closed.`);
-        }
       }
-    } catch (error) {
-      console.error("❌ Position monitoring error:", error);
+
+      if (canceledCount === 0) {
+        console.log(`      ℹ️ No SL/TP orders to cancel for ${sym}`);
+      }
+
+      if (trade) {
+        await TradeDetails.findOneAndUpdate(
+          { _id: trade._id, createdBy: ENVUSERID },
+          { status: "1" }
+        );
+        console.log(`   🔄 [${sym}] DB updated: Trade marked as closed.`);
+      }
     }
+  } catch (error) {
+    console.error("❌ Position monitoring error:", error);
   }
+}
 
   async placeOrderWithSTTP(symbol, side, currentPrice, analysis, marketSide) {
     try {
