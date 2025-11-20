@@ -424,8 +424,9 @@ class PositionManager {
 
       // ✅ PROTECTION 3: Check signals
       const minScore = analysis.minScoreRequired || config.minSignalScore;
-      const hasLongSignal =
-        analysis.longEntry && analysis.longScore >= minScore;
+      const hasLongSignal = true;
+      // const hasLongSignal =
+      //   analysis.longEntry && analysis.longScore >= minScore;
       const hasShortSignal =
         analysis.shortEntry && analysis.shortScore >= minScore;
 

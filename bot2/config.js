@@ -58,7 +58,7 @@ const config = {
   ATR_LENGTH: 14,              // ATR calculation period
   
   // ========== SIGNAL THRESHOLDS ==========
-  minSignalScore: 2,           // Minimum conditions (out of 8 with DMI)
+  minSignalScore: 5,           // Minimum conditions (out of 8 with DMI)
   adxThreshold: 20,            // ADX strength threshold
   volumeMultiplier: 1.2,       // Volume confirmation (1.2x average)
   
