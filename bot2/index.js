@@ -481,11 +481,11 @@ class TradingBot {
   }
 }
 
-setInterval(async () => {
-  for (const symbol of config.symbols) {
-    await checkOrderForIndexRebuild(symbol);
-  }
-}, 10000);
+// setInterval(async () => {
+//   for (const symbol of config.symbols) {
+//     await checkOrderForIndexRebuild(symbol);
+//   }
+// }, 10000);
 
 const bot = new TradingBot();
 bot.run().catch((err) => {
