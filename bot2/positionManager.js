@@ -53,10 +53,7 @@ class PositionManager {
   startPositionMonitoring() {
     setInterval(async () => {
       try {
-        // Only monitor if we have tracked positions
-        if (Object.keys(this.trackedPositions).length > 0) {
           await this.monitorPositions();
-        }
       } catch (error) {
         console.error("❌ Position monitoring error:", error.message);
       }
