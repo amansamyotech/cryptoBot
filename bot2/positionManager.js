@@ -263,19 +263,18 @@ class PositionManager {
   // ✅ NEW: Monitor positions and handle OCO cleanup
   async monitorPositions() {
     try {
-      if (!this.exchange || typeof this.exchange.fetchBalance !== "function") {
-        console.error(
-          "❌ Exchange not properly initialized (fetchBalance missing)"
-        );
-        return;
-      }
+         let accountInfo = null;
+    try {
+      accountInfo = await this.exchange.fetchBalance({ type: "future" });
+    } catch (err) {
+      console.warn("⚠️ Could not fetch positions, skipping this round");
+      return;
+    }
 
-      const accountInfo = await this.exchange.fetchBalance({ type: "future" });
-
-      const positions =
-        accountInfo.info?.positions && Array.isArray(accountInfo.info.positions)
-          ? accountInfo.info.positions
-          : [];
+    const positions =
+      accountInfo.info?.positions && Array.isArray(accountInfo.info.positions)
+        ? accountInfo.info.positions
+        : [];
       for (const sym of config.symbols) {
         const trade = await TradeDetails.findOne({
           symbol: sym,
