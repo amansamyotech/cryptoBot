@@ -6,8 +6,8 @@ require("dotenv").config({ path: "../.env" });
 class Exchange {
   constructor() {
     this.client = new ccxt.binance({
-      apiKey: process.env.BINANCE_API_KEY,
-      secret: process.env.BINANCE_SECRET,
+      apiKey: process.env.BINANCE_APIKEY,
+      secret: process.env.BINANCE_SECRETKEY,
       enableRateLimit: true,
       options: { 
         defaultType: 'future',
