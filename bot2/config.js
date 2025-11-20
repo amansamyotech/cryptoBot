@@ -9,7 +9,7 @@ const config = {
   
   // ========== TRADING PAIRS ==========
   symbols: [
-  //'DOGE/USDT',
+  'DOGE/USDT',
     'XRP/USDT'
     //'ADA/USDT'
   ],
