@@ -1,10 +1,12 @@
 // bot.js - ULTIMATE FIX: Prevents ALL duplicate trades + DUAL TEMA FILTER
+require("dotenv").config({ path: "../.env" });
 const Exchange = require("./exchange");
 const Indicators = require("./indicators");
 const Strategy = require("./strategy");
 const PositionManager = require("./positionManager");
 const config = require("./config");
 const TradeDetails = require("../backend/models/tradeDetails.js");
+
 
 
 const mongoose = require("../backend/db.js");

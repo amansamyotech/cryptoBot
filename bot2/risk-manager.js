@@ -1,4 +1,5 @@
 // risk-manager.js - FIXED & OPTIMIZED
+require("dotenv").config({ path: "../.env" });
 const config = require('./config');
 
 class RiskManager {

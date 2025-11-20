@@ -1,6 +1,8 @@
 // indicators.js - COMPLETE WITH DMI + 15m TEMA 100
+require("dotenv").config({ path: "../.env" });
 const ti = require('technicalindicators');
 const config = require('./config');
+
 
 class Indicators {
   // ✅ NEW: Calculate 15m TEMA 100

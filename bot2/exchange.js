@@ -1,6 +1,7 @@
 // exchange.js - COMPLETE FIXED VERSION
 const ccxt = require('ccxt');
 const config = require('./config');
+require("dotenv").config({ path: "../.env" });
 
 class Exchange {
   constructor() {

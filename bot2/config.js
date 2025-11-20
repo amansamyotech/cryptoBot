@@ -1,5 +1,5 @@
 // config.js - COMPLETE CONFIGURATION WITH DUAL TEMA FILTER
-require('dotenv').config();
+require("dotenv").config({ path: "../.env" });
 
 const config = {
   // ========== API CREDENTIALS ==========

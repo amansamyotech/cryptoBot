@@ -1,4 +1,5 @@
 // positionManager.js - ULTIMATE DUPLICATE PREVENTION + OCO FIX
+require("dotenv").config({ path: "../.env" });
 const config = require("./config");
 const TradeDetails = require("../backend/models/tradeDetails.js");
 const ENVUSERID = process.env.USER_ID || "689c48ecdbd3da869cb3e0c5";
