@@ -12,7 +12,7 @@ RUN npm install
 COPY . .
  
 # Set working directory to bot
-WORKDIR /app/bot
+WORKDIR /app/bot2
  
 # Run the bot
 CMD ["node", "index.js"]

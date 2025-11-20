@@ -28,8 +28,8 @@ const symbols = ["DOGEUSDT"];
 
 const LEVERAGE = 3;
 const ATR_LENGTH = 14;
-const ATR_MULTIPLIER_SL = 2.5;
-const ATR_MULTIPLIER_TP = 5.0;
+const ATR_MULTIPLIER_SL = 3;
+const ATR_MULTIPLIER_TP = 5;
 
 function calculateATR(candles, length = ATR_LENGTH) {
   if (candles.length < length + 1) return null;
@@ -369,8 +369,7 @@ async function placeShortOrder(symbol, marginAmount) {
   }
 }
 async function processSymbol(symbol, maxSpendPerTrade) {
-  // const decision = await checkEntrySignal(symbol);
-  const decision = "LONG"
+  const decision = await checkEntrySignal(symbol);
 
   console.log("decision", decision);
   if (decision === "LONG") {
@@ -386,12 +385,12 @@ setInterval(async () => {
   const totalBalance = await getUsdtBalance();
 
   if (totalBalance < 3) {
-    const errorMessage = `Balance is ${totalBalance} USDT — minimum required is 10 USDT to run the bot.`;
+    const errorMessage = `Balance is ${totalBalance} USDT — minimum required is 3 USDT to run the bot.`;
     console.log(`🛑 ${errorMessage}`);
     await setBotStopped(ENVUSERID, errorMessage);
     process.exit(0);
   }
-  const usableBalance = totalBalance - 4;
+  const usableBalance = totalBalance - 1;
   const maxSpendPerTrade = usableBalance / symbols.length;
 
   console.log(`Total Balance: ${totalBalance} USDT`);
