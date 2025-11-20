@@ -263,8 +263,10 @@ class PositionManager {
   // ✅ NEW: Monitor positions and handle OCO cleanup
   async monitorPositions() {
     try {
-      if (!this.exchange || !this.exchange.fetchBalance) {
-        console.error("❌ Exchange not properly initialized");
+      if (!this.exchange || typeof this.exchange.fetchBalance !== "function") {
+        console.error(
+          "❌ Exchange not properly initialized (fetchBalance missing)"
+        );
         return;
       }
 
