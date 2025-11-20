@@ -6,6 +6,25 @@ const PositionManager = require("./positionManager");
 const config = require("./config");
 const TradeDetails = require("../backend/models/tradeDetails.js");
 
+
+const mongoose = require("../backend/db.js");
+
+mongoose.connection.once("open", () => {
+  console.log("MongoDB connection is open!");
+});
+const isProcessing = {};
+const binance = new Binance().options({
+  APIKEY:
+    process.env.BINANCE_APIKEY ||
+    "0kB82SnxRkon7oDJqmCPykl4ar0afRYrScffMnRA3kTR8Qfq986IBwjqNA7fIauI",
+  APISECRET:
+    process.env.BINANCE_SECRETKEY ||
+    "6TWxLtkLDaCfDh4j4YcLa2WLS99zkZtaQjJnsAeGAtixHIDXjPdJAta5BJxNWrZV",
+  useServerTime: true,
+  test: false,
+});
+
+
 const ENVUSERID = process.env.USER_ID || "689c48ecdbd3da869cb3e0c5";
 
 console.log(
