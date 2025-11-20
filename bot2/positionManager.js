@@ -289,6 +289,8 @@ class PositionManager {
         createdBy: ENVUSERID,
       });
 
+      console.log(`trade`,trade);
+      
       console.log(`[${sym}] DB open trade:, trade`);
 
       let livePos = null;
