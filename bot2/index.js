@@ -459,7 +459,7 @@ class TradingBot {
             } catch (err) {
               console.error(`❌ [${symbol}]:`, err.message);
             }
-            await this.sleep(500);
+            await this.sleep(3000);
           }
 
           this.positionManager.displayOverallStats(this.dailyStats);

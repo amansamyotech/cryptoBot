@@ -452,10 +452,13 @@ class PositionManager {
       const roundedAmount = this.roundToStepSize(symbol, amount);
 
       console.log(
-        `   💵 Dynamic Position Size: ${dynamicPositionSize.toFixed(
-          2
-        )} USDT (Leverage: ${config.leverage}x)`
+        `   💰 Allocated Balance: ${dynamicPositionSize.toFixed(2)} USDT`
       );
+      console.log(`   📊 Leverage: ${config.leverage}x`);
+      console.log(
+        `   💵 Total Position Value: ${notionalValue.toFixed(2)} USDT`
+      );
+      console.log(`   📦 Amount: ${roundedAmount} ${symbol.split("/")[0]}`);
       let stopLoss, takeProfit;
 
       if (analysis.atr && analysis.atr.length > 0) {
@@ -480,6 +483,7 @@ class PositionManager {
         )} | TP: ${takeProfit.toFixed(this.getPriceDecimals(symbol))}`
       );
 
+      await this.exchange.sleep(2000);
       // Place market order
       const order = await this.exchange.createOrder(
         symbol,
