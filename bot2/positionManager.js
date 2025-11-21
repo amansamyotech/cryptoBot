@@ -404,6 +404,9 @@ class PositionManager {
       // ✅ CRITICAL: Set entry lock IMMEDIATELY (before any API calls)
       console.log(`   🔒 Setting entry lock...`);
       this.entryInProgress[symbol] = Date.now();
+      await this.exchange.setLeverage(symbol, config.leverage);
+      await this.exchange.sleep(1000);
+
       const positionSize =
         this.fixedAllocationPerSymbol || config.positionSizeUSDT;
 
@@ -416,6 +419,16 @@ class PositionManager {
       const notionalValue = positionSize * config.leverage;
       const amount = notionalValue / currentPrice;
       const roundedAmount = this.roundToStepSize(symbol, amount);
+
+const actualPositionValue = roundedAmount * currentPrice;
+      const actualMargin = actualPositionValue / config.leverage;
+
+      console.log(`   💰 Allocated Margin: ${positionSize.toFixed(2)} USDT`);
+      console.log(`   📊 Leverage: ${config.leverage}x (Set on exchange)`);
+      console.log(`   📦 Quantity: ${roundedAmount} ${symbol.split('/')[0]}`);
+      console.log(`   💲 Entry Price: ${currentPrice.toFixed(this.getPriceDecimals(symbol))}`);
+      console.log(`   💵 Position Value: ${actualPositionValue.toFixed(2)} USDT`);
+      console.log(`   📊 Actual Margin Used: ${actualMargin.toFixed(2)} USDT`);
 
       let stopLoss, takeProfit;
 
@@ -441,7 +454,7 @@ class PositionManager {
         )} | TP: ${takeProfit.toFixed(this.getPriceDecimals(symbol))}`
       );
 
-      // Place market order
+      // Place market order (exchange will use set leverage)
       const order = await this.exchange.createOrder(
         symbol,
         "market",
@@ -479,15 +492,11 @@ class PositionManager {
       };
     } catch (error) {
       console.error(`❌ Order placement failed:`, error.message);
-
-      // Clear lock on error
       delete this.entryInProgress[symbol];
       console.log(`   🔓 Entry lock cleared (error)`);
-
       return null;
     }
   }
-
   // ✅ MAIN ENTRY FUNCTION: Executes trade with all protections
   async executeProfessionalEntry(symbol, analysis, currentPrice, dailyStats) {
     try {

@@ -1,6 +1,6 @@
 // exchange.js - COMPLETE FIXED VERSION
-const ccxt = require('ccxt');
-const config = require('./config');
+const ccxt = require("ccxt");
+const config = require("./config");
 require("dotenv").config({ path: "../.env" });
 
 class Exchange {
@@ -9,18 +9,18 @@ class Exchange {
       apiKey: process.env.BINANCE_APIKEY,
       secret: process.env.BINANCE_SECRETKEY,
       enableRateLimit: true,
-      options: { 
-        defaultType: 'future',
-        recvWindow: 60000
-      }
+      options: {
+        defaultType: "future",
+        recvWindow: 60000,
+      },
     });
-    
-    console.log('✅ Exchange initialized: Binance Futures');
+
+    console.log("✅ Exchange initialized: Binance Futures");
   }
 
   // ✅ CRITICAL: Sleep function (used everywhere)
   async sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   // ✅ CRITICAL: Setup leverage for symbol
@@ -36,10 +36,15 @@ class Exchange {
   }
 
   // ✅ FIXED: Fetch OHLCV with proper error handling
-  async fetchOHLCV(symbol, timeframe = '1m', limit = 100) {
+  async fetchOHLCV(symbol, timeframe = "1m", limit = 100) {
     try {
-      const ohlcv = await this.client.fetchOHLCV(symbol, timeframe, undefined, limit);
-      
+      const ohlcv = await this.client.fetchOHLCV(
+        symbol,
+        timeframe,
+        undefined,
+        limit
+      );
+
       if (!ohlcv || ohlcv.length === 0) {
         console.error(`❌ No OHLCV data for ${symbol}`);
         return null;
@@ -47,15 +52,14 @@ class Exchange {
 
       // ✅ CCXT returns: [timestamp, open, high, low, close, volume]
       // Convert to our format
-      return ohlcv.map(candle => ({
+      return ohlcv.map((candle) => ({
         time: candle[0],
         open: candle[1],
         high: candle[2],
         low: candle[3],
         close: candle[4],
-        volume: candle[5]
+        volume: candle[5],
       }));
-      
     } catch (err) {
       console.error(`❌ Error fetching OHLCV for ${symbol}:`, err.message);
       return null;
@@ -66,15 +70,15 @@ class Exchange {
   async getCurrentPosition(symbol) {
     try {
       const positions = await this.client.fetchPositions([symbol]);
-      
+
       if (!positions || positions.length === 0) {
         return null;
       }
 
       // Find position for this symbol
-      const position = positions.find(p => {
+      const position = positions.find((p) => {
         const posSymbol = p.symbol || p.info?.symbol;
-        return posSymbol === symbol || posSymbol === symbol.replace('/', '');
+        return posSymbol === symbol || posSymbol === symbol.replace("/", "");
       });
 
       if (!position) {
@@ -82,8 +86,10 @@ class Exchange {
       }
 
       // Check if position is actually open
-      const contracts = Math.abs(parseFloat(position.contracts || position.info?.positionAmt || 0));
-      
+      const contracts = Math.abs(
+        parseFloat(position.contracts || position.info?.positionAmt || 0)
+      );
+
       if (contracts === 0 || contracts < 0.001) {
         return null;
       }
@@ -91,17 +97,33 @@ class Exchange {
       // Return normalized position
       return {
         symbol: symbol,
-        side: contracts > 0 ? (position.side === 'short' ? 'short' : 'long') : 'short',
+        side:
+          contracts > 0
+            ? position.side === "short"
+              ? "short"
+              : "long"
+            : "short",
         amount: contracts,
         contracts: contracts,
-        entry: parseFloat(position.entryPrice || position.info?.entryPrice || 0),
-        entryPrice: parseFloat(position.entryPrice || position.info?.entryPrice || 0),
-        unrealizedProfit: parseFloat(position.unrealizedPnl || position.info?.unRealizedProfit || 0),
-        notional: parseFloat(position.notional || position.info?.notional || contracts * (position.entryPrice || 1)),
+        entry: parseFloat(
+          position.entryPrice || position.info?.entryPrice || 0
+        ),
+        entryPrice: parseFloat(
+          position.entryPrice || position.info?.entryPrice || 0
+        ),
+        unrealizedProfit: parseFloat(
+          position.unrealizedPnl || position.info?.unRealizedProfit || 0
+        ),
+        notional: parseFloat(
+          position.notional ||
+            position.info?.notional ||
+            contracts * (position.entryPrice || 1)
+        ),
         leverage: parseFloat(position.leverage || config.leverage),
-        liquidationPrice: parseFloat(position.liquidationPrice || position.info?.liquidationPrice || 0)
+        liquidationPrice: parseFloat(
+          position.liquidationPrice || position.info?.liquidationPrice || 0
+        ),
       };
-      
     } catch (err) {
       console.error(`❌ Error fetching position for ${symbol}:`, err.message);
       return null;
@@ -112,8 +134,8 @@ class Exchange {
   async getOpenPositions() {
     try {
       const positions = await this.client.fetchPositions();
-      
-      const openPositions = positions.filter(p => {
+
+      const openPositions = positions.filter((p) => {
         const amt = parseFloat(p.contracts || p.info?.positionAmt || 0);
         return Math.abs(amt) > 0;
       });
@@ -121,20 +143,21 @@ class Exchange {
       return openPositions.reduce((acc, p) => {
         const symbol = p.symbol || p.info?.symbol;
         const amt = parseFloat(p.contracts || p.info?.positionAmt || 0);
-        
+
         acc[symbol] = {
           symbol: symbol,
-          side: amt > 0 ? 'long' : 'short',
+          side: amt > 0 ? "long" : "short",
           size: Math.abs(amt),
           amount: Math.abs(amt),
           entryPrice: parseFloat(p.entryPrice || p.info?.entryPrice || 0),
-          unrealizedPnl: parseFloat(p.unrealizedPnl || p.info?.unRealizedProfit || 0)
+          unrealizedPnl: parseFloat(
+            p.unrealizedPnl || p.info?.unRealizedProfit || 0
+          ),
         };
         return acc;
       }, {});
-      
     } catch (err) {
-      console.error('❌ Error fetching open positions:', err.message);
+      console.error("❌ Error fetching open positions:", err.message);
       return {};
     }
   }
@@ -150,8 +173,26 @@ class Exchange {
     }
   }
 
+  async setLeverage(symbol, leverage) {
+    try {
+      await this.client.setLeverage(leverage, symbol);
+      console.log(`   ⚙️ Leverage set to ${leverage}x for ${symbol}`);
+    } catch (error) {
+      console.error(
+        `   ⚠️ Failed to set leverage for ${symbol}:`,
+        error.message
+      );
+    }
+  }
   // ✅ FIXED: Create order (proper futures format)
-  async createOrder(symbol, type, side, amount, price = undefined, params = {}) {
+  async createOrder(
+    symbol,
+    type,
+    side,
+    amount,
+    price = undefined,
+    params = {}
+  ) {
     try {
       // For futures, use the correct method
       const order = await this.client.createOrder(
@@ -162,9 +203,8 @@ class Exchange {
         price,
         params
       );
-      
+
       return order;
-      
     } catch (err) {
       console.error(`❌ Order error for ${symbol}:`, err.message);
       throw err;
@@ -177,7 +217,10 @@ class Exchange {
       const orders = await this.client.fetchOpenOrders(symbol);
       return orders || [];
     } catch (err) {
-      console.error(`❌ Error fetching open orders for ${symbol}:`, err.message);
+      console.error(
+        `❌ Error fetching open orders for ${symbol}:`,
+        err.message
+      );
       return [];
     }
   }
@@ -188,7 +231,10 @@ class Exchange {
       const result = await this.client.cancelOrder(orderId, symbol);
       return result;
     } catch (err) {
-      console.error(`❌ Error canceling order ${orderId} for ${symbol}:`, err.message);
+      console.error(
+        `❌ Error canceling order ${orderId} for ${symbol}:`,
+        err.message
+      );
       throw err;
     }
   }
@@ -197,7 +243,7 @@ class Exchange {
   async cancelAllOpenOrders(symbol) {
     try {
       const orders = await this.fetchOpenOrders(symbol);
-      
+
       for (const order of orders) {
         try {
           await this.cancelOrder(order.id, symbol);
@@ -206,10 +252,13 @@ class Exchange {
           console.log(`   ⚠️ Could not cancel ${order.id}: ${e.message}`);
         }
       }
-      
+
       return true;
     } catch (err) {
-      console.error(`❌ Error canceling all orders for ${symbol}:`, err.message);
+      console.error(
+        `❌ Error canceling all orders for ${symbol}:`,
+        err.message
+      );
       return false;
     }
   }
@@ -219,11 +268,10 @@ class Exchange {
     try {
       // Cancel old order
       await this.cancelOrder(orderId, symbol);
-      
+
       // Create new order (implementation depends on your strategy)
       console.log(`   🔄 SL/TP replaced for ${symbol}`);
       return true;
-      
     } catch (err) {
       console.error(`❌ Error replacing SL/TP for ${symbol}:`, err.message);
       return null;
@@ -236,7 +284,7 @@ class Exchange {
       const balance = await this.client.fetchBalance();
       return balance;
     } catch (err) {
-      console.error('❌ Error fetching balance:', err.message);
+      console.error("❌ Error fetching balance:", err.message);
       return null;
     }
   }
@@ -245,7 +293,9 @@ class Exchange {
   async setPositionMode(hedged = false) {
     try {
       await this.client.setPositionMode(hedged);
-      console.log(`   ✅ Position mode set to: ${hedged ? 'Hedge' : 'One-way'}`);
+      console.log(
+        `   ✅ Position mode set to: ${hedged ? "Hedge" : "One-way"}`
+      );
       return true;
     } catch (err) {
       console.log(`   ⚠️ Position mode: ${err.message}`);
@@ -254,7 +304,7 @@ class Exchange {
   }
 
   // ✅ Set margin mode
-  async setMarginMode(symbol, marginMode = 'cross') {
+  async setMarginMode(symbol, marginMode = "cross") {
     try {
       await this.client.setMarginMode(marginMode, symbol);
       console.log(`   ✅ [${symbol}] Margin mode: ${marginMode}`);

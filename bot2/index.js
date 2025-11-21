@@ -49,14 +49,15 @@ class TradingBot {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-
-    async initializeBalanceAllocation() {
+  async initializeBalanceAllocation() {
     try {
       console.log("\n💰 === BALANCE ALLOCATION INITIALIZATION ===");
-      
+
       if (!config.ENABLE_DYNAMIC_ALLOCATION) {
         this.fixedAllocationPerSymbol = config.positionSizeUSDT;
-        console.log(`   📊 Using Fixed Position Size: ${this.fixedAllocationPerSymbol} USDT per symbol`);
+        console.log(
+          `   📊 Using Fixed Position Size: ${this.fixedAllocationPerSymbol} USDT per symbol`
+        );
         return;
       }
 
@@ -69,31 +70,60 @@ class TradingBot {
       console.log(`   💰 Available Balance: ${availableUSDT.toFixed(2)} USDT`);
 
       if (availableUSDT < config.RESERVE_BALANCE) {
-        console.error(`   ❌ Insufficient balance! Available: ${availableUSDT} < Reserve: ${config.RESERVE_BALANCE}`);
+        console.error(
+          `   ❌ Insufficient balance! Available: ${availableUSDT} < Reserve: ${config.RESERVE_BALANCE}`
+        );
         process.exit(1);
       }
 
       // Calculate tradeable balance
       const tradeableBalance = availableUSDT - config.RESERVE_BALANCE;
-      
+
       // Divide equally among all symbols
       this.fixedAllocationPerSymbol = tradeableBalance / config.symbols.length;
 
       console.log(`   🔒 Reserved: ${config.RESERVE_BALANCE} USDT`);
       console.log(`   📊 Tradeable: ${tradeableBalance.toFixed(2)} USDT`);
       console.log(`   🎯 Total Symbols: ${config.symbols.length}`);
-      console.log(`   💵 Allocation Per Symbol: ${this.fixedAllocationPerSymbol.toFixed(2)} USDT`);
+      console.log(
+        `   💵 Allocation Per Symbol: ${this.fixedAllocationPerSymbol.toFixed(
+          2
+        )} USDT`
+      );
       console.log(`   📊 Leverage: ${config.leverage}x`);
-      console.log(`   🚀 Position Value Per Symbol: ${(this.fixedAllocationPerSymbol * config.leverage).toFixed(2)} USDT`);
+      console.log(
+        `   🚀 Position Value Per Symbol: ${(
+          this.fixedAllocationPerSymbol * config.leverage
+        ).toFixed(2)} USDT`
+      );
       console.log("=".repeat(100) + "\n");
 
       // Store in position manager
-      this.positionManager.fixedAllocationPerSymbol = this.fixedAllocationPerSymbol;
-
+      this.positionManager.fixedAllocationPerSymbol =
+        this.fixedAllocationPerSymbol;
     } catch (error) {
       console.error("❌ Balance allocation failed:", error.message);
       process.exit(1);
     }
+  }
+
+  async setInitialLeverage() {
+    console.log("\n⚙️ === SETTING LEVERAGE FOR ALL SYMBOLS ===");
+
+    for (const symbol of config.symbols) {
+      try {
+        await this.exchange.setLeverage(symbol, config.leverage);
+        console.log(`   ✅ ${symbol}: ${config.leverage}x leverage set`);
+        await this.sleep(500);
+      } catch (error) {
+        console.error(
+          `   ❌ ${symbol}: Failed to set leverage -`,
+          error.message
+        );
+      }
+    }
+
+    console.log("=".repeat(100) + "\n");
   }
   // ✅ CRITICAL: Sync position from exchange to memory
   async syncPositionState(symbol) {
@@ -483,6 +513,7 @@ class TradingBot {
       );
       console.log("🎯 DUAL TEMA FILTER: 5m TEMA 200 + 15m TEMA 100 ACTIVE");
       await this.initializeBalanceAllocation();
+      await this.setInitialLeverage();
 
       while (true) {
         try {
@@ -527,7 +558,6 @@ class TradingBot {
     }
   }
 }
-
 
 const bot = new TradingBot();
 bot.run().catch((err) => {
