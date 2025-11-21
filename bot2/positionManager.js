@@ -30,6 +30,41 @@ class PositionManager {
     this.startPositionMonitoring();
   }
 
+  async calculateDynamicPositionSize(symbol) {
+    try {
+      if (!config.ENABLE_DYNAMIC_ALLOCATION) {
+        return config.positionSizeUSDT;
+      }
+      const balance = await this.exchange.client.fetchBalance();
+      const availableUSDT = parseFloat(balance.USDT?.free || 0);
+
+      if (availableUSDT < config.RESERVE_BALANCE) {
+        console.log(`   ⚠️ Insufficient balance: ${availableUSDT} USDT`);
+        return 0;
+      }
+
+      // Calculate tradeable balance
+      const tradeableBalance = availableUSDT - config.RESERVE_BALANCE;
+
+      // Divide by number of symbols
+      const allocationPerSymbol = tradeableBalance / config.symbols.length;
+
+      console.log(`   💰 Total Balance: ${availableUSDT.toFixed(2)} USDT`);
+      console.log(`   🔒 Reserved: ${config.RESERVE_BALANCE} USDT`);
+      console.log(`   📊 Tradeable: ${tradeableBalance.toFixed(2)} USDT`);
+      console.log(
+        `   🎯 Per Symbol (${
+          config.symbols.length
+        } coins): ${allocationPerSymbol.toFixed(2)} USDT`
+      );
+
+      return allocationPerSymbol;
+    } catch (error) {
+      console.error(`   ❌ Balance calculation error:`, error.message);
+      return config.positionSizeUSDT; // Fallback to fixed size
+    }
+  }
+
   startLockCleaner() {
     setInterval(() => {
       const now = Date.now();
@@ -399,15 +434,28 @@ class PositionManager {
   async placeOrderWithSTTP(symbol, side, currentPrice, analysis, marketSide) {
     try {
       console.log(`\n🚀 [${symbol}] === ORDER PLACEMENT ===`);
-
-      // ✅ CRITICAL: Set entry lock IMMEDIATELY (before any API calls)
       console.log(`   🔒 Setting entry lock...`);
       this.entryInProgress[symbol] = Date.now();
 
-      const notionalValue = config.positionSizeUSDT * config.leverage;
+      const dynamicPositionSize = await this.calculateDynamicPositionSize(
+        symbol
+      );
+
+      if (dynamicPositionSize === 0) {
+        console.log(`   ❌ Insufficient balance for ${symbol}`);
+        delete this.entryInProgress[symbol];
+        return null;
+      }
+
+      const notionalValue = dynamicPositionSize * config.leverage;
       const amount = notionalValue / currentPrice;
       const roundedAmount = this.roundToStepSize(symbol, amount);
 
+      console.log(
+        `   💵 Dynamic Position Size: ${dynamicPositionSize.toFixed(
+          2
+        )} USDT (Leverage: ${config.leverage}x)`
+      );
       let stopLoss, takeProfit;
 
       if (analysis.atr && analysis.atr.length > 0) {
