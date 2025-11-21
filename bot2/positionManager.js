@@ -11,6 +11,7 @@ class PositionManager {
     this.orderCooldown = {}; // { symbol: timestamp }
     this.lastSTTPCheck = {}; // { symbol: timestamp }
     this.entryInProgress = {}; // { symbol: timestamp } - prevents race conditions
+    this.fixedAllocationPerSymbol = 0;
 
     // ✅ IMPROVED SL/TP SETTINGS
     this.ATR_LENGTH = config.ATR_LENGTH || 14;
@@ -28,41 +29,6 @@ class PositionManager {
 
     // ✅ NEW: Start position monitoring
     this.startPositionMonitoring();
-  }
-
-  async calculateDynamicPositionSize(symbol) {
-    try {
-      if (!config.ENABLE_DYNAMIC_ALLOCATION) {
-        return config.positionSizeUSDT;
-      }
-      const balance = await this.exchange.client.fetchBalance();
-      const availableUSDT = parseFloat(balance.USDT?.free || 0);
-
-      if (availableUSDT < config.RESERVE_BALANCE) {
-        console.log(`   ⚠️ Insufficient balance: ${availableUSDT} USDT`);
-        return 0;
-      }
-
-      // Calculate tradeable balance
-      const tradeableBalance = availableUSDT - config.RESERVE_BALANCE;
-
-      // Divide by number of symbols
-      const allocationPerSymbol = tradeableBalance / config.symbols.length;
-
-      console.log(`   💰 Total Balance: ${availableUSDT.toFixed(2)} USDT`);
-      console.log(`   🔒 Reserved: ${config.RESERVE_BALANCE} USDT`);
-      console.log(`   📊 Tradeable: ${tradeableBalance.toFixed(2)} USDT`);
-      console.log(
-        `   🎯 Per Symbol (${
-          config.symbols.length
-        } coins): ${allocationPerSymbol.toFixed(2)} USDT`
-      );
-
-      return allocationPerSymbol;
-    } catch (error) {
-      console.error(`   ❌ Balance calculation error:`, error.message);
-      return config.positionSizeUSDT; // Fallback to fixed size
-    }
   }
 
   startLockCleaner() {
@@ -434,31 +400,23 @@ class PositionManager {
   async placeOrderWithSTTP(symbol, side, currentPrice, analysis, marketSide) {
     try {
       console.log(`\n🚀 [${symbol}] === ORDER PLACEMENT ===`);
+
+      // ✅ CRITICAL: Set entry lock IMMEDIATELY (before any API calls)
       console.log(`   🔒 Setting entry lock...`);
       this.entryInProgress[symbol] = Date.now();
+      const positionSize =
+        this.fixedAllocationPerSymbol || config.positionSizeUSDT;
 
-      const dynamicPositionSize = await this.calculateDynamicPositionSize(
-        symbol
-      );
-
-      if (dynamicPositionSize === 0) {
-        console.log(`   ❌ Insufficient balance for ${symbol}`);
+      if (positionSize === 0 || positionSize < 1) {
+        console.log(`   ❌ No allocation for ${symbol}`);
         delete this.entryInProgress[symbol];
         return null;
       }
 
-      const notionalValue = dynamicPositionSize * config.leverage;
+      const notionalValue = positionSize * config.leverage;
       const amount = notionalValue / currentPrice;
       const roundedAmount = this.roundToStepSize(symbol, amount);
 
-      console.log(
-        `   💰 Allocated Balance: ${dynamicPositionSize.toFixed(2)} USDT`
-      );
-      console.log(`   📊 Leverage: ${config.leverage}x`);
-      console.log(
-        `   💵 Total Position Value: ${notionalValue.toFixed(2)} USDT`
-      );
-      console.log(`   📦 Amount: ${roundedAmount} ${symbol.split("/")[0]}`);
       let stopLoss, takeProfit;
 
       if (analysis.atr && analysis.atr.length > 0) {
@@ -483,7 +441,6 @@ class PositionManager {
         )} | TP: ${takeProfit.toFixed(this.getPriceDecimals(symbol))}`
       );
 
-      await this.exchange.sleep(2000);
       // Place market order
       const order = await this.exchange.createOrder(
         symbol,
