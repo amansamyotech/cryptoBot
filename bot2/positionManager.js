@@ -15,8 +15,8 @@ class PositionManager {
 
     // ✅ IMPROVED SL/TP SETTINGS
     this.ATR_LENGTH = config.ATR_LENGTH || 14;
-    this.ATR_MULTIPLIER_SL = 0.5; //  ATR for SL (improved)
-    this.ATR_MULTIPLIER_TP = 0.5; //  ATR for TP (improved)
+    this.ATR_MULTIPLIER_SL = 1.5; //  ATR for SL (improved)
+    this.ATR_MULTIPLIER_TP = 1.5 ; //  ATR for TP (improved)
 
     this.performanceStats = {
       bullish: { trades: 0, wins: 0, losses: 0, pnl: 0 },
@@ -420,14 +420,20 @@ class PositionManager {
       const amount = notionalValue / currentPrice;
       const roundedAmount = this.roundToStepSize(symbol, amount);
 
-const actualPositionValue = roundedAmount * currentPrice;
+      const actualPositionValue = roundedAmount * currentPrice;
       const actualMargin = actualPositionValue / config.leverage;
 
       console.log(`   💰 Allocated Margin: ${positionSize.toFixed(2)} USDT`);
       console.log(`   📊 Leverage: ${config.leverage}x (Set on exchange)`);
-      console.log(`   📦 Quantity: ${roundedAmount} ${symbol.split('/')[0]}`);
-      console.log(`   💲 Entry Price: ${currentPrice.toFixed(this.getPriceDecimals(symbol))}`);
-      console.log(`   💵 Position Value: ${actualPositionValue.toFixed(2)} USDT`);
+      console.log(`   📦 Quantity: ${roundedAmount} ${symbol.split("/")[0]}`);
+      console.log(
+        `   💲 Entry Price: ${currentPrice.toFixed(
+          this.getPriceDecimals(symbol)
+        )}`
+      );
+      console.log(
+        `   💵 Position Value: ${actualPositionValue.toFixed(2)} USDT`
+      );
       console.log(`   📊 Actual Margin Used: ${actualMargin.toFixed(2)} USDT`);
 
       let stopLoss, takeProfit;
@@ -506,9 +512,8 @@ const actualPositionValue = roundedAmount * currentPrice;
       const minScore = analysis.minScoreRequired || config.minSignalScore;
       const hasLongSignal =
         analysis.longEntry && analysis.longScore >= minScore;
-      // const hasShortSignal =
-      //   analysis.shortEntry && analysis.shortScore >= minScore;
-      const hasShortSignal = true;
+      const hasShortSignal =
+        analysis.shortEntry && analysis.shortScore >= minScore;
 
       if (!hasLongSignal && !hasShortSignal) {
         console.log(

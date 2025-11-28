@@ -3,9 +3,8 @@ require("dotenv").config({ path: "../.env" });
 
 const config = {
   // ========== API CREDENTIALS ==========
-  // apiKey: process.env.BINANCE_APIKEY,
-  apiKey: "9JZjlcfPqSnQIk4rq6Fm1VSxKIl66g0MYoklFOaVeAWwlPZFrGpG21JuhVzu4KtK",
-  secret: "qCrYHNPjRb8ZE6SL11R4AQNQswfoDET3Qwnv6lLXLffFd5wjd6vrgitoKiMRNOid",
+  apiKey: process.env.BINANCE_APIKEY,
+  secret: process.env.BINANCE_SECRETKEY,
 
   // ========== TRADING PAIRS ==========
   symbols: [
@@ -61,9 +60,9 @@ const config = {
   ATR_LENGTH: 14, // ATR calculation period
 
   // ========== SIGNAL THRESHOLDS ==========
-  minSignalScore: 5, // Minimum conditions (out of 8 with DMI)
+  minSignalScore: 6, // Minimum conditions (out of 8 with DMI)
   adxThreshold: 20, // ADX strength threshold
-  volumeMultiplier: 1.2, // Volume confirmation (1.2x average)
+  volumeMultiplier: 1.1, // Volume confirmation (1.2x average)
 
   // ========== ORDER MANAGEMENT ==========
   orderCooldownMs: 45000, // 45 seconds between orders

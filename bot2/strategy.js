@@ -1,4 +1,3 @@
-// strategy.js - COMPLETE STRATEGY WITH DUAL TIMEFRAME TEMA FILTER
 require("dotenv").config({ path: "../.env" });
 const Indicators = require("./indicators");
 const config = require("./config");
